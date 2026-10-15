@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Service Desk logo">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1674c9"/><stop offset="1" stop-color="#05285d"/></linearGradient></defs>
+<rect width="512" height="512" rx="88" fill="url(#bg)"/>
+<g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+<rect x="104" y="157" width="135" height="91" rx="12" stroke-width="13"/><path d="M171 248v25m-43 0h86" stroke-width="12"/>
+<path d="M94 296h324v18H94z" fill="#fff" stroke-width="4"/>
+<path d="M115 319h282v66H115z" fill="#fff" stroke-width="4"/>
+</g>
+<rect x="270" y="144" width="141" height="101" rx="29" fill="#34c5f5"/>
+<path d="M297 236v31l34-30" fill="#34c5f5"/>
+<g fill="#073467"><circle cx="310" cy="194" r="9"/><circle cx="341" cy="194" r="9"/><circle cx="372" cy="194" r="9"/></g>
+<text x="256" y="442" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="54" letter-spacing="1" fill="#fff">Service Desk</text>
+</svg>

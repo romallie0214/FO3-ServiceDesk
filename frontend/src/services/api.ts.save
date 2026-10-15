@@ -1,0 +1,58 @@
+export cimport axios from 'axios';
+
+const api = axios.create({
+  baseURL: '/api',
+});
+
+export interface Ticket {
+  id: number;
+  ticket_number: string;
+  subject: string;
+  description: string;
+  status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
+  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  category: string;
+  requestor: string;
+  division: string;
+  assigned_to: string | null;
+  created_at: string;
+}
+
+export interface User {
+  id: number;
+  full_name: string;
+  email: string;
+  role: 'staff' | 'admin';
+  division: string;
+}
+
+export interface Comment {
+  id: number;
+  ticket_id: number;
+  user_id: number;
+  content: string;
+  full_name: string;
+  role: string;
+  created_at: string;
+}
+
+export const ticketService = {
+  getAll: () => api.get<Ticket[]>('/tickets'),
+  getById: (id: number) => api.get<Ticket>(`/tickets/${id}`),
+  create: (data: Partial<Ticket> & { category_id: number; requestor_id: number }) =>
+    api.post('/tickets', data),
+  update: (id: number, data: { status?: string; assigned_to?: number }) =>
+    api.patch(`/tickets/${id}`, data),
+};
+
+export const userService = {
+  getAll: () => api.get<User[]>('/users'),
+  login: (email: string, password: string) =>
+    api.post('/users/login', { email, password }),
+};
+
+export const commentService = {
+  getByTicket: (ticketId: number) => api.get<Comment[]>(`/comments/${ticketId}`),
+  create: (data: { ticket_id: number; user_id: number; content: string }) =>
+    api.post('/comments', data),
+};

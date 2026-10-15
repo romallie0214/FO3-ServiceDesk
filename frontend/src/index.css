@@ -1,0 +1,212 @@
+@import "tailwindcss";
+
+
+
+/* ─── Design Tokens ──────────────────────────────────────────────────────── */
+:root {
+  /* Brand colors */
+  --gov-navy:         #0D3B6E;
+  --gov-navy2:        #1A5490;
+  --gov-navy-light:   #E8F1FA;
+  --gov-green:        #1B6B3A;
+  --gov-green2:       #2E8B57;
+  --gov-green-light:  #E8F5EE;
+  --gov-gold:         #B8860B;
+  --gov-gold-light:   #FDF5DC;
+  --gov-red:          #8B1A1A;
+  --gov-red-light:    #FDE8E8;
+  --gov-amber:        #CC7700;
+  --gov-amber-light:  #FEF3DC;
+  --gov-gray:         #4A4A4A;
+  --background:       #F0F3F7;
+
+  /* Typography scale */
+--text-xs:   13px;   /* badges, labels, metadata, timestamps */
+--text-sm:   14px;   /* table cells, form helpers, secondary info */
+--text-base: 15px;   /* body text, form inputs, nav links */
+--text-md:   16px;   /* card titles, modal section headers */
+--text-lg:   18px;   /* page section headings */
+--text-xl:   23px;   /* page titles */
+--text-2xl:  28px;   /* stat card numbers */
+--text-3xl:  32px;   /* hero numbers on dashboard */
+
+  /* Font weights */
+  --weight-normal:   400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* Line heights */
+  --leading-tight:  1.25;
+  --leading-snug:   1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed:1.625;
+
+  /* Letter spacing */
+  --tracking-tight:  -0.01em;
+  --tracking-normal:  0em;
+  --tracking-wide:    0.03em;
+  --tracking-wider:   0.06em;
+  --tracking-widest:  0.1em;
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--background);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: var(--text-base);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-normal);
+  color: #1A2A3A;
+  min-height: 100vh;
+  font-family: Inter, Arial, Helvetica, sans-serif;
+}
+
+/* ─── Headings ───────────────────────────────────────────────────────────── */
+h1 { font-size: var(--text-xl);  font-weight: var(--weight-bold);     line-height: var(--leading-tight);  letter-spacing: var(--tracking-tight);  color: var(--gov-navy); }
+h2 { font-size: var(--text-lg);  font-weight: var(--weight-semibold);  line-height: var(--leading-tight);  letter-spacing: var(--tracking-tight);  color: var(--gov-navy); }
+h3 { font-size: var(--text-md);  font-weight: var(--weight-semibold);  line-height: var(--leading-snug);   color: #1A2A3A; }
+h4 { font-size: var(--text-base);font-weight: var(--weight-medium);   line-height: var(--leading-snug);   color: #1A2A3A; }
+
+/* ─── Links ──────────────────────────────────────────────────────────────── */
+a {
+  color: var(--gov-navy2);
+  text-decoration: none;
+  font-weight: var(--weight-medium);
+}
+a:hover { text-decoration: underline; }
+
+/* ─── Form elements ──────────────────────────────────────────────────────── */
+input, select, textarea, button {
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-normal);
+}
+
+input, select, textarea {
+  color: #1A2A3A;
+  background: #fff;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9BA8B4;
+  font-weight: var(--weight-normal);
+}
+
+button {
+  cursor: pointer;
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+}
+
+/* ─── Table typography ───────────────────────────────────────────────────── */
+table {
+  font-size: var(--text-sm);
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  line-height: var(--leading-tight);
+}
+
+td {
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  vertical-align: middle;
+}
+
+/* ─── Utility classes ────────────────────────────────────────────────────── */
+
+/* Text sizes */
+.text-xs    { font-size: var(--text-xs);   }
+.text-sm    { font-size: var(--text-sm);   }
+.text-base  { font-size: var(--text-base); }
+.text-md    { font-size: var(--text-md);   }
+.text-lg    { font-size: var(--text-lg);   }
+.text-xl    { font-size: var(--text-xl);   }
+.text-2xl   { font-size: var(--text-2xl);  }
+.text-3xl   { font-size: var(--text-3xl);  }
+
+/* Font weights */
+.font-normal   { font-weight: var(--weight-normal);   }
+.font-medium   { font-weight: var(--weight-medium);   }
+.font-semibold { font-weight: var(--weight-semibold); }
+.font-bold     { font-weight: var(--weight-bold);     }
+
+/* Colors */
+.text-navy   { color: var(--gov-navy);  }
+.text-green  { color: var(--gov-green); }
+.text-muted  { color: #6A7280;          }
+.text-subtle { color: #9BA8B4;          }
+
+/* Label style — used on form field labels */
+.label {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: #5A6475;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  margin-bottom: 4px;
+}
+
+/* Badge / pill */
+.badge {
+  display: inline-block;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  padding: 2px 8px;
+  border-radius: 3px;
+  line-height: var(--leading-tight);
+}
+
+/* Stat number on cards */
+.stat-number {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  font-size: var(--text-xs);
+  color: #6A7280;
+  letter-spacing: var(--tracking-normal);
+}
+
+/* Section label (uppercase divider) */
+.section-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: #6A7280;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-widest);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #F0F3F7; }
+::-webkit-scrollbar-thumb { background: #C8D0DC; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9BA8B4; }
