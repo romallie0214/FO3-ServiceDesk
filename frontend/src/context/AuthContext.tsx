@@ -33,6 +33,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const PAGE_ACCESS: Record<string, UserRole[]> = {
   dashboard:      ['super_admin', 'supervisor', 'ictms_staff'],
   submit:         ['super_admin', 'dswd_staff', 'ictms_staff'],
+  templates:       ['super_admin', 'supervisor', 'ictms_staff', 'dswd_staff'],
   tickets:        ['super_admin', 'ictms_staff', 'dswd_staff'],
   admin:          ['super_admin', 'ictms_staff'],
   kb:             ['super_admin', 'ictms_staff', 'dswd_staff'],
@@ -42,6 +43,7 @@ const PAGE_ACCESS: Record<string, UserRole[]> = {
   statuses:       ['super_admin'],
   categories:     ['super_admin'],
   service_areas:  ['super_admin'],
+  service_templates: ['super_admin'],
   sla:            ['super_admin'],
   knowledge_base: ['super_admin'],
   my_tickets:     ['super_admin', 'ictms_staff'],
@@ -209,7 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── canAccess ─────────────────────────────────────────────────────────────
   function canAccess(page: string): boolean {
     if (!user) return false;
-    if (['dashboard', 'users', 'categories', 'sla', 'knowledge_base', 'csm', 'tickets', 'admin', 'monitoring', 'my_requests', 'my_tickets'].includes(page) && (user.area_admin_service_ids?.length ?? 0) > 0) return true;
+    if (['dashboard', 'users', 'categories', 'sla', 'knowledge_base', 'service_templates', 'csm', 'tickets', 'admin', 'monitoring', 'my_requests', 'my_tickets'].includes(page) && (user.area_admin_service_ids?.length ?? 0) > 0) return true;
     return PAGE_ACCESS[page]?.includes(user.role) ?? false;
   }
 

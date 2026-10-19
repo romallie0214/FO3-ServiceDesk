@@ -81,6 +81,25 @@ async function uploadTicketAttachment(file, ticketNumber) {
   return { ...uploaded, original_filename: storageFilename };
 }
 
+async function uploadServiceTemplate(file, title) {
+  const uploadUrl = process.env.OBJECT_STORAGE_UPLOAD_URL;
+  const apiKey = process.env.OBJECT_STORAGE_API_KEY;
+  const bucket = process.env.OBJECT_STORAGE_BUCKET || 'servicedesk';
+  if (!uploadUrl || !apiKey) throw new Error('Object storage is not configured. Add OBJECT_STORAGE_API_KEY to backend/.env and restart the backend.');
+  const originalName = String(file.originalname || 'template').replace(/[\\/:*?"<>|\x00-\x1F]/g, '_');
+  const storageFilename = `${String(title || 'template').replace(/[^a-z0-9_-]/gi, '_')}_${Date.now()}_${originalName}`;
+  const form = new FormData();
+  form.append('file', file.buffer, { filename: storageFilename, contentType: file.mimetype });
+  form.append('bucket', bucket);
+  form.append('folder', 'service-templates');
+  form.append('return_url', 'true');
+  form.append('url_expires_in', String(process.env.OBJECT_STORAGE_URL_EXPIRES_IN || 300));
+  const response = await axios.post(uploadUrl, form, { headers: { ...form.getHeaders(), 'X-API-Key': apiKey }, maxBodyLength: Infinity, timeout: 60000 });
+  const uploaded = response.data?.data || response.data;
+  if (!uploaded?.key) throw new Error('Object storage did not return an object key.');
+  return { ...uploaded, bucket: uploaded.bucket || bucket, original_filename: originalName };
+}
+
 function isObjectStorageConfigured() {
   return Boolean(process.env.OBJECT_STORAGE_UPLOAD_URL && process.env.OBJECT_STORAGE_API_KEY);
 }
@@ -99,4 +118,4 @@ async function getPresignedDownloadUrl(bucket, key) {
   return url;
 }
 
-module.exports = { uploadTicketAttachment, isObjectStorageConfigured, getPresignedDownloadUrl, assertValidTicketAttachment };
+module.exports = { uploadTicketAttachment, uploadServiceTemplate, isObjectStorageConfigured, getPresignedDownloadUrl, assertValidTicketAttachment };

@@ -20,6 +20,9 @@ interface Ticket {
   created_at: string;
   cancel_reason: string | null;
   empno?: string;
+  service_area_id?: number | null;
+  service_area_code?: string | null;
+  service_area_name?: string | null;
 }
 
 interface Comment {
@@ -54,6 +57,7 @@ interface User {
   full_name: string;
   role: string;
   empno?: string;
+  service_role?: string;
 }
 
 interface Category {
@@ -354,7 +358,7 @@ function OnHoldReasonBox({
         fetchCategories();
       }
     }
-  }, [ticket]);
+  }, [ticket?.id, ticket?.service_area_id, canAssignTickets, isIctmsOrAdmin]);
 
   // Load sub-categories when category changes
   useEffect(() => {
@@ -439,10 +443,18 @@ function OnHoldReasonBox({
   }
 
   async function fetchIctmsStaff() {
+    if (!ticket?.service_area_id) {
+      setIctmsStaff([]);
+      return;
+    }
     try {
-      const res = await api.get('/users/assignable-staff');
+      const res = await api.get('/users/assignable-staff', {
+        params: { service_area_id: ticket.service_area_id },
+      });
       setIctmsStaff(res.data);
-    } catch { }
+    } catch {
+      setIctmsStaff([]);
+    }
   }
 
   async function fetchCategories() {
@@ -889,14 +901,19 @@ function OnHoldReasonBox({
                   marginBottom: 8,
                 }}>
                   {ticket.status === 'Open'
-                    ? 'Assign this ticket to an ICTMS staff member:'
+                    ? `Assign this ticket to a staff member in ${ticket.service_area_name || ticket.service_area_code || 'its service area'}:`
                     : `Re-assign (currently: ${ticket.assigned_to ?? 'Unassigned'}):`
                   }
                 </p>
+                <div style={{ fontSize: 'var(--text-xs)', color: '#52657A', marginBottom: 8 }}>
+                  Service area: <strong>{ticket.service_area_code || 'Not assigned'}</strong>
+                  {ticket.service_area_name ? ` — ${ticket.service_area_name}` : ''}
+                </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <select
                     value={assignTo}
                     onChange={e => setAssignTo(e.target.value)}
+                    disabled={!ticket.service_area_id}
                     style={inputStyle}
                   >
                     <option value="">— Select new staff —</option>
@@ -1010,6 +1027,7 @@ function OnHoldReasonBox({
                     <select
                       value={coAssignTo}
                       onChange={e => setCoAssignTo(e.target.value)}
+                      disabled={!ticket.service_area_id}
                       style={{
                         flex: 1, padding: '5px 9px', fontSize: 'var(--text-xs)',
                         border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff',
@@ -1487,9 +1505,14 @@ function OnHoldReasonBox({
                     const assignedAt = slaInfo.assigned_at ? new Date(slaInfo.assigned_at) : null;
                     const escalationStartedAt = slaInfo.escalation_started_at ? new Date(slaInfo.escalation_started_at) : null;
                     const responseStoppedAt = slaInfo.first_response_at ? new Date(slaInfo.first_response_at) : stoppedAt;
+                    const pausedResolutionSeconds = Number(slaInfo.total_hold_seconds || 0);
 
                     const responseDeadline = new Date(created.getTime() + slaInfo.sla_response_hours * 3600000);
-                    const resolutionDeadline = assignedAt ? new Date(assignedAt.getTime() + slaInfo.sla_resolution_hours * 3600000) : null;
+                    // total_hold_seconds includes the active hold returned by the API.
+                    // Extending the deadline by it pauses resolution SLA on On-Hold.
+                    const resolutionDeadline = assignedAt
+                      ? new Date(assignedAt.getTime() + slaInfo.sla_resolution_hours * 3600000 + pausedResolutionSeconds * 1000)
+                      : null;
                     const escalationDeadline = escalationStartedAt ? new Date(escalationStartedAt.getTime() + slaInfo.sla_escalation_hours * 3600000) : null;
 
                     const fmt = (d: Date | null) => d ? d.toLocaleString('en-PH', {

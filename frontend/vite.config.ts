@@ -33,6 +33,9 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5174,
+    // Keep the browser origin predictable for the backend CORS allowlist.
+    // If it is occupied, Vite reports it instead of silently changing to 5175.
+    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 const ALL_NAV = [
   { label: 'Dashboard',            path: '/',        page: 'dashboard' },
   { label: 'Submit a Ticket',      path: '/submit',  page: 'submit'    },
+  { label: 'Download Hub',         path: '/templates', page: 'templates' },
   { label: 'My Tickets',        path: '/my-tickets', page: 'my_tickets' },
   { label: 'My Requests',       path: '/my-requests', page: 'my_requests' },
   { label: 'Ticket List & Tracking', path: '/tickets', page: 'tickets' },  

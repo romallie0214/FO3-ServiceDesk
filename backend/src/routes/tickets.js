@@ -307,6 +307,9 @@ router.get('/monitoring/sla', authMiddleware, async (req, res) => {
       SELECT
         t.id, t.ticket_number, t.subject,
         t.status, t.priority, t.created_at,
+        t.service_area_id,
+        sa.code AS service_area_code,
+        sa.name AS service_area_name,
         c.name  AS category,
         sc.name AS sub_category,
         si.name AS sub_item,
@@ -332,6 +335,7 @@ router.get('/monitoring/sla', authMiddleware, async (req, res) => {
       LEFT JOIN sub_categories sc     ON t.sub_category_id = sc.id
       LEFT JOIN sub_items      si     ON t.sub_item_id     = si.id
       LEFT JOIN users          u2     ON t.assigned_to     = u2.id
+      LEFT JOIN service_areas  sa     ON t.service_area_id = sa.id
       LEFT JOIN sla_rules      c_sla  ON c.sla_rule_id     = c_sla.id
       LEFT JOIN sla_rules      sc_sla ON sc.sla_rule_id    = sc_sla.id
       LEFT JOIN sla_rules      si_sla ON si.sla_rule_id    = si_sla.id
@@ -443,7 +447,7 @@ router.get('/my-pending-csm', async (req, res) => {
 // GET /tickets/report — served tickets for date range (cancelled excluded)
 router.get('/report', authMiddleware, async (req, res) => {
   try {
-    const { from, to, staff, status, serviceAdmin } = req.query;
+    const { from, to, staff, status, serviceAdmin, service_area_id } = req.query;
 
     if (!from || !to) {
       return res.status(400).json({ error: 'from and to dates are required.' });
@@ -468,6 +472,18 @@ router.get('/report', authMiddleware, async (req, res) => {
       statusClause = 'AND t.status = ?';
       params.push(status);
     }
+    let selectedServiceAreaClause = '';
+    if (service_area_id) {
+      const selectedServiceAreaId = Number(service_area_id);
+      if (!Number.isInteger(selectedServiceAreaId) || selectedServiceAreaId <= 0) {
+        return res.status(400).json({ error: 'Invalid service_area_id.' });
+      }
+      if (serviceAdminAreaIds.length && !serviceAdminAreaIds.includes(selectedServiceAreaId)) {
+        return res.status(403).json({ error: 'You can generate reports for your service area only.' });
+      }
+      selectedServiceAreaClause = 'AND t.service_area_id = ?';
+      params.push(selectedServiceAreaId);
+    }
     const serviceAreaClause = serviceAdminAreaIds.length
       ? `AND t.service_area_id IN (${serviceAdminAreaIds.map(() => '?').join(',')})`
       : '';
@@ -486,10 +502,15 @@ router.get('/report', authMiddleware, async (req, res) => {
         t.assigned_at,
         t.escalation_started_at,
         t.resolved_at,
+        t.hold_started_at,
+        COALESCE(t.total_hold_seconds, 0) AS total_hold_seconds,
         t.requestor_name      AS requestor,
         t.division,
         t.unit,
         t.office_location,
+        t.service_area_id,
+        sa.code              AS service_area_code,
+        sa.name              AS service_area_name,
         c.name                AS category,
         sc.name               AS sub_category,
         si.name               AS sub_item,
@@ -504,6 +525,7 @@ router.get('/report', authMiddleware, async (req, res) => {
       LEFT JOIN sub_categories sc     ON t.sub_category_id = sc.id
       LEFT JOIN sub_items      si     ON t.sub_item_id     = si.id
       LEFT JOIN users          u2     ON t.assigned_to     = u2.id
+      LEFT JOIN service_areas  sa     ON t.service_area_id = sa.id
       LEFT JOIN sla_rules      c_sla  ON c.sla_rule_id     = c_sla.id
       LEFT JOIN sla_rules      sc_sla ON sc.sla_rule_id    = sc_sla.id
       LEFT JOIN sla_rules      si_sla ON si.sla_rule_id    = si_sla.id
@@ -511,6 +533,7 @@ router.get('/report', authMiddleware, async (req, res) => {
         AND t.status <> 'Cancelled'
         ${staffClause}
         ${statusClause}
+        ${selectedServiceAreaClause}
         ${serviceAreaClause}
       ORDER BY t.created_at DESC
     `, params);
@@ -760,15 +783,15 @@ router.patch('/:id/assign', authMiddleware, async (req, res) => {
 
     if (prevRows.length === 0) return res.status(404).json({ error: 'Ticket not found.' });
     if (isServiceAdmin && !managedAreaIds.includes(Number(prevRows[0].service_area_id))) return res.status(403).json({ error: 'You can assign tickets in your service area only.' });
+    if (!prevRows[0].service_area_id) return res.status(400).json({ error: 'This ticket has no service area. Assign a service area before assigning staff.' });
 
     const [newUserRows] = await db.query(
-      isServiceAdmin
-        ? `SELECT u.id, u.full_name, u.empno FROM users u
-           JOIN user_service_roles usr ON usr.user_id = u.id
-           WHERE u.id = ? AND u.deleted_at IS NULL AND usr.is_active = 1
-             AND usr.service_area_id = ? AND usr.service_role IN ('supervisor', 'technical_staff')`
-        : "SELECT id, full_name, empno FROM users WHERE id = ? AND role IN ('ictms_staff', 'super_admin') AND deleted_at IS NULL",
-      isServiceAdmin ? [assigned_to, prevRows[0].service_area_id] : [assigned_to]
+      `SELECT u.id, u.full_name, u.empno FROM users u
+       JOIN user_service_roles usr ON usr.user_id = u.id
+       JOIN service_areas sa ON sa.id = usr.service_area_id
+       WHERE u.id = ? AND u.deleted_at IS NULL AND usr.is_active = 1 AND sa.is_active = 1
+         AND usr.service_area_id = ? AND usr.service_role IN ('admin', 'supervisor', 'technical_staff')`,
+      [assigned_to, prevRows[0].service_area_id]
     );
     if (newUserRows.length === 0) return res.status(404).json({ error: 'Selected staff not found.' });
 
@@ -787,7 +810,14 @@ router.patch('/:id/assign', authMiddleware, async (req, res) => {
       `UPDATE tickets
        SET assigned_to = ?, status = 'Assigned',
            assigned_at = COALESCE(assigned_at, NOW()),
-           first_response_at = COALESCE(first_response_at, NOW())
+            first_response_at = COALESCE(first_response_at, NOW()),
+            total_hold_seconds = COALESCE(total_hold_seconds, 0)
+              + CASE
+                  WHEN hold_started_at IS NOT NULL
+                  THEN TIMESTAMPDIFF(SECOND, hold_started_at, NOW())
+                  ELSE 0
+                END,
+            hold_started_at = NULL
        WHERE id = ?`,
       [assigned_to, req.params.id]
     );
@@ -1303,13 +1333,14 @@ router.post('/:id/assignees', authMiddleware, async (req, res) => {
     if (isServiceAdmin && !managedAreaIds.includes(Number(ticket.service_area_id))) {
       return res.status(403).json({ error: 'You can manage co-assignees in your service area only.' });
     }
+    if (!ticket.service_area_id) return res.status(400).json({ error: 'This ticket has no service area. Assign a service area before assigning staff.' });
     const [activeStaff] = await db.query(
-      isServiceAdmin
-        ? `SELECT u.id FROM users u JOIN user_service_roles usr ON usr.user_id = u.id
-           WHERE u.id = ? AND u.deleted_at IS NULL AND usr.is_active = 1
-             AND usr.service_area_id = ? AND usr.service_role IN ('supervisor', 'technical_staff')`
-        : "SELECT id FROM users WHERE id = ? AND role IN ('ictms_staff', 'super_admin') AND deleted_at IS NULL",
-      isServiceAdmin ? [user_id, ticket.service_area_id] : [user_id]
+      `SELECT u.id FROM users u
+       JOIN user_service_roles usr ON usr.user_id = u.id
+       JOIN service_areas sa ON sa.id = usr.service_area_id
+       WHERE u.id = ? AND u.deleted_at IS NULL AND usr.is_active = 1 AND sa.is_active = 1
+         AND usr.service_area_id = ? AND usr.service_role IN ('admin', 'supervisor', 'technical_staff')`,
+      [user_id, ticket.service_area_id]
     );
     if (!activeStaff.length) return res.status(400).json({ error: 'Selected staff is not active or assignable.' });
 

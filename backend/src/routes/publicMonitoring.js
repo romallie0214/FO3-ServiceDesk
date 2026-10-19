@@ -28,7 +28,9 @@ router.get('/tickets', async (req, res) => {
           WHEN c.sla_rule_id IS NOT NULL THEN 'Category'
           ELSE NULL
         END AS sla_level,
-        t.first_response_at, t.assigned_at, t.escalation_started_at, t.resolved_at
+        t.first_response_at, t.assigned_at, t.escalation_started_at, t.resolved_at,
+        t.hold_started_at,
+        COALESCE(t.total_hold_seconds, 0) AS total_hold_seconds
       FROM tickets t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN sub_categories sc ON t.sub_category_id = sc.id

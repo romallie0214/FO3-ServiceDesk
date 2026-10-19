@@ -12,6 +12,7 @@ const slaRoutes = require('./routes/sla');
 const knowledgeBaseRoutes = require('./routes/knowledge_base');
 const publicMonitoringRoutes = require('./routes/publicMonitoring');
 const serviceAreaRoutes = require('./routes/serviceAreas');
+const serviceTemplateRoutes = require('./routes/serviceTemplates');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -115,6 +116,7 @@ app.use('/api/sla', slaRoutes);
 app.use('/api/knowledge-base', knowledgeBaseRoutes);
 app.use('/api/public-monitoring', publicMonitoringRoutes);
 app.use('/api/service-areas', serviceAreaRoutes);
+app.use('/api/service-templates', serviceTemplateRoutes);
 
 // Health endpoint.
 app.get('/', (req, res) => {

@@ -134,6 +134,7 @@ function PDFViewerModal({ article, onClose }: { article: Article; onClose: () =>
 export default function KnowledgeBase() {
   const { user } = useAuth();
   const isServiceAdmin = user?.role !== 'super_admin' && (user?.area_admin_service_ids?.length ?? 0) > 0;
+  const canFilterByService = user?.role === 'super_admin' || isServiceAdmin;
   const [articles, setArticles]       = useState<Article[]>([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
@@ -151,7 +152,7 @@ export default function KnowledgeBase() {
       // available-service choices, and vice versa.
       try {
         const response = await api.get('/knowledge-base', {
-          params: isServiceAdmin ? { all_services: 'true' } : {},
+          params: canFilterByService ? { all_services: 'true' } : {},
         });
         loadedArticles = response.data;
         setArticles(loadedArticles);
@@ -159,7 +160,7 @@ export default function KnowledgeBase() {
         setArticles([]);
       }
 
-      if (isServiceAdmin) {
+      if (canFilterByService) {
         try {
           const response = await api.get('/service-areas');
           availableAreas = response.data;
@@ -182,7 +183,7 @@ export default function KnowledgeBase() {
     };
 
     loadKnowledgeBase();
-  }, [isServiceAdmin]);
+  }, [canFilterByService]);
 
   const categories = [...new Set(articles.map(a => a.category))].sort();
 
@@ -219,7 +220,7 @@ export default function KnowledgeBase() {
         marginBottom: 14,
         lineHeight: 1.5,
       }}>
-        {isServiceAdmin
+        {canFilterByService
           ? 'Browse knowledge-base articles from all services, or use the service filter to focus on one area.'
           : 'Browse our self-service guides and FAQs before submitting a ticket. Most common issues can be resolved using these articles.'}
       </div>
@@ -267,7 +268,7 @@ export default function KnowledgeBase() {
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
-        {isServiceAdmin && (
+        {canFilterByService && (
           <select
             value={selectedServiceArea}
             onChange={e => setSelectedServiceArea(e.target.value)}

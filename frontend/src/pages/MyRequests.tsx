@@ -57,7 +57,11 @@ export default function MyRequests() {
   const [search, setSearch]             = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterService, setFilterService] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [sortBy, setSortBy] = useState<'service' | 'newest'>('service');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
@@ -74,6 +78,11 @@ export default function MyRequests() {
       .finally(() => setLoading(false));
   }, [user?.empno]);
 
+  // A changed filter should always return the user to the first result page.
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterStatus, filterService, dateFrom, dateTo, sortBy, pageSize]);
+
   const serviceAreas = Array.from(new Map(
     tickets
       .filter(t => t.service_area_id && t.service_area_name)
@@ -88,12 +97,22 @@ export default function MyRequests() {
       t.category?.toLowerCase().includes(q);
     const matchStatus = !filterStatus || t.status === filterStatus;
     const matchService = !filterService || String(t.service_area_id) === filterService;
-    return matchSearch && matchStatus && matchService;
+    const filedAt = new Date(t.created_at).getTime();
+    const fromAt = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toAt = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
+    const matchDateFrom = fromAt === null || filedAt >= fromAt;
+    const matchDateTo = toAt === null || filedAt <= toAt;
+    return matchSearch && matchStatus && matchService && matchDateFrom && matchDateTo;
   }).sort((a, b) => {
     if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     const serviceCompare = (a.service_area_name || 'Unassigned service').localeCompare(b.service_area_name || 'Unassigned service');
     return serviceCompare || new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const paginatedTickets = filtered.slice(pageStart, pageStart + pageSize);
 
   // Summary counts
   const open      = tickets.filter(t => t.status === 'Open').length;
@@ -216,6 +235,28 @@ export default function MyRequests() {
           <option value="">All Services</option>
           {serviceAreas.map(area => <option key={area.id} value={area.id}>{area.label}</option>)}
         </select>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>
+          From
+          <input
+            aria-label="Date filed from"
+            type="date"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={e => setDateFrom(e.target.value)}
+            style={{ padding: 'clamp(5px, 1.2vw, 8px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }}
+          />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>
+          To
+          <input
+            aria-label="Date filed to"
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={e => setDateTo(e.target.value)}
+            style={{ padding: 'clamp(5px, 1.2vw, 8px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }}
+          />
+        </label>
         <select
           aria-label="Sort requests"
           value={sortBy}
@@ -225,9 +266,9 @@ export default function MyRequests() {
           <option value="service">Service, newest first</option>
           <option value="newest">Newest first</option>
         </select>
-        {(search || filterStatus || filterService) && (
+        {(search || filterStatus || filterService || dateFrom || dateTo) && (
           <button
-            onClick={() => { setSearch(''); setFilterStatus(''); setFilterService(''); }}
+            onClick={() => { setSearch(''); setFilterStatus(''); setFilterService(''); setDateFrom(''); setDateTo(''); }}
             style={{
               padding: 'clamp(5px, 1.2vw, 8px) clamp(10px, 2vw, 14px)', fontSize: 'clamp(10px, 1.8vw, 13px)',
               border: '1px solid #C8D0DC', borderRadius: 4,
@@ -290,7 +331,7 @@ export default function MyRequests() {
                     )}
                   </td>
                 </tr>
-              ) : filtered.map(t => {
+              ) : paginatedTickets.map(t => {
                 const ss = STATUS_STYLE[t.status]     ?? { bg: '#F0F0F0', color: '#666' };
                 const ps = PRIORITY_STYLE[t.priority] ?? { bg: '#F0F0F0', color: '#666' };
                 const isResolved = t.status === 'Resolved';
@@ -439,6 +480,31 @@ export default function MyRequests() {
           </table>
         </div>
       </div>
+      {filtered.length > 0 && (
+        <div style={{
+          marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px',
+        }}>
+          <div style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>
+            Showing <strong>{pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> requests
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+            <label style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>
+              Rows
+              <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </label>
+            <button onClick={() => setPage(1)} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>First</button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
+            <span style={{ color: '#334155', fontSize: 'clamp(9px, 1.6vw, 12px)', whiteSpace: 'nowrap' }}>Page {currentPage} of {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Next</button>
+            <button onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Last</button>
+          </div>
+        </div>
+      )}
       <TicketDetailModal
         ticket={selectedTicket}
         forceRequestorView={true}

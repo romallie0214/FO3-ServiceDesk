@@ -10,6 +10,9 @@ interface CSMResponse {
   ticket_id:          number;
   ticket_number:      string;
   subject:            string;
+  service_area_id?:    number | null;
+  service_area_code?:  string | null;
+  service_area_name?:  string | null;
   category:           string;
   requestor_name:     string;
   requestor_division: string;
@@ -139,6 +142,11 @@ export default function CSMReports() {
   const [selected, setSelected]   = useState<CSMResponse | null>(null);
   const [search, setSearch]       = useState('');
   const [divFilter, setDivFilter] = useState('');
+  const [serviceAreaFilter, setServiceAreaFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     api.get('/csm').then(res => {
@@ -158,6 +166,15 @@ export default function CSMReports() {
   }, [user]);
 
   const divisions = [...new Set(responses.map(r => r.requestor_division).filter(Boolean))];
+  const serviceAreas = Array.from(new Map(
+    responses.filter(r => r.service_area_id).map(r => [Number(r.service_area_id), {
+      id: Number(r.service_area_id), code: r.service_area_code || 'UNASSIGNED', name: r.service_area_name || 'Unassigned Service Area',
+    }])
+  ).values());
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, divFilter, serviceAreaFilter, dateFrom, dateTo, pageSize]);
 
   const filtered = responses.filter(r => {
     const matchSearch = !search ||
@@ -165,8 +182,19 @@ export default function CSMReports() {
       r.attending_officer?.toLowerCase().includes(search.toLowerCase()) ||
       r.requestor_division?.toLowerCase().includes(search.toLowerCase());
     const matchDiv = !divFilter || r.requestor_division === divFilter;
-    return matchSearch && matchDiv;
+    const matchServiceArea = serviceAreaFilter === 'all' || String(r.service_area_id) === serviceAreaFilter;
+    const submittedAt = new Date(r.submitted_at).getTime();
+    const fromAt = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toAt = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
+    const matchDateFrom = fromAt === null || submittedAt >= fromAt;
+    const matchDateTo = toAt === null || submittedAt <= toAt;
+    return matchSearch && matchDiv && matchServiceArea && matchDateFrom && matchDateTo;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const paginatedResponses = filtered.slice(pageStart, pageStart + pageSize);
 
   // Overall averages
   const overallOfficer = avg(filtered, 'officer_rating');
@@ -485,6 +513,31 @@ export default function CSMReports() {
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
+        {user?.role === 'super_admin' && (
+          <select
+            value={serviceAreaFilter}
+            onChange={e => setServiceAreaFilter(e.target.value)}
+            style={{
+              padding: 'clamp(5px, 1.5vw, 8px) clamp(6px, 1.5vw, 9px)',
+              fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC',
+              borderRadius: 4, minWidth: '160px',
+            }}
+          >
+            <option value="all">All Service Areas</option>
+            {serviceAreas.map(area => <option key={area.id} value={area.id}>{area.code} — {area.name}</option>)}
+          </select>
+        )}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
+          From
+          <input type="date" aria-label="CSM submitted from" value={dateFrom} max={dateTo || undefined} onChange={e => setDateFrom(e.target.value)} style={{ padding: 'clamp(5px, 1.5vw, 8px)', fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
+          To
+          <input type="date" aria-label="CSM submitted to" value={dateTo} min={dateFrom || undefined} onChange={e => setDateTo(e.target.value)} style={{ padding: 'clamp(5px, 1.5vw, 8px)', fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
+        </label>
+        {(search || divFilter || serviceAreaFilter !== 'all' || dateFrom || dateTo) && (
+          <button onClick={() => { setSearch(''); setDivFilter(''); setServiceAreaFilter('all'); setDateFrom(''); setDateTo(''); }} style={{ padding: 'clamp(5px, 1.5vw, 8px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC', borderRadius: 4, background: '#F5F8FC', cursor: 'pointer', color: '#4A4A4A' }}>Clear</button>
+        )}
         <span style={{
           fontSize: 'clamp(9px, 1.8vw, 11px)',
           color: '#888',
@@ -515,7 +568,7 @@ export default function CSMReports() {
               <thead>
                 <tr>
                   {[
-                    'Ticket #', 'Subject', 'Division',
+                    'Ticket #', 'Service Area', 'Subject', 'Division',
                     'Attending Officer', 'Officer Rating',
                     'Avg Service Score', 'Date Submitted', 'Action',
                   ].map(h => (
@@ -531,7 +584,7 @@ export default function CSMReports() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(r => {
+                {paginatedResponses.map(r => {
                   const activeDims = DIMENSIONS.filter(d => !d.disabled);
                   const dimAvg = (
                     activeDims.reduce((sum, d) =>
@@ -545,6 +598,9 @@ export default function CSMReports() {
                     >
                       <td style={{ padding: '8px 10px', fontWeight: 500, color: 'var(--gov-navy)', fontSize: 'var(--text-sm)' }}>
                         {r.ticket_number}
+                      </td>
+                      <td style={{ padding: '8px 10px', fontSize: 'var(--text-xs)', fontWeight: 600, color: '#52657A' }}>
+                        {r.service_area_code || 'Unassigned'}
                       </td>
                       <td style={{ padding: '8px 10px', fontSize: 'var(--text-sm)', maxWidth: 180 }}>
                         <span style={{
@@ -641,6 +697,23 @@ export default function CSMReports() {
       )}
 
       {/* DETAIL MODAL */}
+      {filtered.length > 0 && (
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px' }}>
+          <div style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
+            Showing <strong>{pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> responses
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+            <label style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>Rows
+              <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select>
+            </label>
+            <button onClick={() => setPage(1)} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>First</button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
+            <span style={{ color: '#334155', fontSize: 'clamp(9px, 1.8vw, 11px)', whiteSpace: 'nowrap' }}>Page {currentPage} of {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Next</button>
+            <button onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Last</button>
+          </div>
+        </div>
+      )}
       {selected && (
         <div
           onClick={() => setSelected(null)}

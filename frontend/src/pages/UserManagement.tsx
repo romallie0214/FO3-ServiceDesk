@@ -9,6 +9,8 @@ interface RecoveryAccount {
   empno: string;
   full_name: string;
   email: string;
+  role?: UserRole;
+  division?: string;
   harmonyAvailable: boolean;
   deactivated: boolean;
   locked: boolean;
@@ -189,6 +191,7 @@ function OfficeLocationPicker({ all, selected, loading, search, onSearchChange, 
 }
 export default function UserManagement() {
   const { user: currentUser, token } = useAuth();
+  const isFO3SuperAdmin = currentUser?.role === 'super_admin';
   const managedAreaIds = currentUser?.role === 'super_admin' ? null : (currentUser?.area_admin_service_ids || []);
   const isServiceAdmin = managedAreaIds !== null && managedAreaIds.length > 0;
   const [users, setUsers] = useState<User[]>([]);
@@ -196,6 +199,11 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [serviceAreaFilter, setServiceAreaFilter] = useState('');
+  const [recoverySearch, setRecoverySearch] = useState('');
+  const [recoveryRoleFilter, setRecoveryRoleFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [recoveryAccounts, setRecoveryAccounts] = useState<RecoveryAccount[]>([]);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'users' | 'recovery'>('users');
@@ -245,11 +253,21 @@ export default function UserManagement() {
   useEffect(() => { fetchUsers(); }, [showDeactivated]);
 
   useEffect(() => {
+    if (!isFO3SuperAdmin) return;
+    api.get('/service-areas')
+      .then(res => setServiceAreas(res.data.filter((area: ServiceArea) => Boolean(area.is_active))))
+      .catch(() => {});
+  }, [isFO3SuperAdmin]);
+
+  useEffect(() => {
     if (activeTab !== 'recovery') return;
     setRecoveryLoading(true);
     api.get('/users/admin/account-recovery', { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setRecoveryAccounts(res.data))
-      .catch((err: any) => showToast(err.response?.data?.error || 'Failed to load Harmony employee details.', 'error'))
+    .catch((err: any) => {
+      setRecoveryAccounts([]);
+      showToast(err.response?.data?.error || 'Unable to load account recovery records.', 'error');
+    })
       .finally(() => setRecoveryLoading(false));
   }, [activeTab, token]);
 
@@ -383,13 +401,31 @@ export default function UserManagement() {
   async function updateServiceAccess(areaId: number, role: ServiceAreaRole | '') {
     if (!editUser) return;
     try {
+      const currentAreaIds = Object.entries(serviceAccess)
+        .filter(([, currentRole]) => Boolean(currentRole))
+        .map(([currentAreaId]) => Number(currentAreaId));
+      await Promise.all(currentAreaIds
+        .filter(currentAreaId => currentAreaId !== areaId || !role)
+        .map(currentAreaId => api.delete(`/service-areas/${currentAreaId}/staff/${editUser.id}`)));
       if (role) await api.put(`/service-areas/${areaId}/staff/${editUser.id}`, { service_role: role });
-      else await api.delete(`/service-areas/${areaId}/staff/${editUser.id}`);
-      setServiceAccess(current => ({ ...current, [areaId]: role }));
+      setServiceAccess(role ? { [areaId]: role } : {});
       showToast(role ? 'Service access updated.' : 'Service access removed.');
     } catch (err: any) {
       showToast(err.response?.data?.error || 'Unable to update service access.', 'error');
     }
+  }
+
+  const selectedServiceAreaId = Object.entries(serviceAccess).find(([, role]) => Boolean(role))?.[0] || '';
+  const selectedServiceRole = selectedServiceAreaId ? serviceAccess[Number(selectedServiceAreaId)] || '' : '';
+
+  function setNewUserServiceArea(areaId: string) {
+    if (!areaId) { setServiceAccess({}); return; }
+    setServiceAccess({ [Number(areaId)]: selectedServiceRole || 'technical_staff' });
+  }
+
+  function setNewUserServiceRole(role: ServiceAreaRole | '') {
+    if (!selectedServiceAreaId) return;
+    setServiceAccess(role ? { [Number(selectedServiceAreaId)]: role } : {});
   }
 
   function handleChange(
@@ -581,8 +617,26 @@ export default function UserManagement() {
     const matchRole = !roleFilter || (isServiceAdmin
       ? (u.service_assignments || '').split(';;').some(assignment => assignment.endsWith(`|${roleFilter}`))
       : u.role === roleFilter);
+    const matchServiceArea = !serviceAreaFilter || (u.service_assignments || '').split(';;')
+      .some(assignment => assignment.startsWith(`${serviceAreaFilter}|`));
+    return matchSearch && matchRole && matchServiceArea;
+  });
+
+  const filteredRecoveryAccounts = recoveryAccounts.filter(account => {
+    const matchSearch = !recoverySearch || [account.full_name, account.email, account.division, account.empno]
+      .filter(Boolean).some(value => String(value).toLowerCase().includes(recoverySearch.toLowerCase()));
+    const matchRole = !recoveryRoleFilter || account.role === recoveryRoleFilter;
     return matchSearch && matchRole;
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter, serviceAreaFilter, showDeactivated, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const paginatedUsers = filtered.slice(pageStart, pageStart + pageSize);
 
   const roleCounts = isServiceAdmin
     ? SERVICE_ROLE_CARDS.map(role => ({
@@ -624,14 +678,23 @@ export default function UserManagement() {
           <div style={{ background: '#FEF3DC', borderLeft: '3px solid #CC7700', padding: '10px 12px', marginBottom: 16, fontSize: 'var(--text-sm)', color: '#5A4200', lineHeight: 1.5 }}>
             Use these actions only after verifying the user’s identity. <strong>Lock Account</strong> blocks ICTMS login until an administrator unlocks it. <strong>Unlock Account</strong> clears any ICTMS lockout; neither action changes an HR/Harmony password. <strong>Reset MFA</strong> removes all MFA factors and signs the user out.
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14, padding: 10, border: '1px solid #D5DFEA', borderRadius: 6, background: '#F8FAFD' }}>
+            <input value={recoverySearch} onChange={e => setRecoverySearch(e.target.value)} placeholder="Search name, email, division..." style={{ flex: '1 1 320px', minWidth: 200, padding: '8px 10px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }} />
+            <select value={recoveryRoleFilter} onChange={e => setRecoveryRoleFilter(e.target.value)} style={{ minWidth: 140, padding: '8px 10px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}>
+              <option value="">All Roles</option>
+              {ROLES.map(role => <option key={role.value} value={role.value}>{role.label}</option>)}
+            </select>
+            {(recoverySearch || recoveryRoleFilter) && <button type="button" onClick={() => { setRecoverySearch(''); setRecoveryRoleFilter(''); }} style={{ padding: '8px 12px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: 'pointer', color: '#4A4A4A' }}>Clear</button>}
+            <span style={{ color: '#62748A', fontSize: 'var(--text-xs)', whiteSpace: 'nowrap' }}>{filteredRecoveryAccounts.length} account{filteredRecoveryAccounts.length !== 1 ? 's' : ''}</span>
+          </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
-              <thead><tr>{['User', 'Employee No.', 'Account status', 'Harmony status', 'Recovery actions'].map(h => <th key={h} style={{ textAlign: 'left', padding: '9px 10px', background: 'var(--gov-navy)', color: '#fff', fontSize: 'var(--text-xs)' }}>{h}</th>)}</tr></thead>
-              <tbody>{recoveryLoading ? <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center' }}>Loading employee details from Harmony...</td></tr> : recoveryAccounts.map(u => <tr key={u.empno} style={{ borderBottom: '1px solid #EEF1F5' }}>
+              <thead><tr>{['User', 'Employee No.', 'Account status', 'Profile status', 'Recovery actions'].map(h => <th key={h} style={{ textAlign: 'left', padding: '9px 10px', background: 'var(--gov-navy)', color: '#fff', fontSize: 'var(--text-xs)' }}>{h}</th>)}</tr></thead>
+              <tbody>{recoveryLoading ? <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center' }}>Loading account recovery records...</td></tr> : filteredRecoveryAccounts.length === 0 ? <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#667' }}>No accounts match the selected filters.</td></tr> : filteredRecoveryAccounts.map(u => <tr key={u.empno} style={{ borderBottom: '1px solid #EEF1F5' }}>
                 <td style={{ padding: '10px' }}><strong>{u.full_name}</strong><br /><span style={{ fontSize: 'var(--text-xs)', color: '#667' }}>{u.email}</span></td>
                 <td style={{ padding: '10px', fontSize: 'var(--text-sm)' }}>{u.empno}</td>
                 <td style={{ padding: '10px', fontSize: 'var(--text-sm)' }}><span title={u.lockReason || undefined} style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 12, background: u.deactivated ? '#F0F0F0' : u.locked ? '#FDE8E8' : '#E8F5EE', color: u.deactivated ? '#666' : u.locked ? '#8B1A1A' : '#1B6B3A', fontWeight: 600 }}>{u.deactivated ? 'Deactivated' : u.locked ? 'Locked' : 'Active'}</span></td>
-                <td style={{ padding: '10px', fontSize: 'var(--text-sm)' }}>{u.harmonyAvailable ? 'Harmony verified' : 'Harmony unavailable'}</td>
+                <td style={{ padding: '10px', fontSize: 'var(--text-sm)' }}>{u.harmonyAvailable ? 'Local profile linked' : 'Tracking record only'}</td>
                 <td style={{ padding: '10px', display: 'flex', gap: 8 }}>
                   {u.deactivated ? <span style={{ color: '#667', fontSize: 'var(--text-xs)' }}>Restore in Users & Access</span> : u.empno === currentUser?.empno ? <span style={{ color: '#667', fontSize: 'var(--text-xs)', fontStyle: 'italic' }}>Self-recovery actions are not allowed</span> : <>
                     {u.locked ? <button onClick={() => setRecoveryTarget({ action: 'unlock', user: u })} disabled={unlockingEmpno === u.empno} style={{ padding: '5px 10px', border: '1px solid #9AC9AA', background: '#E8F5EE', color: '#1B6B3A', borderRadius: 4, cursor: 'pointer' }}>{unlockingEmpno === u.empno ? 'Unlocking…' : 'Unlock Account'}</button> : <button onClick={() => setRecoveryTarget({ action: 'lock', user: u })} disabled={lockingEmpno === u.empno} style={{ padding: '5px 10px', border: '1px solid #E8C887', background: '#FEF3DC', color: '#8A5200', borderRadius: 4, cursor: 'pointer' }}>{lockingEmpno === u.empno ? 'Locking…' : 'Lock Account'}</button>}
@@ -752,6 +815,20 @@ export default function UserManagement() {
             <option key={r.value} value={r.value}>{r.label}</option>
           ))}
         </select>
+        {isFO3SuperAdmin && (
+          <select
+            value={serviceAreaFilter}
+            onChange={e => setServiceAreaFilter(e.target.value)}
+            style={{
+              padding: 'clamp(5px, 1.5vw, 8px) clamp(6px, 1.5vw, 9px)',
+              fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC',
+              borderRadius: 4, minWidth: '190px', background: '#fff',
+            }}
+          >
+            <option value="">All Service Areas</option>
+            {serviceAreas.map(area => <option key={area.id} value={area.code}>{area.code} — {area.name}</option>)}
+          </select>
+        )}
         <span style={{
           fontSize: 'clamp(9px, 1.8vw, 11px)',
           color: '#888',
@@ -825,7 +902,7 @@ export default function UserManagement() {
                     No users found.
                   </td>
                 </tr>
-              ) : filtered.map(u => {
+              ) : paginatedUsers.map(u => {
                 const rc = ROLE_COLORS[u.role];
                 const roleLabel = ROLES.find(r => r.value === u.role)?.label ?? u.role;
                 const isSelf = u.empno === currentUser?.empno;
@@ -952,6 +1029,20 @@ export default function UserManagement() {
         </div>
       </div>
 
+      {filtered.length > 0 && (
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px' }}>
+          <div style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Showing <strong>{pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> users</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+            <label style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Rows <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select></label>
+            <button onClick={() => setPage(1)} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === 1 ? 0.5 : 1 }}>First</button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
+            <span style={{ color: '#334155', fontSize: 'var(--text-xs)' }}>Page {currentPage} of {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === totalPages ? 0.5 : 1 }}>Next</button>
+            <button onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === totalPages ? 0.5 : 1 }}>Last</button>
+          </div>
+        </div>
+      )}
+
       {/* ===== ADD / EDIT USER MODAL ===== */}
       {showModal && (
         <div
@@ -1054,18 +1145,19 @@ export default function UserManagement() {
                     </div>
                     <div style={{ gridColumn: '1 / -1', border: '1px solid #D5DFEA', borderRadius: 6, padding: 12, background: '#F8FAFD' }}>
                       <label style={{ ...labelStyle, marginBottom: 8 }}>Service Area Assignment</label>
-                      <div style={{ fontSize: 'var(--text-xs)', color: '#62748A', marginBottom: 8 }}>Assign this user to each relevant service area. The role is saved immediately.</div>
-                      {serviceAccessLoading ? <div style={{ fontSize: 'var(--text-xs)', color: '#62748A' }}>Loading service areas...</div> : serviceAreas.length === 0 ? <div style={{ fontSize: 'var(--text-xs)', color: '#62748A' }}>No active service areas are configured.</div> : serviceAreas.map(area => (
-                        <div key={area.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(170px, 1fr) 180px', gap: 10, alignItems: 'center', padding: '7px 0', borderTop: '1px solid #E7EDF4' }}>
-                          <div><strong style={{ fontSize: 'var(--text-sm)' }}>{area.code}</strong><span style={{ marginLeft: 7, fontSize: 'var(--text-xs)', color: '#62748A' }}>{area.name}</span></div>
-                          <select value={serviceAccess[area.id] || ''} onChange={e => void updateServiceAccess(area.id, e.target.value as ServiceAreaRole | '')} style={inputStyle}>
-                            <option value="">Not assigned</option>
-                            {currentUser?.role === 'super_admin' && <option value="admin">Area Admin</option>}
-                            <option value="supervisor">Supervisor</option>
-                            <option value="technical_staff">Technical Staff</option>
-                          </select>
-                        </div>
-                      ))}
+                      <div style={{ fontSize: 'var(--text-xs)', color: '#62748A', marginBottom: 8 }}>A staff account can be assigned to one service area only. Changes are saved immediately.</div>
+                      {serviceAccessLoading ? <div style={{ fontSize: 'var(--text-xs)', color: '#62748A' }}>Loading service areas...</div> : serviceAreas.length === 0 ? <div style={{ fontSize: 'var(--text-xs)', color: '#62748A' }}>No active service areas are configured.</div> : <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) 180px', gap: 10 }}>
+                        <select value={selectedServiceAreaId} onChange={e => void updateServiceAccess(Number(e.target.value || selectedServiceAreaId), e.target.value ? (selectedServiceRole || 'technical_staff') : '')} style={inputStyle}>
+                          <option value="">Not assigned</option>
+                          {serviceAreas.map(area => <option key={area.id} value={area.id}>{area.code} — {area.name}</option>)}
+                        </select>
+                        <select value={selectedServiceRole} disabled={!selectedServiceAreaId} onChange={e => void updateServiceAccess(Number(selectedServiceAreaId), e.target.value as ServiceAreaRole | '')} style={{ ...inputStyle, opacity: selectedServiceAreaId ? 1 : .6 }}>
+                          <option value="">Select role</option>
+                          {currentUser?.role === 'super_admin' && <option value="admin">Area Admin</option>}
+                          <option value="supervisor">Supervisor</option>
+                          <option value="technical_staff">Technical Staff</option>
+                        </select>
+                      </div>}
                     </div>
                      <div style={{ gridColumn: '1 / -1' }}>
                       <label style={{
@@ -1352,15 +1444,23 @@ export default function UserManagement() {
 
                       {wizardRole === 'super_admin' ? <div style={{ padding: 10, borderRadius: 6, background: '#EEF6FF', color: '#0D3B6E', fontSize: 'var(--text-xs)' }}><strong>FO3 Super Admin:</strong> this account has authority over every service area and does not need an individual service assignment.</div> : <div style={{ border: '1px solid #D5DFEA', borderRadius: 6, padding: 10, background: '#F8FAFD' }}>
                         <label style={labelStyle}>Service Area Assignment</label>
-                        <div style={{ fontSize: 'var(--text-xs)', color: '#62748A', marginBottom: 6 }}>These selections will be assigned when the user is created.</div>
-                        {serviceAccessLoading ? <div style={{ fontSize: 'var(--text-xs)', color: '#62748A' }}>Loading service areas...</div> : serviceAreas.map(area => (
+                        <div style={{ fontSize: 'var(--text-xs)', color: '#62748A', marginBottom: 6 }}>Select one service area and its role when the user is created.</div>
+                        {serviceAccessLoading ? <div style={{ fontSize: 'var(--text-xs)', color: '#62748A' }}>Loading service areas...</div> : <><div style={{ display: 'grid', gridTemplateColumns: '1fr 150px', gap: 8 }}>
+                          <select value={selectedServiceAreaId} onChange={e => setNewUserServiceArea(e.target.value)} style={inputStyle}>
+                            <option value="">Select a service area</option>
+                            {serviceAreas.map(area => <option key={area.id} value={area.id}>{area.code + ' - ' + area.name}</option>)}
+                          </select>
+                          <select value={selectedServiceRole} disabled={!selectedServiceAreaId} onChange={e => setNewUserServiceRole(e.target.value as ServiceAreaRole | '')} style={{ ...inputStyle, opacity: selectedServiceAreaId ? 1 : .6 }}>
+                            <option value="">Select role</option>{currentUser?.role === 'super_admin' && <option value="admin">Area Admin</option>}<option value="supervisor">Supervisor</option><option value="technical_staff">Technical Staff</option>
+                          </select>
+                        </div>{false && serviceAreas.map(area => (
                           <div key={area.id} style={{ display: 'grid', gridTemplateColumns: '1fr 150px', gap: 8, alignItems: 'center', padding: '5px 0', borderTop: '1px solid #E7EDF4' }}>
                             <span style={{ fontSize: 'var(--text-xs)' }}><strong>{area.code}</strong> — {area.name}</span>
                             <select value={serviceAccess[area.id] || ''} onChange={e => setServiceAccess(current => ({ ...current, [area.id]: e.target.value as ServiceAreaRole | '' }))} style={inputStyle}>
                               <option value="">Not assigned</option>{currentUser?.role === 'super_admin' && <option value="admin">Area Admin</option>}<option value="supervisor">Supervisor</option><option value="technical_staff">Technical Staff</option>
                             </select>
                           </div>
-                        ))}
+                        ))}</>}
                       </div>}
 
                       {/* Office Location */}

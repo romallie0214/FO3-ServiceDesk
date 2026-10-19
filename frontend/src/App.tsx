@@ -19,6 +19,8 @@ import TicketMonitoring from './pages/TicketMonitoring';
 import MyTickets from './pages/MyTickets';
 import MyRequests from './pages/MyRequests';
 import ServiceAreaManagement from './pages/ServiceAreaManagement';
+import ServiceTemplatesManagement from './pages/ServiceTemplatesManagement';
+import ServiceTemplatesHub from './pages/ServiceTemplatesHub';
 
 function RolePage({ page, children }: { page: string; children: React.ReactNode }) {
   return (
@@ -47,6 +49,9 @@ export default function App() {
           {/* Submit Ticket — super_admin, dswd_staff */}
           <Route path="/submit" element={
             <RolePage page="submit"><SubmitTicket /></RolePage>
+          }/>
+          <Route path="/templates" element={
+            <RolePage page="templates"><ServiceTemplatesHub /></RolePage>
           }/>
 
           {/* Ticket List — super_admin, ictms_staff, dswd_staff */}
@@ -84,6 +89,9 @@ export default function App() {
           }/>
           <Route path="/service-areas" element={
             <RolePage page="service_areas"><ServiceAreaManagement /></RolePage>
+          }/>
+          <Route path="/service-templates" element={
+            <RolePage page="service_templates"><ServiceTemplatesManagement /></RolePage>
           }/>
 
           {/* SLA Management — super_admin only */}

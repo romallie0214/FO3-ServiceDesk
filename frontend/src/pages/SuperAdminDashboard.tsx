@@ -119,6 +119,11 @@ export default function SuperAdminDashboard() {
       bg: '#FDE8E8', path: '/csm-reports',
     },
     {
+      icon: '📥', label: 'Download Hub',
+      sub: 'Service forms and templates',
+      bg: '#E8F1FA', path: '/templates',
+    },
+    {
       icon: '📚', label: 'Knowledge Base',
       sub: `${kbCount} article${kbCount !== 1 ? 's' : ''} available`,
       bg: '#F3F0FF', path: '/kb',
@@ -162,9 +167,14 @@ export default function SuperAdminDashboard() {
       sub: 'Manage knowledge base articles',
       bg: '#F3F0FF', path: '/admin/knowledge_base',
     },
+    {
+      icon: '📄', label: 'Service Templates',
+      sub: 'Publish request forms and templates',
+      bg: '#E8F1FA', path: '/service-templates',
+    },
   ];
   const visibleSettingsTiles = isServiceAdmin
-    ? settingsTiles.filter(tile => ['User Management', 'Category Management', 'SLA Management', 'KB Management'].includes(tile.label))
+    ? settingsTiles.filter(tile => ['User Management', 'Category Management', 'SLA Management', 'KB Management', 'Service Templates'].includes(tile.label))
     : settingsTiles;
 
   if (loading) return (

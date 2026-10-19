@@ -31,7 +31,14 @@ interface MonitorTicket {
   assigned_at:          string | null;
   escalation_started_at:string | null;
   resolved_at:          string | null;
+  hold_started_at:      string | null;
+  total_hold_seconds:   number;
+  service_area_id?:     number | null;
+  service_area_code?:   string | null;
+  service_area_name?:   string | null;
 }
+
+interface ServiceArea { id: number; code: string; name: string; is_active: number; }
 
 interface ReportTicket extends MonitorTicket {
   unit?:             string;
@@ -62,14 +69,21 @@ function calcSLA(ticket: MonitorTicket): SLACalc | null {
   const created = new Date(ticket.created_at);
   const assignedAt = ticket.assigned_at ? new Date(ticket.assigned_at) : null;
   const escalationStartedAt = ticket.escalation_started_at ? new Date(ticket.escalation_started_at) : null;
+  const holdStartedAt = ticket.hold_started_at ? new Date(ticket.hold_started_at) : null;
   const responseStoppedAt = ticket.first_response_at
     ? new Date(ticket.first_response_at)
     : resolvedAt || now;
   const terminalTime = resolvedAt || now;
+  // Include both completed holds and the currently running hold, so the
+  // resolution SLA clock is paused while a ticket is On-Hold.
+  const activeHoldSeconds = ticket.status === 'On-Hold' && holdStartedAt
+    ? Math.max(0, (terminalTime.getTime() - holdStartedAt.getTime()) / 1000)
+    : 0;
+  const pausedResolutionSeconds = Number(ticket.total_hold_seconds || 0) + activeHoldSeconds;
 
   const responseDeadline = new Date(created.getTime() + ticket.sla_response_hours * 3600000);
   const resolutionDeadline = assignedAt && ticket.sla_resolution_hours
-    ? new Date(assignedAt.getTime() + ticket.sla_resolution_hours * 3600000)
+    ? new Date(assignedAt.getTime() + (ticket.sla_resolution_hours * 3600000) + (pausedResolutionSeconds * 1000))
     : null;
   const escalationDeadline = escalationStartedAt && ticket.sla_escalation_hours
     ? new Date(escalationStartedAt.getTime() + ticket.sla_escalation_hours * 3600000)
@@ -191,6 +205,7 @@ function exportToExcel(
       'Division':           t.division || '',
       'Unit':               (t as any).unit || '',
       'Office Location':    (t as any).office_location || '',
+      'Service Area':       t.service_area_code || '',
       'Priority':           t.priority,
       'Status':             t.status,
       'Assigned To':        t.assigned_to || 'Unassigned',
@@ -247,8 +262,14 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
   const [filterSLA, setFilterSLA]           = useState<SLAStatus | ''>('');
   const [filterStatus, setFilterStatus]     = useState('');
   const [filterPriority, setFilterPriority] = useState('');
+  const [liveServiceAreaFilter, setLiveServiceAreaFilter] = useState('all');
   const [search, setSearch]                 = useState('');
   const [sortBy, setSortBy]                 = useState<'sla' | 'created' | 'priority'>('sla');
+  const [liveDateFrom, setLiveDateFrom]     = useState('');
+  const [liveDateTo, setLiveDateTo]         = useState('');
+  const [monitoringPage, setMonitoringPage] = useState(1);
+  const [reportPage, setReportPage]         = useState(1);
+  const [pageSize, setPageSize]             = useState(10);
 
   // Report state
   const [activeTab, setActiveTab]       = useState<'monitoring' | 'report'>('monitoring');
@@ -256,6 +277,8 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
   const [dateTo, setDateTo]             = useState(todayStr());
   const [staffFilter, setStaffFilter]   = useState('');
   const [reportStatusFilter, setReportStatusFilter] = useState('');
+  const [reportServiceAreaFilter, setReportServiceAreaFilter] = useState('all');
+  const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
   const [staffList, setStaffList]       = useState<string[]>([]);
   const [reportData, setReportData]     = useState<ReportTicket[]>([]);
   const [reportLoading, setReportLoading] = useState(false);
@@ -297,6 +320,13 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
     return () => clearInterval(interval);
   }, [fetchData]);
 
+  useEffect(() => {
+    if (user?.role !== 'super_admin') return;
+    api.get('/service-areas')
+      .then(res => setServiceAreas(res.data.filter((area: ServiceArea) => Boolean(area.is_active))))
+      .catch(() => setServiceAreas([]));
+  }, [user?.role]);
+
   // ── Generate Report ────────────────────────────────────────────────────────
   async function generateReport() {
     if (!dateFrom || !dateTo) { alert('Please select a date range.'); return; }
@@ -310,6 +340,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
       const params: Record<string, string> = { from: dateFrom, to: dateTo };
       if (staffFilter) params.staff = staffFilter;
       if (reportStatusFilter) params.status = reportStatusFilter;
+      if (user?.role === 'super_admin' && reportServiceAreaFilter !== 'all') params.service_area_id = reportServiceAreaFilter;
       if (isServiceAdmin) params.serviceAdmin = 'true';
 
       const res = await api.get('/tickets/report', { params });
@@ -331,12 +362,18 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
     const matchSLA      = !filterSLA      || slaStatus === filterSLA;
     const matchStatus   = !filterStatus   || t.status === filterStatus;
     const matchPriority = !filterPriority || t.priority === filterPriority;
+    const matchServiceArea = liveServiceAreaFilter === 'all' || String(t.service_area_id) === liveServiceAreaFilter;
     const matchSearch   = !search ||
       t.ticket_number.toLowerCase().includes(search.toLowerCase()) ||
       t.subject.toLowerCase().includes(search.toLowerCase()) ||
       t.requestor?.toLowerCase().includes(search.toLowerCase()) ||
       (t.assigned_to?.toLowerCase().includes(search.toLowerCase()) ?? false);
-    return matchSLA && matchStatus && matchPriority && matchSearch;
+    const filedAt = new Date(t.created_at).getTime();
+    const fromAt = liveDateFrom ? new Date(`${liveDateFrom}T00:00:00`).getTime() : null;
+    const toAt = liveDateTo ? new Date(`${liveDateTo}T23:59:59.999`).getTime() : null;
+    const matchDateFrom = fromAt === null || filedAt >= fromAt;
+    const matchDateTo = toAt === null || filedAt <= toAt;
+    return matchSLA && matchStatus && matchPriority && matchServiceArea && matchSearch && matchDateFrom && matchDateTo;
   });
 
   const sorted = [...filtered].sort((a, b) => {
@@ -353,12 +390,30 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
 
+  useEffect(() => {
+    setMonitoringPage(1);
+  }, [filterSLA, filterStatus, filterPriority, liveServiceAreaFilter, search, sortBy, liveDateFrom, liveDateTo, pageSize]);
+
+  useEffect(() => {
+    setReportPage(1);
+  }, [reportData, pageSize]);
+
+  const monitoringTotalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const currentMonitoringPage = Math.min(monitoringPage, monitoringTotalPages);
+  const monitoringStart = (currentMonitoringPage - 1) * pageSize;
+  const paginatedMonitoringTickets = sorted.slice(monitoringStart, monitoringStart + pageSize);
+  const reportTotalPages = Math.max(1, Math.ceil(reportData.length / pageSize));
+  const currentReportPage = Math.min(reportPage, reportTotalPages);
+  const reportStart = (currentReportPage - 1) * pageSize;
+  const paginatedReportData = reportData.slice(reportStart, reportStart + pageSize);
+
   // Summary counts
-  const breached  = withSLA.filter(t => t.sla?.status === 'breached').length;
-  const escalated = withSLA.filter(t => t.sla?.status === 'escalated').length;
-  const warning   = withSLA.filter(t => t.sla?.status === 'warning').length;
-  const onTrack   = withSLA.filter(t => t.sla?.status === 'ok').length;
-  const noSLA     = withSLA.filter(t => !t.sla).length;
+  const serviceScopedSLA = withSLA.filter(t => liveServiceAreaFilter === 'all' || String(t.service_area_id) === liveServiceAreaFilter);
+  const breached  = serviceScopedSLA.filter(t => t.sla?.status === 'breached').length;
+  const escalated = serviceScopedSLA.filter(t => t.sla?.status === 'escalated').length;
+  const warning   = serviceScopedSLA.filter(t => t.sla?.status === 'warning').length;
+  const onTrack   = serviceScopedSLA.filter(t => t.sla?.status === 'ok').length;
+  const noSLA     = serviceScopedSLA.filter(t => !t.sla).length;
 
   if (loading) return (
     <div style={{ color: 'var(--gov-navy)', padding: 40, textAlign: 'center', minHeight: publicMode ? '100vh' : undefined }}>
@@ -546,6 +601,12 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                 <option key={p}>{p}</option>
               ))}
             </select>
+            {user?.role === 'super_admin' && (
+              <select value={liveServiceAreaFilter} onChange={e => setLiveServiceAreaFilter(e.target.value)} style={{ padding: '5px 9px', fontSize: 'var(--text-xs)', border: '1px solid #C8D0DC', borderRadius: 4 }}>
+                <option value="all">All Service Areas</option>
+                {serviceAreas.map(area => <option key={area.id} value={area.id}>{area.code} — {area.name}</option>)}
+              </select>
+            )}
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as typeof sortBy)}
@@ -555,6 +616,17 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
               <option value="priority">Sort: Priority</option>
               <option value="created">Sort: Date Filed</option>
             </select>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#5A6475', fontSize: 'var(--text-xs)' }}>
+              From
+              <input type="date" aria-label="Live tickets filed from" value={liveDateFrom} max={liveDateTo || undefined} onChange={e => setLiveDateFrom(e.target.value)} style={{ padding: '5px 7px', fontSize: 'var(--text-xs)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#5A6475', fontSize: 'var(--text-xs)' }}>
+              To
+              <input type="date" aria-label="Live tickets filed to" value={liveDateTo} min={liveDateFrom || undefined} onChange={e => setLiveDateTo(e.target.value)} style={{ padding: '5px 7px', fontSize: 'var(--text-xs)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
+            </label>
+            {(filterSLA || filterStatus || filterPriority || liveServiceAreaFilter !== 'all' || search || liveDateFrom || liveDateTo) && (
+              <button onClick={() => { setFilterSLA(''); setFilterStatus(''); setFilterPriority(''); setLiveServiceAreaFilter('all'); setSearch(''); setLiveDateFrom(''); setLiveDateTo(''); }} style={{ padding: '5px 9px', fontSize: 'var(--text-xs)', border: '1px solid #C8D0DC', borderRadius: 4, background: '#F5F8FC', cursor: 'pointer', color: '#4A4A4A' }}>Clear</button>
+            )}
             <span style={{ fontSize: 'var(--text-xs)', color: '#888', whiteSpace: 'nowrap' }}>
               {sorted.length} of {tickets.length} tickets
             </span>
@@ -580,6 +652,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                     {[
                       { label: 'SLA',         w: '9%'  },
                       { label: 'Ticket #',    w: '8%'  },
+                      { label: 'Service Area',w: '9%'  },
                       { label: 'Subject',     w: '16%' },
                       { label: 'Category',    w: '11%' },
                       { label: 'Status',      w: '9%'  },
@@ -603,11 +676,11 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                 <tbody>
                   {sorted.length === 0 ? (
                     <tr>
-                      <td colSpan={10} style={{ textAlign: 'center', padding: 32, color: '#888' }}>
+                      <td colSpan={11} style={{ textAlign: 'center', padding: 32, color: '#888' }}>
                         No tickets found.
                       </td>
                     </tr>
-                  ) : sorted.map(ticket => {
+                  ) : paginatedMonitoringTickets.map(ticket => {
                     const sla       = ticket.sla;
                     const slaStatus: SLAStatus = sla?.status ?? 'no-sla';
                     const slaStyle  = SLA_STYLE[slaStatus];
@@ -651,6 +724,9 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                         </td>
                         <td style={{ padding: '8px 10px', fontWeight: 500, color: 'var(--gov-navy)', fontSize: 'var(--text-xs)' }}>
                           {ticket.ticket_number}
+                        </td>
+                        <td style={{ padding: '8px 10px', fontSize: 'var(--text-xs)', color: '#52657A', fontWeight: 600 }}>
+                          {ticket.service_area_code || 'Unassigned'}
                         </td>
                         <td style={{ padding: '8px 10px', fontSize: 'var(--text-xs)' }}>
                           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -727,6 +803,20 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
             </div>
           </div>
 
+          {sorted.length > 0 && (
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px' }}>
+              <div style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Showing <strong>{monitoringStart + 1}–{Math.min(monitoringStart + pageSize, sorted.length)}</strong> of <strong>{sorted.length}</strong> tickets</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                <label style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Rows <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select></label>
+                <button onClick={() => setMonitoringPage(1)} disabled={currentMonitoringPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentMonitoringPage === 1 ? 0.5 : 1 }}>First</button>
+                <button onClick={() => setMonitoringPage(p => Math.max(1, p - 1))} disabled={currentMonitoringPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentMonitoringPage === 1 ? 0.5 : 1 }}>Previous</button>
+                <span style={{ color: '#334155', fontSize: 'var(--text-xs)' }}>Page {currentMonitoringPage} of {monitoringTotalPages}</span>
+                <button onClick={() => setMonitoringPage(p => Math.min(monitoringTotalPages, p + 1))} disabled={currentMonitoringPage === monitoringTotalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentMonitoringPage === monitoringTotalPages ? 0.5 : 1 }}>Next</button>
+                <button onClick={() => setMonitoringPage(monitoringTotalPages)} disabled={currentMonitoringPage === monitoringTotalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentMonitoringPage === monitoringTotalPages ? 0.5 : 1 }}>Last</button>
+              </div>
+            </div>
+          )}
+
           {/* LEGEND */}
           <div style={{
             marginTop: 12, padding: '8px 14px',
@@ -778,7 +868,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
             </div>
 
             <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
               gap: 14, marginBottom: 16,
             }}>
               {/* Date From */}
@@ -851,6 +941,25 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                   ))}
                 </select>
               </div>
+
+              {user?.role === 'super_admin' && (
+                <div>
+                  <label style={{
+                    fontSize: 'var(--text-xs)', fontWeight: 600, color: '#5A6475',
+                    textTransform: 'uppercase', letterSpacing: 0.4,
+                    display: 'block', marginBottom: 5,
+                  }}>
+                    Service Area (Optional)
+                  </label>
+                  <select value={reportServiceAreaFilter} onChange={e => setReportServiceAreaFilter(e.target.value)} style={{
+                    width: '100%', padding: '7px 10px', fontSize: 'var(--text-sm)',
+                    border: '1px solid #C8D0DC', borderRadius: 4, boxSizing: 'border-box', background: '#fff',
+                  }}>
+                    <option value="all">All Service Areas</option>
+                    {serviceAreas.map(area => <option key={area.id} value={area.id}>{area.code} — {area.name}</option>)}
+                  </select>
+                </div>
+              )}
 
               {/* Ticket Status */}
               <div>
@@ -1120,7 +1229,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                             No tickets found for the selected criteria.
                           </td>
                         </tr>
-                      ) : reportData.map(t => {
+                      ) : paginatedReportData.map(t => {
                         const sla       = calcSLA(t);
                         const slaStatus: SLAStatus = sla?.status ?? 'no-sla';
                         const slaStyle  = SLA_STYLE[slaStatus];
@@ -1287,6 +1396,20 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                   </table>
                 </div>
               </div>
+
+              {reportData.length > 0 && (
+                <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px' }}>
+                  <div style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Showing <strong>{reportStart + 1}–{Math.min(reportStart + pageSize, reportData.length)}</strong> of <strong>{reportData.length}</strong> report tickets</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                    <label style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Rows <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select></label>
+                    <button onClick={() => setReportPage(1)} disabled={currentReportPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentReportPage === 1 ? 0.5 : 1 }}>First</button>
+                    <button onClick={() => setReportPage(p => Math.max(1, p - 1))} disabled={currentReportPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentReportPage === 1 ? 0.5 : 1 }}>Previous</button>
+                    <span style={{ color: '#334155', fontSize: 'var(--text-xs)' }}>Page {currentReportPage} of {reportTotalPages}</span>
+                    <button onClick={() => setReportPage(p => Math.min(reportTotalPages, p + 1))} disabled={currentReportPage === reportTotalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentReportPage === reportTotalPages ? 0.5 : 1 }}>Next</button>
+                    <button onClick={() => setReportPage(reportTotalPages)} disabled={currentReportPage === reportTotalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentReportPage === reportTotalPages ? 0.5 : 1 }}>Last</button>
+                  </div>
+                </div>
+              )}
 
               {/* Legend — same as monitoring */}
               <div style={{

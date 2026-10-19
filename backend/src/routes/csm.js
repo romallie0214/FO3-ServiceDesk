@@ -19,6 +19,9 @@ router.get('/', auth, async (req, res) => {
         cr.*,
         t.ticket_number,
         t.subject,
+        t.service_area_id,
+        sa.code          AS service_area_code,
+        sa.name          AS service_area_name,
         c.name          AS category,
         t.requestor_name,
         t.division      AS requestor_division,
@@ -28,6 +31,7 @@ router.get('/', auth, async (req, res) => {
       FROM csm_responses cr
       JOIN tickets t         ON cr.ticket_id  = t.id
       LEFT JOIN categories c ON t.category_id = c.id
+      LEFT JOIN service_areas sa ON sa.id = t.service_area_id
       ${serviceScope}
       ORDER BY cr.submitted_at DESC
     `, isServiceAdmin ? areaIds : []);

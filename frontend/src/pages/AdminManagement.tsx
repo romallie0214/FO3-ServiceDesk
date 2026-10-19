@@ -13,6 +13,9 @@ interface Ticket {
   assigned_to: string | null;
   requestor: string;
   created_at: string;
+  service_area_id?: number | null;
+  service_area_code?: string | null;
+  service_area_name?: string | null;
 }
 
 interface User {
@@ -22,6 +25,13 @@ interface User {
   role: string;
   division: string;
   service_role?: string;
+}
+
+interface ServiceArea {
+  id: number;
+  code: string;
+  name: string;
+  is_active: number;
 }
 
 function PriorityBadge({ priority }: { priority: string }) {
@@ -67,25 +77,39 @@ export default function AdminManagement() {
   const { user: currentUser } = useAuth();
   const isServiceAdmin = currentUser?.role !== 'super_admin' && (currentUser?.area_admin_service_ids?.length ?? 0) > 0;
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [users, setUsers]     = useState<User[]>([]);
+  const [staffByArea, setStaffByArea] = useState<Record<number, User[]>>({});
+  const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
+  const [serviceAreaFilter, setServiceAreaFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [assignments, setAssignments] = useState<Record<number, number>>({});
   const [toast, setToast]     = useState('');
   const [loadError, setLoadError] = useState('');
   const [activeTab, setActiveTab] = useState<'unassigned' | 'assigned'>('unassigned');
+  const [ticketPage, setTicketPage] = useState(1);
+  const TICKETS_PER_PAGE = 10;
 
   async function loadManagementData() {
     setLoading(true);
     setLoadError('');
 
     try {
-      const [ticketRes, userRes] = await Promise.all([
+      const [ticketRes, serviceAreaRes] = await Promise.all([
         api.get(isServiceAdmin ? '/tickets?serviceAdmin=true' : '/tickets'),
-        api.get('/users/assignable-staff'),
+        api.get('/service-areas'),
       ]);
 
       setTickets(ticketRes.data);
-      setUsers(userRes.data);
+      const availableAreas = serviceAreaRes.data.filter((area: ServiceArea) =>
+        Boolean(area.is_active) && (!isServiceAdmin || (currentUser?.area_admin_service_ids || []).includes(area.id))
+      );
+      setServiceAreas(availableAreas);
+      const staffResults = await Promise.allSettled(
+        availableAreas.map((area: ServiceArea) => api.get('/users/assignable-staff', { params: { service_area_id: area.id } }))
+      );
+      setStaffByArea(Object.fromEntries(availableAreas.map((area: ServiceArea, index: number) => [
+        area.id,
+        staffResults[index].status === 'fulfilled' ? staffResults[index].value.data : [],
+      ])));
     } catch (err: any) {
       setLoadError(err.response?.data?.error || 'Unable to load Admin Management data.');
     } finally {
@@ -95,14 +119,23 @@ export default function AdminManagement() {
 
   useEffect(() => {
     void loadManagementData();
-  }, []);
+  }, [isServiceAdmin, currentUser?.id]);
 
-  const assignableStaff = isServiceAdmin
-    ? users.filter(u => ['supervisor', 'technical_staff'].includes(u.service_role || ''))
-    : users.filter(u => u.role === 'ictms_staff' || u.role === 'super_admin');
+  const visibleTickets = serviceAreaFilter === 'all'
+    ? tickets
+    : tickets.filter(ticket => String(ticket.service_area_id) === serviceAreaFilter);
+  const assignableStaff = Array.from(
+    new Map(
+      (serviceAreaFilter === 'all'
+        ? Object.values(staffByArea).flat()
+        : staffByArea[Number(serviceAreaFilter)] || []
+      ).map(staff => [staff.id, staff])
+    ).values()
+  );
+  const staffForTicket = (ticket: Ticket) => staffByArea[Number(ticket.service_area_id)] || [];
 
   // Unassigned — Open tickets with no assigned_to
-  const unassigned = tickets.filter(
+  const unassigned = visibleTickets.filter(
     t => !t.assigned_to &&
     t.status !== 'Closed' &&
     t.status !== 'Resolved' &&
@@ -110,15 +143,19 @@ export default function AdminManagement() {
   );
 
   // Assigned — tickets that have an assigned staff
-  const assigned = tickets.filter(
+  const assigned = visibleTickets.filter(
     t => t.assigned_to &&
     t.status !== 'Closed' &&
     t.status !== 'Resolved' &&
     t.status !== 'Cancelled'
   );
 
+  useEffect(() => {
+    setTicketPage(1);
+  }, [activeTab, serviceAreaFilter]);
+
   function getActiveCount(userName: string) {
-    return tickets.filter(
+    return visibleTickets.filter(
       t => t.assigned_to === userName &&
       t.status !== 'Closed' &&
       t.status !== 'Resolved' &&
@@ -132,7 +169,8 @@ export default function AdminManagement() {
 
     // ✅ Double-check: prevent assigning to requestor
     const ticket      = tickets.find(t => t.id === ticketId);
-    const selectedStaff = assignableStaff.find(u => u.id === userId);
+    if (!ticket) return;
+    const selectedStaff = staffForTicket(ticket).find(u => u.id === userId);
     if (ticket?.empno && selectedStaff?.empno === ticket.empno) {
       alert('Ticket cannot be assigned to the requestor.');
       return;
@@ -156,7 +194,8 @@ export default function AdminManagement() {
 
     // ✅ Double-check: prevent reassigning to requestor
     const ticket        = tickets.find(t => t.id === ticketId);
-    const selectedStaff = assignableStaff.find(u => u.id === userId);
+    if (!ticket) return;
+    const selectedStaff = staffForTicket(ticket).find(u => u.id === userId);
     if (ticket?.empno && selectedStaff?.empno === ticket.empno) {
       alert('Ticket cannot be reassigned to the requestor.');
       return;
@@ -212,6 +251,11 @@ export default function AdminManagement() {
         {isReassign ? '✓ No active assigned tickets.' : '✓ All tickets are assigned!'}
       </div>
     );
+    const totalPages = Math.max(1, Math.ceil(data.length / TICKETS_PER_PAGE));
+    const currentPage = Math.min(ticketPage, totalPages);
+    const startIndex = (currentPage - 1) * TICKETS_PER_PAGE;
+    const pageTickets = data.slice(startIndex, startIndex + TICKETS_PER_PAGE);
+
     return (
       <div style={{
         overflowX: 'auto',
@@ -224,7 +268,7 @@ export default function AdminManagement() {
       }}>
         <thead>
           <tr>
-            {['Ticket #', 'Subject', 'Priority', 'Status',
+            {['Ticket #', 'Service Area', 'Subject', 'Priority', 'Status',
               isReassign ? 'Assigned To' : '',
               'Re-assign To', 'Action',
             ].filter(Boolean).map(h => (
@@ -241,13 +285,16 @@ export default function AdminManagement() {
           </tr>
         </thead>
         <tbody>
-          {data.map(t => (
+          {pageTickets.map(t => (
             <tr key={t.id}
               onMouseEnter={e => (e.currentTarget.style.background = '#F5F8FC')}
               onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
             >
               <td style={{ padding: '7px 10px', fontWeight: 500, color: 'var(--gov-navy)', fontSize: 'var(--text-sm)' }}>
                 {t.ticket_number}
+              </td>
+              <td style={{ padding: '7px 10px', fontSize: 'var(--text-xs)', color: '#52657A', fontWeight: 600 }}>
+                {t.service_area_code || 'Unassigned'}
               </td>
               <td style={{ padding: '7px 10px', fontSize: 'var(--text-sm)' }}>
                 {t.subject}
@@ -288,7 +335,7 @@ export default function AdminManagement() {
                   <option value="">
                     {isReassign ? 'Select new staff...' : 'Select staff...'}
                   </option>
-                  {assignableStaff
+                  {staffForTicket(t)
                     .filter(u => u.empno !== t.empno)
                     .map(u => (
                       <option key={u.id} value={u.id}>{u.full_name}</option>
@@ -317,6 +364,20 @@ export default function AdminManagement() {
           ))}
         </tbody>
       </table>
+      {data.length > TICKETS_PER_PAGE && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 10, padding: '10px', borderTop: '1px solid #E5EAF0',
+          fontSize: 'var(--text-xs)', color: '#62748A',
+        }}>
+          <span>Showing {startIndex + 1}–{Math.min(startIndex + TICKETS_PER_PAGE, data.length)} of {data.length}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button type="button" onClick={() => setTicketPage(currentPage - 1)} disabled={currentPage === 1} style={{ padding: '5px 9px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', color: 'var(--gov-navy)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
+            <span>Page {currentPage} of {totalPages}</span>
+            <button type="button" onClick={() => setTicketPage(currentPage + 1)} disabled={currentPage === totalPages} style={{ padding: '5px 9px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', color: 'var(--gov-navy)', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Next</button>
+          </div>
+        </div>
+      )}
       </div>
     );
   }
@@ -334,6 +395,22 @@ export default function AdminManagement() {
         </span>
       </div>
 
+      <div style={{
+        marginBottom: 14,
+        display: 'none',
+      }}>
+        <div>
+          <strong style={{ color: 'var(--gov-navy)' }}>Service-area ticket queue</strong>
+          <div style={{ color: '#62748A', fontSize: 'var(--text-xs)', marginTop: 2 }}>
+            {serviceAreaFilter === 'all' ? 'Viewing all service areas. Each ticket can only be assigned to staff in its own service area.' : 'Viewing the selected service area.'}
+          </div>
+        </div>
+        <select value={serviceAreaFilter} onChange={e => setServiceAreaFilter(e.target.value)} style={{ padding: '7px 10px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', minWidth: 230 }}>
+          <option value="all">All service areas</option>
+          {serviceAreas.map(area => <option key={area.id} value={area.id}>{area.code} — {area.name}</option>)}
+        </select>
+      </div>
+
       {/* STATS ROW */}
       <div style={{
         display: 'grid',
@@ -342,7 +419,7 @@ export default function AdminManagement() {
         marginBottom: 18,
       }}>
         {[
-          { label: 'Total Tickets',  value: tickets.length,              color: 'var(--gov-navy)'  },
+          { label: 'Total Tickets',  value: visibleTickets.length,       color: 'var(--gov-navy)'  },
           { label: 'Unassigned',     value: unassigned.length,           color: 'var(--gov-amber)' },
           { label: 'Active Staff',   value: assignableStaff.length,      color: 'var(--gov-green)' },
         ].map(s => (
@@ -371,6 +448,23 @@ export default function AdminManagement() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        flexWrap: 'wrap', padding: '10px 12px', marginBottom: 14,
+        border: '1px solid #D0D9E4', borderRadius: 8, background: '#fff',
+      }}>
+        <div>
+          <strong style={{ color: 'var(--gov-navy)' }}>Service-area ticket queue</strong>
+          <div style={{ color: '#62748A', fontSize: 'var(--text-xs)', marginTop: 2 }}>
+            {serviceAreaFilter === 'all' ? 'Viewing all service areas. Each ticket can only be assigned to staff in its own service area.' : 'Viewing the selected service area.'}
+          </div>
+        </div>
+        <select value={serviceAreaFilter} onChange={e => setServiceAreaFilter(e.target.value)} style={{ padding: '7px 10px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', minWidth: 230 }}>
+          <option value="all">All service areas</option>
+          {serviceAreas.map(area => <option key={area.id} value={area.id}>{area.code + ' - ' + area.name}</option>)}
+        </select>
       </div>
 
       <div style={{

@@ -53,6 +53,10 @@ export default function MyTickets() {
   const [search, setSearch]         = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
@@ -80,6 +84,10 @@ export default function MyTickets() {
     fetchTickets();
   }, [user?.empno, isServiceAdmin]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterStatus, filterPriority, dateFrom, dateTo, pageSize]);
+
   const filtered = tickets.filter(t => {
     const q = search.toLowerCase();
     const matchSearch = !search ||
@@ -89,8 +97,18 @@ export default function MyTickets() {
       t.category?.toLowerCase().includes(q);
     const matchStatus   = !filterStatus   || t.status   === filterStatus;
     const matchPriority = !filterPriority || t.priority === filterPriority;
-    return matchSearch && matchStatus && matchPriority;
+    const filedAt = new Date(t.created_at).getTime();
+    const fromAt = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toAt = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
+    const matchDateFrom = fromAt === null || filedAt >= fromAt;
+    const matchDateTo = toAt === null || filedAt <= toAt;
+    return matchSearch && matchStatus && matchPriority && matchDateFrom && matchDateTo;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const paginatedTickets = filtered.slice(pageStart, pageStart + pageSize);
 
   // Summary counts
   const assigned   = tickets.filter(t => t.status === 'Assigned').length;
@@ -236,9 +254,17 @@ export default function MyTickets() {
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
-        {(search || filterStatus || filterPriority) && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
+          From
+          <input type="date" aria-label="Date filed from" value={dateFrom} max={dateTo || undefined} onChange={e => setDateFrom(e.target.value)} style={{ padding: 'clamp(5px, 1.5vw, 6px)', fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
+          To
+          <input type="date" aria-label="Date filed to" value={dateTo} min={dateFrom || undefined} onChange={e => setDateTo(e.target.value)} style={{ padding: 'clamp(5px, 1.5vw, 6px)', fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
+        </label>
+        {(search || filterStatus || filterPriority || dateFrom || dateTo) && (
           <button
-            onClick={() => { setSearch(''); setFilterStatus(''); setFilterPriority(''); }}
+            onClick={() => { setSearch(''); setFilterStatus(''); setFilterPriority(''); setDateFrom(''); setDateTo(''); }}
             style={{
               padding: 'clamp(5px, 1.5vw, 6px) clamp(8px, 1.5vw, 12px)',
               fontSize: 'clamp(10px, 1.8vw, 12px)',
@@ -349,7 +375,7 @@ export default function MyTickets() {
                   )}
                 </td>
               </tr>
-            ) : filtered.map(t => {
+            ) : paginatedTickets.map(t => {
               const ss = STATUS_STYLE[t.status]   ?? { bg: '#F0F0F0', color: '#666' };
               const ps = PRIORITY_STYLE[t.priority] ?? { bg: '#F0F0F0', color: '#666' };
               return (
@@ -530,6 +556,29 @@ export default function MyTickets() {
         </table>
         </div>
       </div>
+      {filtered.length > 0 && (
+        <div style={{
+          marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+          flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px',
+        }}>
+          <div style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
+            Showing <strong>{pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> tickets
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+            <label style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
+              Rows
+              <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}>
+                <option value={10}>10</option><option value={25}>25</option><option value={50}>50</option>
+              </select>
+            </label>
+            <button onClick={() => setPage(1)} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>First</button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
+            <span style={{ color: '#334155', fontSize: 'clamp(9px, 1.8vw, 11px)', whiteSpace: 'nowrap' }}>Page {currentPage} of {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Next</button>
+            <button onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Last</button>
+          </div>
+        </div>
+      )}
         <TicketDetailModal
           ticket={selectedTicket}
           onClose={() => setSelectedTicket(null)}

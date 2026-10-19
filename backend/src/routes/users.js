@@ -962,24 +962,29 @@ router.patch('/:id/restore', auth, async (req, res) => {
 router.get('/assignable-staff', auth, async (req, res) => {
   try {
     const allowedRoles = new Set(['super_admin', 'supervisor', 'ictms_staff']);
-    const areaIds = await adminAreaIds(req.user);
+    const areaIds = (await adminAreaIds(req.user)) || [];
     const isServiceAdmin = req.user.role !== 'super_admin' && areaIds.length > 0;
     if (!allowedRoles.has(req.user.role) && !isServiceAdmin) {
       return res.status(403).json({ error: 'Only ICTMS personnel can view assignable staff.' });
     }
 
+    const serviceAreaId = Number(req.query.service_area_id);
+    if (!Number.isInteger(serviceAreaId) || serviceAreaId <= 0) {
+      return res.status(400).json({ error: 'A valid service_area_id is required.' });
+    }
+    if (isServiceAdmin && !areaIds.includes(serviceAreaId)) {
+      return res.status(403).json({ error: 'You can view staff in your service area only.' });
+    }
+
     const [rows] = await db.query(
-      isServiceAdmin
-        ? `SELECT DISTINCT u.id, u.empno, u.full_name, u.role, u.division, usr.service_role
-           FROM users u JOIN user_service_roles usr ON usr.user_id = u.id
-           WHERE usr.is_active = 1 AND usr.service_area_id IN (${areaIds.map(() => '?').join(',')})
-             AND usr.service_role IN ('supervisor', 'technical_staff') AND u.deleted_at IS NULL
-           ORDER BY u.full_name`
-        : `SELECT id, empno, full_name, role, division
-           FROM users
-           WHERE role IN ('ictms_staff', 'super_admin') AND deleted_at IS NULL
-           ORDER BY full_name`,
-      isServiceAdmin ? areaIds : []
+      `SELECT DISTINCT u.id, u.empno, u.full_name, u.role, u.division, usr.service_role
+       FROM users u
+       JOIN user_service_roles usr ON usr.user_id = u.id
+       JOIN service_areas sa ON sa.id = usr.service_area_id
+       WHERE usr.is_active = 1 AND sa.is_active = 1 AND usr.service_area_id = ?
+         AND usr.service_role IN ('admin', 'supervisor', 'technical_staff') AND u.deleted_at IS NULL
+       ORDER BY u.full_name`,
+      [serviceAreaId]
     );
     res.json(rows);
   } catch (err) {
@@ -1015,54 +1020,43 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Account-recovery identity details come from Harmony; only the list of ICT Desk
-// security records and recovery actions are stored locally.
+// Account Recovery is a security-operation screen. Its source of truth is
+// user_tracking: a person appears here only once a security record exists.
+// User and Service Area data are attached when a managed account is available.
 router.get('/admin/account-recovery', auth, async (req, res) => {
   try {
-    const areaIds = await adminAreaIds(req.user);
+    const areaIds = (await adminAreaIds(req.user)) || [];
     if (req.user.role !== 'super_admin' && !areaIds.length) return res.status(403).json({ error: 'Super Admin or Area Admin access is required.' });
     const scoped = req.user.role !== 'super_admin';
     const placeholders = areaIds.map(() => '?').join(',');
-    const [securityRows] = await db.query(
+    const [accounts] = await db.query(
       scoped
-        ? `SELECT DISTINCT ut.empno, ut.locked, ut.locked_until, ut.lock_reason
+        ? `SELECT DISTINCT ut.empno, u.full_name, u.email, u.role, u.division, u.deleted_at,
+             ut.locked, ut.locked_until, ut.lock_reason
            FROM user_tracking ut
            JOIN users u ON u.empno = ut.empno
            JOIN user_service_roles usr ON usr.user_id = u.id AND usr.is_active = 1
-           WHERE usr.service_area_id IN (${placeholders}) ORDER BY ut.empno`
-        : 'SELECT empno, locked, locked_until, lock_reason FROM user_tracking ORDER BY empno',
+           WHERE usr.service_area_id IN (${placeholders})
+           ORDER BY COALESCE(u.full_name, ut.empno)`
+        : `SELECT ut.empno, u.full_name, u.email, u.role, u.division, u.deleted_at,
+             ut.locked, ut.locked_until, ut.lock_reason
+           FROM user_tracking ut
+           LEFT JOIN users u ON u.empno = ut.empno
+           ORDER BY COALESCE(u.full_name, ut.empno)`,
       scoped ? areaIds : []
     );
-    const [deactivatedRows] = await db.query(
-      scoped
-        ? `SELECT DISTINCT u.empno FROM users u
-           JOIN user_service_roles usr ON usr.user_id = u.id AND usr.is_active = 1
-           WHERE u.deleted_at IS NOT NULL AND usr.service_area_id IN (${placeholders})`
-        : 'SELECT empno FROM users WHERE deleted_at IS NOT NULL',
-      scoped ? areaIds : []
-    );
-    const deactivatedEmpnos = new Set(deactivatedRows.map(row => row.empno));
-    const accounts = await Promise.all(securityRows.map(async ({ empno, locked, locked_until, lock_reason }) => {
-      try {
-        const source = await harmonyApi.getEmployeeByEmpno(empno);
-        const employee = harmonyApi.transformEmployeeResponse(source) || source?.user || source || {};
-        return {
-          empno: employee.empno || empno,
-          full_name: employee.full_name || [employee.first_name, employee.middle_name, employee.last_name].filter(Boolean).join(' ') || 'Employee record unavailable',
-          email: employee.email || 'Email unavailable',
-          harmonyAvailable: true,
-          deactivated: deactivatedEmpnos.has(empno),
-          locked: Boolean(locked),
-          lockedUntil: locked_until,
-          lockReason: lock_reason,
-        };
-      } catch (err) {
-        if (err.status === 404) return null;
-        console.warn('Harmony recovery lookup failed for ' + empno + ':', err.message);
-        return { empno, full_name: 'Employee record unavailable', email: 'Email unavailable', harmonyAvailable: false, deactivated: deactivatedEmpnos.has(empno), locked: Boolean(locked), lockedUntil: locked_until, lockReason: lock_reason };
-      }
-    }));
-    res.json(accounts.filter(Boolean));
+    res.json(accounts.map(account => ({
+      empno: account.empno,
+      full_name: account.full_name || account.empno,
+      email: account.email || 'Not available',
+      role: account.role,
+      division: account.division,
+      harmonyAvailable: Boolean(account.full_name),
+      deactivated: Boolean(account.deleted_at),
+      locked: Boolean(account.locked),
+      lockedUntil: account.locked_until,
+      lockReason: account.lock_reason,
+    })));
   } catch (err) {
     console.error('Account recovery list error:', err.message);
     res.status(500).json({ error: 'Unable to load account recovery records.' });

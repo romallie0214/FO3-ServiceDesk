@@ -18,6 +18,7 @@ export default function Login() {
   // Step 1: Credentials
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError]       = useState(() => {
     const message = sessionStorage.getItem('ictms_auth_message') || '';
     sessionStorage.removeItem('ictms_auth_message');
@@ -530,7 +531,7 @@ export default function Login() {
 
           {/* Employee Number */}
           <div style={{ marginBottom: 'clamp(10px, 2vw, 14px)' }}>
-            <label style={{
+            <label htmlFor="login-username" style={{
               fontSize: 'clamp(9px, 1.6vw, 12px)', fontWeight: 500, color: '#5A6475',
               textTransform: 'uppercase', letterSpacing: 0.4,
               display: 'block', marginBottom: 'clamp(3px, 0.6vw, 5px)',
@@ -538,6 +539,7 @@ export default function Login() {
               Employee Number (empno)
             </label>
             <input
+              id="login-username"
               type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
@@ -556,28 +558,44 @@ export default function Login() {
 
           {/* Password */}
           <div style={{ marginBottom: 'clamp(14px, 3vw, 20px)' }}>
-            <label style={{
+            <label htmlFor="login-password" style={{
               fontSize: 'clamp(9px, 1.6vw, 12px)', fontWeight: 500, color: '#5A6475',
               textTransform: 'uppercase', letterSpacing: 0.4,
               display: 'block', marginBottom: 'clamp(3px, 0.6vw, 5px)',
             }}>
               Password
             </label>
+            <div style={{ position: 'relative' }}>
             <input
-              type="password"
+              id="login-password"
+              type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleLogin()}
               placeholder="••••••••"
               disabled={loading}
               style={{
-                width: '100%', padding: 'clamp(7px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)',
+                width: '100%', padding: 'clamp(7px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)', paddingRight: '62px',
                 border: '1px solid #C8D0DC', borderRadius: 4,
                 fontSize: 'clamp(11px, 1.9vw, 14px)', color: '#2A2A2A',
                 boxSizing: 'border-box',
                 opacity: loading ? 0.6 : 1,
               }}
             />
+              <button
+                type="button"
+                onClick={() => setShowPassword(visible => !visible)}
+                disabled={loading}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{
+                  position: 'absolute', right: 0, top: 0, bottom: 0, padding: '0 12px',
+                  border: 'none', background: 'transparent', color: '#345B82', cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: 'clamp(10px, 1.6vw, 12px)', fontWeight: 600, opacity: loading ? 0.6 : 1,
+                }}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
           </div>
 
           <button

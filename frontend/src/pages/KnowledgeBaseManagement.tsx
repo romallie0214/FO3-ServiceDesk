@@ -58,7 +58,19 @@ const labelStyle: React.CSSProperties = {
 
 // ─── PDF Viewer Modal ─────────────────────────────────────────────────────────
 function PDFViewerModal({ article, onClose }: { article: Article; onClose: () => void }) {
-  const pdfUrl = `/api/knowledge-base/${article.id}/pdf`;
+  const [pdfUrl, setPdfUrl] = useState('');
+  const [previewError, setPreviewError] = useState('');
+
+  useEffect(() => {
+    let objectUrl = '';
+    api.get(`/knowledge-base/${article.id}/pdf`, { responseType: 'blob' })
+      .then(response => {
+        objectUrl = URL.createObjectURL(response.data);
+        setPdfUrl(objectUrl);
+      })
+      .catch(() => setPreviewError('Unable to load this PDF preview.'));
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [article.id]);
   return (
     <div
       onClick={onClose}
@@ -98,7 +110,11 @@ function PDFViewerModal({ article, onClose }: { article: Article; onClose: () =>
             }}>×</button>
           </div>
         </div>
-        <iframe src={pdfUrl} style={{ flex: 1, border: 'none', width: '100%' }} title={article.title} />
+        {previewError
+          ? <div style={{ padding: 24, color: '#8B1A1A' }}>{previewError}</div>
+          : pdfUrl
+            ? <iframe src={pdfUrl} style={{ flex: 1, border: 'none', width: '100%' }} title={article.title} />
+            : <div style={{ padding: 24, textAlign: 'center' }}>Loading PDF preview…</div>}
       </div>
     </div>
   );
@@ -124,6 +140,8 @@ export default function KnowledgeBaseManagement() {
   const [filterPdf, setFilterPdf] = useState<'all' | 'with' | 'without'>('all');
   const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
   const [filterServiceArea, setFilterServiceArea] = useState('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Form fields
   const [formCategory, setFormCategory]         = useState('');
@@ -256,6 +274,15 @@ export default function KnowledgeBaseManagement() {
       filterPdf === 'without' ? !a.pdf_filename  : true;
     return matchSearch && matchCat && matchPdf && matchService;
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterCat, filterPdf, filterServiceArea, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const paginatedArticles = filtered.slice(pageStart, pageStart + pageSize);
 
   if (loading) return (
     <div style={{ color: 'var(--gov-navy)', padding: 'clamp(24px, 4vw, 40px)', textAlign: 'center' }}>
@@ -414,7 +441,7 @@ export default function KnowledgeBaseManagement() {
                       : 'No articles match your search or filters.'}
                   </td>
                 </tr>
-              ) : filtered.map((a, index) => {
+              ) : paginatedArticles.map((a, index) => {
                 const cs = getCatStyle(a.category);
                 return (
                   <Fragment key={a.id}>
@@ -520,6 +547,20 @@ export default function KnowledgeBaseManagement() {
           </table>
         </div>
       </div>
+
+      {filtered.length > 0 && (
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px' }}>
+          <div style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Showing <strong>{pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> articles</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+            <label style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Rows <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select></label>
+            <button onClick={() => setPage(1)} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === 1 ? 0.5 : 1 }}>First</button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
+            <span style={{ color: '#334155', fontSize: 'var(--text-xs)' }}>Page {currentPage} of {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === totalPages ? 0.5 : 1 }}>Next</button>
+            <button onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === totalPages ? 0.5 : 1 }}>Last</button>
+          </div>
+        </div>
+      )}
 
       {/* ===== ADD / EDIT MODAL ===== */}
       {showModal && (
