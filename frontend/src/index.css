@@ -210,3 +210,6 @@ td {
 ::-webkit-scrollbar-track { background: #F0F3F7; }
 ::-webkit-scrollbar-thumb { background: #C8D0DC; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #9BA8B4; }
+
+/* Keep page width stable when overlays lock background scrolling. */
+html { scrollbar-gutter: stable; }

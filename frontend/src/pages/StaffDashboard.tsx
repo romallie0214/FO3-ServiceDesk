@@ -1,3 +1,4 @@
+import AppTable from '../components/AppTable';
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -74,7 +75,7 @@ export default function StaffDashboard() {
   const recent = tickets.slice(0, 5);
 
   return (
-    <div style={{ padding: 'clamp(14px, 3vw, 24px)' }}>
+    <div>
       {/* BREADCRUMB */}
       <div style={{ fontSize: 'clamp(10px, 1.8vw, 13px)', color: '#4A4A4A', marginBottom: 'clamp(10px, 2vw, 14px)' }}>
         Home <span style={{ color: 'var(--gov-navy)', fontWeight: 500 }}>
@@ -253,7 +254,7 @@ export default function StaffDashboard() {
             overflowX: 'auto',
             WebkitOverflowScrolling: 'touch',
           }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+            <AppTable style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
               <thead>
                 <tr>
                   {['Ticket #', 'Subject', 'Category', 'Priority', 'Status', 'Assigned To', 'Date'].map(h => (
@@ -298,7 +299,7 @@ export default function StaffDashboard() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </AppTable>
           </div>
         )}
       </div>

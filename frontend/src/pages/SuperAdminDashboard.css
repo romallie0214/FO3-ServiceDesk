@@ -1,0 +1,124 @@
+.desk-dashboard{color:#12365d}.desk-dashboard-heading,.desk-dashboard-heading>div,.desk-dashboard-actions{display:flex;align-items:center;gap:10px}.desk-dashboard-heading{justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}.desk-dashboard-heading h1{font-size:20px;font-weight:600;margin:0}.desk-dashboard-heading span{font-size:12px;color:#62748a}.desk-dashboard-actions select{max-width:260px;padding:8px 10px;border:1px solid #d4deeb;border-radius:5px;background:white;color:#12365d;font:inherit;font-size:12px}.desk-primary{background:#123e70;color:white!important;padding:9px 13px;border-radius:5px;text-decoration:none;font-size:12px;font-weight:600}.desk-stat span{display:flex;align-items:center;gap:5px;font-size:11px;color:#62748a}.desk-stat strong{display:block;font-size:24px;font-weight:500;line-height:1.3}.desk-dashboard-panels{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(260px,1fr);gap:14px;align-items:start}.desk-panel{border:1px solid #e0e7f0;border-radius:6px;background:white;overflow:hidden}.desk-panel header{padding:11px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e9eef5}.desk-panel h2{font-size:12px;font-weight:600;margin:0}.desk-panel a{color:#14518d;text-decoration:none;font-size:12px}.desk-table-scroll{overflow-x:auto}.desk-panel table{width:100%;border-collapse:collapse;text-align:left;font-size:12px}.desk-panel th{font-weight:400;color:#62748a;font-size:11px}.desk-panel th,.desk-panel td{padding:9px 14px;border-bottom:1px solid #edf1f6}.desk-panel td.desk-empty{text-align:center;height:110px;color:#62748a}.desk-panel tbody tr:last-child td{border-bottom:0}.desk-status{white-space:nowrap;background:#edf3fa;border-radius:4px;padding:3px 6px}.desk-health{margin:0}.desk-health>div{display:flex;justify-content:space-between;gap:12px;padding:9px 14px;border-bottom:1px solid #f0f3f7;font-size:12px}.desk-health>div:last-child{border:0}.desk-health dd{margin:0}.desk-load-warning{padding:10px;background:#fff5df;margin-bottom:12px;font-size:13px}.desk-dashboard a:focus-visible,.desk-dashboard select:focus-visible{outline:2px solid #14518d;outline-offset:3px}@media(max-width:1000px){.desk-dashboard-panels{grid-template-columns:1fr}}@media(max-width:550px){.desk-dashboard-heading>div{flex-wrap:wrap}.desk-dashboard-actions{width:100%;flex-wrap:wrap}.desk-dashboard-actions select{flex:1;min-width:0}}
+
+.desk-primary{display:inline-flex;align-items:center;gap:6px}
+
+/* Summary cards: four across on desktop, two on tablet, one on phones. */
+.desk-totals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.desk-stat{display:flex;align-items:center;gap:14px;min-width:0;padding:20px;background:#fff;border:1px solid #e0e7f0;border-radius:8px}
+.desk-stat-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.desk-stat-content{min-width:0}.desk-stat span{font-size:12px;margin-bottom:4px}.desk-stat strong{font-size:28px;font-weight:600;overflow-wrap:anywhere}
+@media(max-width:1100px){.desk-totals{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.desk-totals{grid-template-columns:1fr;gap:10px}.desk-stat{padding:16px}}
+
+.desk-totals a.desk-stat{color:inherit;text-decoration:none;transition:border-color 150ms ease,box-shadow 150ms ease}.desk-totals a.desk-stat:hover{border-color:#8ea9c7;box-shadow:0 3px 10px #12365d0d;text-decoration:none}.desk-totals a.desk-stat:focus-visible{outline:2px solid #14518d;outline-offset:3px}
+
+/* Dashboard workspace with recent tickets in a dedicated right rail. */
+.desk-dashboard-workspace{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}.desk-dashboard-main{min-width:0}.desk-dashboard-insights{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(220px,1fr);gap:16px;align-items:start}.desk-dashboard-recent{min-width:0;position:sticky;top:20px}.desk-dashboard-workspace .desk-stat{padding:16px;gap:10px}.desk-dashboard-workspace .desk-stat-icon{width:38px;height:38px;border-radius:9px}.desk-dashboard-workspace .desk-stat strong{font-size:25px}.desk-dashboard-workspace .desk-totals{gap:12px}.desk-dashboard-workspace .desk-panel{border-color:#e4e9f0;border-radius:9px;box-shadow:0 1px 3px #17365003}.desk-dashboard-workspace .desk-panel header{padding:16px}.desk-dashboard-workspace .desk-panel h2{font-size:14px;font-weight:550}.desk-status-overview header>span{font-size:11px;color:#8a98a9}.desk-status-bars{padding:16px}.desk-status-bar{display:grid;grid-template-columns:106px minmax(0,1fr) 28px;align-items:center;gap:10px;margin-bottom:19px}.desk-status-bar:last-child{margin-bottom:0}.desk-status-bar>span{display:flex;align-items:center;gap:7px;font-size:12px;color:#66788d}.desk-status-bar strong{text-align:right;font-size:12px;font-weight:500}.desk-status-track{height:6px;background:#f0f3f7;border-radius:8px;overflow:hidden}.desk-status-track>div{height:100%;border-radius:8px;min-width:0}.desk-recent-list{padding:0 16px}.desk-panel a.desk-recent-ticket{display:block;padding:16px 0;border-bottom:1px solid #edf1f5;color:inherit;text-decoration:none}.desk-panel a.desk-recent-ticket:last-child{border-bottom:0}.desk-panel a.desk-recent-ticket:hover p{color:#1a65a3}.desk-recent-ticket-top{display:flex;align-items:center;gap:7px}.desk-recent-ticket-top strong{font-weight:500;font-size:12px;color:#345373}.desk-recent-ticket-icon{display:flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:7px;background:#edf3fb;color:#5883b3}.desk-recent-ticket-top time{margin-left:auto;font-size:10px;color:#8a99aa}.desk-recent-ticket p{font-size:13px;line-height:1.5;color:#43576f;margin:8px 0}.desk-recent-ticket>span{font-size:10px!important;border-radius:12px!important}.desk-recent-empty{padding:24px 0;color:#7c8fa3;font-size:12px}.desk-dashboard-insights .desk-health>div{padding:13px 16px}
+@media(max-width:1250px){.desk-dashboard-workspace .desk-totals{grid-template-columns:repeat(2,minmax(0,1fr))}.desk-dashboard-insights{grid-template-columns:1fr}}
+@media(max-width:950px){.desk-dashboard-workspace{grid-template-columns:1fr}.desk-dashboard-recent{position:static}.desk-recent-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px}}
+@media(max-width:550px){.desk-recent-list{grid-template-columns:1fr}.desk-dashboard-workspace{gap:14px}.desk-dashboard-workspace .desk-stat{padding:12px}.desk-dashboard-workspace .desk-stat-icon{width:32px;height:32px}.desk-dashboard-workspace .desk-stat strong{font-size:22px}}
+
+/* Reference layout: summary strip, recent tickets and trend, monthly chart. */
+.desk-dashboard-reference{display:flex;flex-direction:column;gap:16px}.desk-dashboard-reference .desk-totals{margin:0;padding:10px;background:#edf1f65c;border-radius:9px;gap:10px;grid-template-columns:repeat(4,minmax(0,1fr))}.desk-dashboard-reference .desk-stat{padding:13px 16px;border:1px solid #edf0f4;border-radius:7px;gap:12px}.desk-dashboard-reference .desk-stat-icon{width:38px;height:38px;border-radius:8px}.desk-dashboard-reference .desk-stat strong{font-size:22px;font-weight:550}.desk-dashboard-reference .desk-stat span{font-size:11px}.desk-dashboard-reference .desk-panel{border-radius:8px;border-color:#e6eaf0;box-shadow:0 1px 3px #17365003}.desk-dashboard-middle{display:grid;grid-template-columns:310px minmax(0,1fr);gap:16px;align-items:stretch}.desk-dashboard-reference .desk-panel header{padding:14px 16px;min-height:51px}.desk-dashboard-reference .desk-panel h2{font-size:14px;font-weight:500}.desk-dashboard-reference .desk-recent-ticket{padding:10px 0!important}.desk-dashboard-reference .desk-recent-ticket p{margin:5px 0;font-size:12px}.desk-dashboard-reference .desk-recent-ticket-top strong{font-size:11px}.desk-dashboard-reference .desk-recent-ticket-top time{font-size:10px}.desk-chart-panel{min-width:0}.desk-chart-panel header select{font-size:11px;max-width:145px}.desk-chart-body{position:relative;height:290px;padding:12px 18px 0}.desk-monthly-chart .desk-chart-body{height:260px}.desk-chart-caption{font-size:10px;color:#8b99aa;margin:6px 18px 12px}.desk-dashboard-reference>.desk-panel:last-child .desk-health{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}.desk-dashboard-reference>.desk-panel:last-child .desk-health>div{display:flex;flex-direction:column;gap:6px;border-bottom:0;border-right:1px solid #edf1f5;padding:12px 16px;font-size:12px}.desk-dashboard-reference>.desk-panel:last-child .desk-health dd{font-size:18px;font-weight:500}.desk-dashboard-reference>.desk-panel:last-child .desk-health dt{color:#8090a3}
+@media(max-width:1100px){.desk-dashboard-reference .desk-totals{grid-template-columns:repeat(2,minmax(0,1fr))}.desk-dashboard-middle{grid-template-columns:280px minmax(0,1fr)}}
+@media(max-width:850px){.desk-dashboard-middle{grid-template-columns:1fr}.desk-dashboard-reference>.desk-panel:last-child .desk-health{grid-template-columns:repeat(2,minmax(0,1fr))}.desk-chart-body{height:260px}}
+@media(max-width:480px){.desk-dashboard-reference .desk-stat{padding:12px 8px;gap:8px}.desk-dashboard-reference .desk-stat-icon{width:30px;height:30px}.desk-dashboard-reference .desk-stat strong{font-size:20px}.desk-dashboard-reference .desk-recent-list{grid-template-columns:1fr}}
+
+/* Reference palette: vivid icon tiles with quiet white cards. */
+.desk-dashboard-reference .desk-stat-icon{color:#fff!important;border-radius:8px}
+.desk-dashboard-reference .desk-stat:nth-child(1) .desk-stat-icon{background:#5928f5!important}
+.desk-dashboard-reference .desk-stat:nth-child(2) .desk-stat-icon{background:#7faa00!important}
+.desk-dashboard-reference .desk-stat:nth-child(3) .desk-stat-icon{background:#f21c0c!important}
+.desk-dashboard-reference .desk-stat:nth-child(4) .desk-stat-icon{background:#86b500!important}
+.desk-dashboard-reference .desk-stat:nth-child(5) .desk-stat-icon{background:#00b986!important}
+.desk-dashboard-reference .desk-stat:nth-child(6) .desk-stat-icon{background:#6430fa!important}
+.desk-dashboard-reference .desk-stat:nth-child(7) .desk-stat-icon{background:#0cbd8c!important}
+.desk-dashboard-reference .desk-stat:nth-child(8) .desk-stat-icon{background:#5c28f5!important}
+.desk-dashboard-reference .desk-stat strong{color:#25252b}.desk-dashboard-reference .desk-stat span{color:#8c8d9e}
+.desk-dashboard-reference .desk-panel h2{color:#282832}.desk-dashboard-reference .desk-panel header>a{color:#7947de;border:1px solid #eee9f7;border-radius:5px;padding:3px 8px;font-size:11px}
+.desk-dashboard-reference .desk-recent-ticket-icon{background:#f0eafa;color:#8051dd}
+.desk-dashboard-reference .desk-totals{background:#f6f7f9}
+
+.desk-dashboard-bottom{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:stretch}.desk-radial-health header>span{font-size:10px;color:#96a0b1}.desk-health-ring{width:144px;height:144px;border-radius:50%;margin:18px auto;display:flex;align-items:center;justify-content:center}.desk-health-ring>div{width:116px;height:116px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.desk-health-ring strong{font-size:28px;font-weight:550;color:#35264d}.desk-health-ring span{font-size:11px;color:#9a90a8}.desk-radial-metrics{margin:0 18px 16px}.desk-radial-metrics>div{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0edf5;font-size:11px}.desk-radial-metrics>div:last-child{border:0}.desk-radial-metrics dt{color:#8a8196}.desk-radial-metrics dd{margin:0;color:#4d3e62;font-weight:500}.desk-dashboard-bottom .desk-chart-body{height:300px}
+@media(max-width:1000px){.desk-dashboard-bottom{grid-template-columns:minmax(0,1fr) 280px}}
+@media(max-width:800px){.desk-dashboard-bottom{grid-template-columns:1fr}}
+
+.desk-recent-person{display:flex;align-items:center;gap:9px;min-width:0}.desk-recent-avatar{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:34px;height:34px;border-radius:50%;background:#eee7fc;color:#7952bd;font-size:11px;font-weight:600}.desk-recent-person>div{min-width:0}.desk-recent-person strong{display:block;color:#45415b;font-size:12px;font-weight:500;overflow-wrap:anywhere}.desk-recent-person>div>span{display:block;font-size:10px;color:#9691a5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}.desk-recent-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:10px;color:#9992a9}.desk-recent-meta>span:last-child{margin-left:auto;border-radius:12px!important;font-size:10px!important}.desk-dashboard-reference .desk-recent-ticket p{margin:8px 0;font-size:12px;color:#625b75}
+
+/* Keep the activity card from stretching to the recent-ticket list height. */
+.desk-dashboard-middle>.desk-chart-panel{align-self:start}
+
+.desk-dashboard-middle{grid-template-columns:minmax(0,1fr) 310px}
+.desk-dashboard-middle>.desk-chart-panel{grid-column:1;grid-row:1}
+.desk-dashboard-middle>.desk-recent-panel{grid-column:2;grid-row:1}
+@media(max-width:1100px){.desk-dashboard-middle{grid-template-columns:minmax(0,1fr) 280px}}
+@media(max-width:850px){.desk-dashboard-middle{grid-template-columns:1fr}.desk-dashboard-middle>.desk-chart-panel,.desk-dashboard-middle>.desk-recent-panel{grid-column:auto;grid-row:auto}.desk-dashboard-middle>.desk-chart-panel{order:0}.desk-dashboard-middle>.desk-recent-panel{order:1}}
+
+/* Recent Tickets uses the same navy header as the ticket tables. */
+.desk-dashboard-reference .desk-recent-panel>header{background:var(--gov-navy);border-bottom:1px solid var(--gov-navy)}
+.desk-dashboard-reference .desk-recent-panel>header h2{color:#fff}
+.desk-dashboard-reference .desk-recent-panel>header>a{color:#fff;background:#ffffff10;border-color:#ffffff40}
+.desk-dashboard-reference .desk-recent-panel>header>a:hover{background:#ffffff24}
+
+/* Fill the activity card with its chart and align it with recent tickets. */
+.desk-dashboard-middle>.desk-chart-panel{align-self:stretch;display:flex;flex-direction:column;min-height:390px}
+.desk-dashboard-middle>.desk-chart-panel .desk-chart-body{flex:1;min-height:280px;height:auto}
+.desk-dashboard-middle>.desk-chart-panel header,.desk-dashboard-middle>.desk-chart-panel .desk-chart-caption{flex-shrink:0}
+.desk-dashboard-health-row{display:flex;justify-content:flex-end}.desk-dashboard-health-row>.desk-radial-health{width:310px}
+@media(max-width:1100px){.desk-dashboard-health-row>.desk-radial-health{width:280px}}
+@media(max-width:850px){.desk-dashboard-middle>.desk-chart-panel .desk-chart-body{height:280px;flex:none}.desk-dashboard-health-row>.desk-radial-health{width:100%}}
+
+/* Compact reference composition; primary dashboard content fits at opening. */
+.desk-dashboard-compact{gap:12px}.desk-dashboard-compact .desk-totals{padding:8px;gap:8px}.desk-dashboard-compact .desk-stat{padding:9px 12px;gap:10px}.desk-dashboard-compact .desk-stat-icon{width:34px;height:34px;border-radius:7px}.desk-dashboard-compact .desk-stat strong{font-size:20px;line-height:1.2}.desk-dashboard-compact .desk-stat span{font-size:10px;margin-bottom:2px}
+.desk-dashboard-compact .desk-dashboard-middle{grid-template-columns:280px minmax(0,1fr);gap:12px;align-items:stretch}.desk-dashboard-compact .desk-dashboard-middle>.desk-recent-panel{grid-column:1;grid-row:1}.desk-dashboard-compact .desk-dashboard-middle>.desk-chart-panel{grid-column:2;grid-row:1;min-height:0;display:flex;flex-direction:column}
+.desk-dashboard-compact .desk-panel header{padding:10px 12px;min-height:42px}.desk-dashboard-compact .desk-panel h2{font-size:12px}.desk-dashboard-compact .desk-chart-panel header select{min-height:28px;padding-top:4px!important;padding-bottom:4px!important}
+.desk-dashboard-compact .desk-dashboard-middle .desk-chart-body{height:200px;min-height:0;flex:1;padding:8px 12px 0}.desk-dashboard-compact .desk-chart-caption{font-size:9px;margin:4px 12px 8px}
+.desk-dashboard-compact .desk-recent-list{padding:0 12px;display:block}.desk-dashboard-compact .desk-recent-ticket{padding:7px 0!important}.desk-dashboard-compact .desk-recent-ticket:nth-child(n+6){display:none}.desk-dashboard-compact .desk-recent-avatar{width:27px;height:27px;font-size:9px}.desk-dashboard-compact .desk-recent-person{gap:7px}.desk-dashboard-compact .desk-recent-person strong{font-size:10px}.desk-dashboard-compact .desk-recent-person>div>span{font-size:9px;margin-top:1px}.desk-dashboard-compact .desk-recent-ticket p{font-size:11px;margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.desk-dashboard-compact .desk-recent-meta{font-size:9px}.desk-dashboard-compact .desk-recent-meta>span:last-child{font-size:9px!important}
+.desk-dashboard-reference.desk-dashboard-compact .desk-recent-panel>header{background:#fff;border-bottom:1px solid #edf0f5}.desk-dashboard-reference.desk-dashboard-compact .desk-recent-panel>header h2{color:#282832}.desk-dashboard-reference.desk-dashboard-compact .desk-recent-panel>header>a{background:#fff;color:#7947de;border-color:#eee9f7}
+.desk-dashboard-compact>.desk-monthly-chart .desk-chart-body{height:190px;padding:6px 12px 0}.desk-system-details{font-size:11px;color:#7a8597}.desk-system-details>summary{cursor:pointer;padding:4px 0}.desk-system-details[open] .desk-dashboard-health-row{margin-top:8px}
+@media(min-width:1101px) and (min-height:850px){.desk-dashboard-compact .desk-dashboard-middle .desk-chart-body{height:240px}.desk-dashboard-compact>.desk-monthly-chart .desk-chart-body{height:230px}}
+@media(max-width:850px){.desk-dashboard-compact .desk-dashboard-middle{grid-template-columns:1fr}.desk-dashboard-compact .desk-dashboard-middle>.desk-recent-panel,.desk-dashboard-compact .desk-dashboard-middle>.desk-chart-panel{grid-column:auto;grid-row:auto}.desk-dashboard-compact .desk-dashboard-middle .desk-chart-body{height:220px;flex:none}.desk-dashboard-compact .desk-totals{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Bound chart parents so responsive canvases cannot grow the dashboard. */
+@media(min-width:851px){
+  .desk-dashboard-compact .desk-dashboard-middle{height:clamp(250px,32vh,300px);min-height:0;align-items:stretch}
+  .desk-dashboard-compact .desk-dashboard-middle>.desk-chart-panel,
+  .desk-dashboard-compact .desk-dashboard-middle>.desk-recent-panel{height:100%;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+  .desk-dashboard-compact .desk-dashboard-middle>.desk-chart-panel .desk-chart-body{position:relative;flex:1 1 0;min-height:0!important;height:0!important}
+  .desk-dashboard-compact .desk-dashboard-middle .desk-recent-list{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin}
+  .desk-dashboard-compact>.desk-monthly-chart{height:clamp(220px,29vh,280px);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .desk-dashboard-compact>.desk-monthly-chart .desk-chart-body{position:relative;flex:1 1 0;min-height:0!important;height:0!important}
+  .desk-dashboard-compact .desk-chart-panel header,.desk-dashboard-compact .desk-chart-caption{flex-shrink:0}
+}
+
+/* Give dashboard totals more breathing room. */
+.desk-dashboard-compact .desk-stat{min-height:84px;padding:16px 18px;gap:14px}
+.desk-dashboard-compact .desk-stat-icon{width:42px;height:42px;border-radius:9px}
+.desk-dashboard-compact .desk-stat span{font-size:12px;margin-bottom:5px}
+.desk-dashboard-compact .desk-stat strong{font-size:25px;line-height:1.25}
+@media(max-width:480px){.desk-dashboard-compact .desk-stat{min-height:78px;padding:12px;gap:9px}.desk-dashboard-compact .desk-stat-icon{width:34px;height:34px}.desk-dashboard-compact .desk-stat strong{font-size:22px}}
+
+/* Size the recent-ticket panel to its five entries. */
+@media(min-width:851px){
+  .desk-dashboard-compact .desk-dashboard-middle{height:auto;align-items:stretch}
+  .desk-dashboard-compact .desk-dashboard-middle>.desk-recent-panel{height:auto;overflow:visible}
+  .desk-dashboard-compact .desk-dashboard-middle .desk-recent-list{flex:none;overflow:visible;min-height:0}
+  .desk-dashboard-compact .desk-dashboard-middle>.desk-chart-panel{height:auto;min-height:300px}
+}
+
+/* Integrate system health below the main dashboard panels. */
+.desk-dashboard-compact .desk-dashboard-health-row{display:block}
+.desk-dashboard-compact .desk-dashboard-health-row>.desk-radial-health{width:100%;display:grid;grid-template-columns:190px minmax(0,1fr);align-items:center}
+.desk-dashboard-compact .desk-radial-health>header{grid-column:1 / -1}
+.desk-dashboard-compact .desk-health-ring{width:120px;height:120px;margin:18px auto}
+.desk-dashboard-compact .desk-health-ring>div{width:96px;height:96px}
+.desk-dashboard-compact .desk-radial-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 24px;margin:16px 24px 16px 0}
+.desk-dashboard-compact .desk-radial-metrics>div{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:8px 0;border-bottom:1px solid #f0edf5}
+.desk-dashboard-compact .desk-radial-metrics dd{font-size:20px}
+@media(max-width:600px){.desk-dashboard-compact .desk-dashboard-health-row>.desk-radial-health{grid-template-columns:1fr}.desk-dashboard-compact .desk-radial-metrics{margin:0 18px 18px;grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Give recent ticket details more horizontal space. */
+@media(min-width:851px){.desk-dashboard-compact .desk-dashboard-middle{grid-template-columns:360px minmax(0,1fr)}}
+@media(min-width:851px) and (max-width:1100px){.desk-dashboard-compact .desk-dashboard-middle{grid-template-columns:320px minmax(0,1fr)}}
+
+.desk-dashboard-reference.desk-dashboard-compact .desk-recent-person strong{font-weight:700}

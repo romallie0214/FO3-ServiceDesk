@@ -1,0 +1,83 @@
+﻿.admin-management-columns{grid-template-columns:minmax(0,1fr) 340px!important;align-items:start}
+.admin-management-columns>div{min-width:0;border-color:#e1e7ef!important}
+.admin-queue-tabs{display:flex;gap:6px;align-items:center;padding:10px 12px;border-bottom:1px solid #e5eaf1;background:#fff}
+.admin-queue-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:7px 12px;border:1px solid transparent;border-radius:6px;background:transparent;color:#718096;font-size:12px;font-weight:500;cursor:pointer;transition:background 150ms ease,color 150ms ease}
+.admin-queue-tabs button[aria-pressed=true]{background:#eaf1fa;border-color:#d3e1f2;color:var(--gov-navy)}
+.admin-queue-tabs button:hover{background:#f0f5fb}
+.admin-queue-tabs span{padding:1px 6px;min-width:21px;border-radius:10px;background:#edf1f6;color:#7c8ca0;font-size:10px}.admin-queue-tabs button[aria-pressed=true] span{background:#d5e5f7;color:#245682}
+.admin-ticket-table{min-width:900px!important;width:100%;border-collapse:collapse}
+.admin-ticket-table th{height:44px;padding:0 12px!important;font-size:11px!important;font-weight:500!important;background:var(--gov-navy)!important;color:#fff!important;white-space:nowrap;letter-spacing:.03em;border-bottom:1px solid #e5eaf1!important}
+.admin-ticket-table td{height:46px;padding:7px 12px!important;font-size:13px!important;border-bottom:1px solid #edf0f3;border-right:1px solid #f1f3f6;vertical-align:middle}.admin-ticket-table td:first-child{white-space:nowrap;font-weight:400!important}.admin-ticket-table td:last-child{border-right:0}.admin-ticket-table tr:last-child td{border-bottom:0}.admin-ticket-table tbody tr:hover{background:#f5fbff!important;outline:1px solid #8bc8ef;outline-offset:-1px}
+.admin-ticket-table td:nth-child(3){min-width:180px;max-width:260px}.admin-ticket-table td>span{font-size:11px!important;border-radius:12px!important;padding:2px 7px!important;white-space:nowrap}.admin-ticket-table select{min-width:155px;max-width:220px;width:100%;font-size:12px!important}.admin-ticket-table td>button{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 9px!important;border-radius:5px!important;font-size:12px!important;white-space:nowrap}.admin-queue-tabs button:focus-visible{outline:2px solid #70bdf0;outline-offset:2px}
+@media(max-width:1100px){.admin-management-columns{grid-template-columns:1fr!important}}
+@media(prefers-reduced-motion:reduce){.admin-queue-tabs button{transition:none}}
+
+.admin-management-columns{grid-template-columns:minmax(0,1fr)!important}
+
+/* Pill tabs sit directly on the page background. */
+.admin-queue-tabs{background:#f5f7fb;border-bottom:0;padding:0 0 12px;gap:8px}
+.admin-queue-tabs button{border-radius:999px;border:1px solid #dce4ef;background:transparent;padding:8px 15px}
+.admin-queue-tabs button[aria-pressed=true]{background:var(--gov-navy);border-color:var(--gov-navy);color:#fff}
+.admin-queue-tabs button[aria-pressed=true] span{background:#ffffff25;color:#fff}
+.admin-management-columns>div:has(>.admin-queue-tabs){background:transparent!important;border:0!important;border-radius:0!important;overflow:visible!important}
+.admin-management-columns>div:has(>.admin-queue-tabs)>div:not(.admin-queue-tabs){background:#fff;border:1px solid #e1e7ef;border-radius:7px;overflow:hidden}
+
+.admin-queue-tabs button[aria-pressed=true]{background:#dceafa;border-color:#b9d1ec;color:#245789}
+.admin-queue-tabs button[aria-pressed=true] span{background:#c1d9f2;color:#245789}
+.admin-queue-tabs button[aria-pressed=true]:hover{background:#d2e4f8}
+
+.admin-queue-tabs button[aria-pressed=true]{background:#4879ad;border-color:#4879ad;color:#fff}
+.admin-queue-tabs button[aria-pressed=true] span{background:#ffffff26;color:#fff}
+.admin-queue-tabs button[aria-pressed=true]:hover{background:#3d6e9f}
+
+/* Underlined navigation tabs instead of pill buttons. */
+.admin-queue-tabs{gap:20px;padding:0;margin-bottom:12px;border-bottom:1px solid #dbe3ed;background:transparent}
+.admin-queue-tabs button{position:relative;border:0;border-radius:0;background:transparent;padding:10px 4px 12px;color:#7c899a;min-height:40px}
+.admin-queue-tabs button[aria-pressed=true],.admin-queue-tabs button[aria-pressed=true]:hover{background:transparent;border:0;color:#2b6197}
+.admin-queue-tabs button[aria-pressed=true]::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:3px;border-radius:2px 2px 0 0;background:#4879ad}
+.admin-queue-tabs button:hover{background:transparent;color:#2b6197}
+.admin-queue-tabs button[aria-pressed=true] span{background:#dae7f5;color:#2b6197}
+
+/* Rounded tabs with a softer navy active state. */
+.admin-queue-tabs{gap:8px;padding:0;margin-bottom:12px;border-bottom:0;background:transparent}
+.admin-queue-tabs button{border:1px solid #d5deea;border-radius:999px;padding:8px 15px;min-height:36px;background:transparent;color:#6d7f94}
+.admin-queue-tabs button[aria-pressed=true],.admin-queue-tabs button[aria-pressed=true]:hover{border:1px solid #285585;border-radius:999px;background:#285585;color:#fff}
+.admin-queue-tabs button[aria-pressed=true]::after{display:none}
+.admin-queue-tabs button[aria-pressed=true] span{background:#ffffff26;color:#fff}
+.admin-queue-tabs button:hover{background:#eaf0f7;color:#285585}
+
+.admin-queue-tabs{flex-wrap:wrap}.admin-workload-panel{background:#fff;border:1px solid #e1e7ef;border-radius:7px;overflow:hidden}.admin-workload-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:var(--gov-navy);color:#fff}.admin-workload-heading h2{font-size:13px;font-weight:500;margin:0}.admin-workload-heading>span{font-size:11px;color:#c4d4e6}.admin-workload-list{padding:0 18px}.admin-workload-row{display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:1px solid #edf0f4}.admin-workload-row:last-child{border:0}.admin-workload-avatar{width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%;background:#eaf1fa;color:#315a85;font-size:12px}.admin-workload-info{flex:1;min-width:0}.admin-workload-info>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px}.admin-workload-info strong{font-size:13px;font-weight:500;color:#40566e}.admin-workload-info span,.admin-workload-info small{font-size:11px;color:#8695a6}.admin-workload-track{height:5px;border-radius:4px;background:#edf1f5;overflow:hidden;margin-bottom:5px}.admin-workload-track>div{height:100%;border-radius:4px}.admin-workload-empty{padding:24px;text-align:center;color:#8695a6;font-size:13px}
+
+.admin-workload-heading{justify-content:flex-start;flex-wrap:wrap}
+
+.admin-workload-heading{padding:10px 16px;gap:0;min-height:36px}
+.admin-workload-row{padding:10px 0;gap:10px}
+.admin-workload-avatar{width:30px;height:30px;font-size:11px}
+.admin-workload-info>div:first-child{margin-bottom:5px}
+.admin-workload-track{height:4px;margin-bottom:3px}
+
+/* Remove the outer frame from the assignment table. */
+.admin-management-columns>div:has(>.admin-queue-tabs)>div:not(.admin-queue-tabs){border:0!important}
+
+.admin-management-filterbar>div>strong{font-size:13px;font-weight:500;color:var(--ui-text,#344456)}.admin-management-filterbar p{margin:4px 0 0;font-size:12px;color:#8595a8}.admin-management-filterbar .sla-filter-menu{left:auto;right:0}.admin-management-columns>div:has(>.admin-queue-tabs){background:transparent!important}.admin-management-page .admin-queue-tabs{background:transparent!important}.admin-ticket-pagination{background:var(--ui-surface,#fff);border-color:var(--ui-border,#e1e7ee)!important;color:var(--ui-text,#344456)!important}
+html[data-theme=dark] .admin-management-page .admin-management-columns>div:has(>.admin-queue-tabs){background:transparent!important}
+html[data-theme=dark] .admin-management-page .admin-queue-tabs{background:transparent!important}
+html[data-theme=dark] .admin-queue-tabs button:not([aria-pressed=true]) span{background:#2a3d55;color:#b6cce5}
+html[data-theme=dark] .admin-ticket-pagination{background:#192332!important;border-color:#34465e!important;color:#a9bdd5!important}
+html[data-theme=dark] .admin-ticket-pagination button{background:#213149!important;color:#bdd2eb!important;border-color:#3b526f!important}
+html[data-theme=dark] .admin-ticket-pagination button:disabled{opacity:.45}
+
+.admin-queue-tabs>.sla-filter-dropdown{margin-left:auto}.admin-queue-tabs>.sla-filter-dropdown .sla-filter-menu{left:auto;right:0}.admin-queue-tabs{align-items:center}
+
+.admin-management-page .admin-queue-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:28px 18px;background:var(--ui-surface,#fff);color:var(--ui-text,#344456);text-align:center;border-radius:8px}
+.admin-queue-empty>svg{color:#4d967e}
+.admin-queue-empty strong{font-size:13px;font-weight:500}
+.admin-queue-empty span{font-size:12px;opacity:.65}
+html[data-theme=dark] .admin-management-page .admin-queue-empty{background:#192332;color:#d5dfed}
+
+/* Override the queue container's legacy white surface in dark mode. */
+html[data-theme=dark] body .admin-management-page .admin-management-columns>div:has(>.admin-queue-tabs)>div:not(.admin-queue-tabs){background:var(--ui-surface,#192332)!important;color:var(--ui-text,#d5dfed)}
+html[data-theme=dark] body .admin-management-page .admin-queue-empty{background:var(--ui-surface,#192332)!important;color:#d5dfed!important}
+html[data-theme=dark] body .admin-management-page .admin-queue-empty strong{color:#d5dfed!important}
+html[data-theme=dark] body .admin-management-page .admin-queue-empty span{color:#a4b5c9!important;opacity:1}
+html[data-theme=dark] body .admin-management-page .admin-queue-empty>svg{color:#7fc7ac!important}

@@ -1,0 +1,60 @@
+/* Monitoring shares the ticket list toolbar, filters, and table treatment. */
+.ticket-monitor-grid{background:#fff;border:1px solid #e7e9ec;border-radius:6px;color:#30343a}
+.ticket-monitor-grid .ticket-grid-toolbar{gap:10px;padding:18px 16px 12px}
+.ticket-monitor-grid .ticket-grid-search{flex:0 1 280px;width:280px;height:36px;min-width:0;box-sizing:border-box;padding:0 10px}.ticket-monitor-grid .ticket-grid-search input{height:100%;font-size:13px}.ticket-monitor-grid summary{height:36px;box-sizing:border-box;padding:0 11px}.ticket-monitor-grid>div:has(.ticket-monitor-table){border:0!important;border-radius:0 0 6px 6px!important}.ticket-monitor-grid>div:has(.ticket-monitor-table)>div{border:0!important;border-radius:0!important}
+.ticket-monitor-table{min-width:1450px!important}.ticket-monitor-table th{height:44px;padding:0 12px!important;background:var(--gov-navy)!important;color:white!important;font-size:12px!important;font-weight:500;letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid #e7e9ec}.ticket-monitor-table td{height:40px;padding:7px 12px!important;font-size:14px!important;border-bottom:1px solid #edf0f2;border-right:1px solid #f1f3f5;vertical-align:middle}.ticket-monitor-table td:last-child{border-right:0}.ticket-monitor-table tbody tr:last-child td{border-bottom:0}.ticket-monitor-table tbody tr{border-left:0!important}.ticket-monitor-table tbody tr:hover{background:#f6fbff!important;opacity:1!important;outline:1px solid #79c2f0;outline-offset:-1px}.ticket-monitor-table td>span{border-radius:14px!important;font-size:12px!important}.ticket-monitor-table td>div{font-size:12px!important}.ticket-monitor-table [data-priority]{display:inline-flex;align-items:center;gap:4px;border-radius:20px!important;padding:1px 6px!important;font-size:12px!important;line-height:20px}.ticket-monitor-table [data-priority]:before{content:'';width:4px;height:4px;border-radius:50%;background:currentColor}.ticket-monitor-table [data-priority="Critical"]{background:#fde7ed!important;color:#b4234d!important}.ticket-monitor-table [data-priority="High"]{background:#fff0ef!important;color:#d74c4c!important}.ticket-monitor-table [data-priority="Medium"]{background:#fdf5e5!important;color:#a5792b!important}.ticket-monitor-table [data-priority="Low"]{background:#eefaef!important;color:#2e9b62!important}
+
+.assigned-tickets-grid .ticket-grid-id{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0}.assigned-tickets-grid .ticket-grid-id:focus-visible{outline:2px solid #70bdf0;outline-offset:2px}.assigned-tickets-grid .ticket-monitor-table{min-width:1200px!important}.assigned-tickets-grid .ticket-monitor-table td>div,.assigned-tickets-grid .ticket-monitor-table td>button{font-size:14px!important}.assigned-tickets-grid .ticket-monitor-table td:nth-child(2)>div{display:block!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}.assigned-tickets-grid .ticket-monitor-table td:nth-child(4)>div:nth-child(2),.assigned-tickets-grid .ticket-monitor-table td:nth-child(6)>div:nth-child(2){font-size:11px!important}
+
+.assigned-tickets-grid .ticket-monitor-table .ticket-grid-id{font-weight:400!important}
+
+.assignment-note{display:flex;align-items:center;justify-content:space-between;gap:12px}.assignment-note>button{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:28px;height:28px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--gov-navy);cursor:pointer}.assignment-note>button:hover{background:#d5e6f7}.assignment-note>button:focus-visible{outline:2px solid #5597d0;outline-offset:2px}
+
+.submitted-tickets-grid .ticket-grid-id{border:0;background:transparent;color:inherit;font:inherit;font-weight:400!important;padding:0;cursor:pointer}.submitted-tickets-grid .ticket-grid-id:focus-visible{outline:2px solid #70bdf0;outline-offset:2px}.submitted-tickets-grid .ticket-monitor-table{min-width:1400px!important}.submitted-tickets-grid .ticket-monitor-table td>button,.submitted-tickets-grid .ticket-monitor-table td>div:first-child{font-size:14px!important}.submitted-tickets-grid .ticket-monitor-table td>div:not(:first-child){font-size:11px!important}.submitted-tickets-grid .ticket-monitor-table td:nth-child(3)>div:first-child{display:block!important;max-width:250px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+
+.monitor-report-open{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border:1px solid #c8d6e6;border-radius:5px;background:#fff;color:var(--gov-navy);font-size:12px;cursor:pointer;white-space:nowrap}.monitor-report-open:hover{background:#edf4fc}.monitor-report-backdrop{position:fixed;inset:0;z-index:1000;background:#14253870;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}.monitor-report-modal{width:min(1200px,100%);max-height:calc(100dvh - 48px);display:flex;flex-direction:column;overflow:hidden;border-radius:10px;background:#f7f9fc;box-shadow:0 18px 70px #14253840;outline:none}.monitor-report-header{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;padding:16px 20px;background:var(--gov-navy);color:#fff}.monitor-report-header h2{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:550;margin:0}.monitor-report-header button{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:0;border-radius:5px;background:transparent;color:#fff;cursor:pointer}.monitor-report-header button:hover{background:#ffffff20}.monitor-report-content{overflow-y:auto;min-height:0;padding:20px;overscroll-behavior:contain}.monitor-report-modal :is(button,input,select):focus-visible{outline:2px solid #7bb9e7;outline-offset:2px}@media(max-width:600px){.monitor-report-backdrop{padding:0}.monitor-report-modal{width:100%;height:100dvh;max-height:100dvh;border-radius:0}.monitor-report-content{padding:12px}}
+
+.ticket-monitor-grid .ticket-grid-toolbar>.monitor-report-open{margin-left:auto;min-height:36px;box-sizing:border-box;justify-content:center}
+@media(max-width:600px){.ticket-monitor-grid .ticket-grid-toolbar>.monitor-report-open{margin-left:auto}}
+
+.ticket-monitor-grid .monitor-report-open{background:var(--gov-navy);border-color:var(--gov-navy);color:#fff;font-weight:500;box-shadow:0 1px 2px #15355515}
+.ticket-monitor-grid .monitor-report-open:hover{background:var(--gov-navy2);border-color:var(--gov-navy2)}
+.monitor-refresh-button{background:#fff!important;color:#62748a!important;border:1px solid #dce3eb!important;border-radius:5px!important;box-shadow:none}
+.monitor-refresh-button:hover{background:#f1f5fa!important;color:var(--gov-navy)!important}
+
+/* Report dialog follows the compact, neutral ticket-sheet styling. */
+.monitor-report-backdrop{background:rgba(22,30,40,.4)}
+.monitor-report-modal{width:min(1080px,100%);background:#fff;border:1px solid #e2e7ed;border-radius:8px;box-shadow:0 20px 70px #14253830;animation:monitor-report-appear 180ms ease-out}
+.monitor-report-header{min-height:70px;padding:18px 22px;box-sizing:border-box;border-bottom:1px solid #ffffff1f}
+.monitor-report-header h2{font-size:15px;font-weight:550;gap:9px}.monitor-report-header h2>svg{padding:5px;box-sizing:content-box;background:#ffffff18;border-radius:5px;color:#c5dff5}
+.monitor-report-content{padding:20px 22px 24px;font-size:13px;line-height:1.5}
+.monitor-report-intro{background:#f6f9fc!important;border:1px solid #e5ebf2!important;border-radius:6px!important;color:#687b90!important;padding:12px 14px!important;font-size:12px!important;margin-bottom:20px!important}
+.monitor-report-filters{padding:0!important;border:0!important;border-radius:0!important;background:#fff!important;margin-bottom:20px!important}
+.monitor-report-filters>div:first-child{font-size:14px!important;font-weight:550!important;text-transform:none!important;letter-spacing:0!important;color:#4f5e70!important;margin-bottom:16px!important}
+.monitor-report-fields{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:16px!important;margin-bottom:18px!important}
+.monitor-report-fields>div{min-width:0}.monitor-report-fields label{text-transform:none!important;letter-spacing:0!important;font-size:12px!important;font-weight:450!important;color:#6c7c8d!important;margin-bottom:6px!important}
+.monitor-report-fields input,.monitor-report-fields select{min-height:36px;font-size:13px!important;border-color:#dfe6ee!important;border-radius:5px!important;padding:7px 10px!important;background:#fff;color:#43566d}
+.monitor-report-presets{gap:7px!important;padding-top:14px;border-top:1px solid #edf0f4}.monitor-report-presets button{border-color:#dfe6ee!important;border-radius:5px!important;padding:5px 9px!important;font-size:11px!important;font-weight:450!important}.monitor-report-presets button:hover{border-color:#9cbada!important;box-shadow:0 0 0 1px #e8f1fa}
+.monitor-report-actions{justify-content:flex-end;flex-wrap:wrap;border-top:1px solid #edf0f4;padding-top:16px;gap:8px!important}.monitor-report-actions button{min-height:36px;font-size:12px!important;border-radius:5px!important;padding:8px 13px!important;display:inline-flex;align-items:center;justify-content:center;gap:7px}.monitor-report-actions button:disabled{opacity:.65;cursor:wait}.monitor-report-content button svg{vertical-align:middle;margin-right:3px}.monitor-report-content table{font-size:12px}.monitor-report-content table th{font-size:11px!important}.monitor-report-content table td{font-size:12px!important;border-bottom:1px solid #edf0f4}.monitor-report-spinner{animation:monitor-report-spin 800ms linear infinite}
+@keyframes monitor-report-spin{to{transform:rotate(360deg)}}@keyframes monitor-report-appear{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:800px){.monitor-report-fields{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:600px){.monitor-report-modal{border:0;border-radius:0}.monitor-report-header{padding:16px}.monitor-report-content{padding:16px}.monitor-report-fields{grid-template-columns:1fr!important}.monitor-report-actions button{flex:1}}
+@media(prefers-reduced-motion:reduce){.monitor-report-modal,.monitor-report-spinner{animation:none}}
+
+/* Lighter report header and tighter action spacing. */
+.monitor-report-header{background:#f4f6f9;color:#35465a;border-bottom:1px solid #e3e8ef;min-height:58px;padding:12px 22px}
+.monitor-report-header h2{color:#35465a}
+.monitor-report-header h2>svg{background:#e7edf5;color:#5c7798}
+.monitor-report-header button{color:#6a7c91}
+.monitor-report-header button:hover{background:#e5ebf2}
+.monitor-report-content{padding-bottom:16px}
+.monitor-report-filters{margin-bottom:0!important}
+.monitor-report-actions{padding-top:12px}
+
+.monitor-report-intro{display:flex;align-items:center;justify-content:space-between;gap:12px}.monitor-report-intro>button{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:26px;height:26px;padding:0;border:0;border-radius:4px;background:transparent;color:#75869a;cursor:pointer}.monitor-report-intro>button:hover{background:#e8eef5;color:#35465a}
+
+.monitor-live-note{display:flex;align-items:center;justify-content:space-between;gap:12px}.monitor-live-note>button{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:26px;height:26px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--gov-navy);cursor:pointer}.monitor-live-note>button:hover{background:#d5e5f7}.monitor-live-note>button:focus-visible{outline:2px solid #5597d0;outline-offset:2px}
+
+
+.submitted-tickets-grid .submitted-office-location{display:inline-block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}

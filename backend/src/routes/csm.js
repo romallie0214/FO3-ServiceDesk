@@ -71,6 +71,14 @@ router.post('/', auth, async (req, res) => {
       commendation, suggestion,
     } = req.body;
 
+    const requiredRatings = [officer_rating, rating_promptness, rating_reliability, rating_access, rating_courtesy, rating_integrity, rating_assurance, rating_outcome];
+    if (requiredRatings.some(value => !Number.isInteger(value) || value < 1 || value > 5)) {
+      return res.status(400).json({ error: 'Complete all required ratings using a value from 1 to 5.' });
+    }
+    if ([cc_awareness, cc_visibility, cc_helpfulness].some(value => typeof value !== 'string' || !value.trim())) {
+      return res.status(400).json({ error: "Answer all Citizen's Charter questions." });
+    }
+
     // Convert 0/1 to 'Male'/'Female' for enum column
     const sexLabel =
       sex === '0' || sex === 0 ? 'Male'   :

@@ -1,4 +1,9 @@
-import { useEffect, useState } from 'react';
+import { showErrorToast } from '../utils/notifications';
+import '../styles/management-ui.css';
+import AppTable from '../components/AppTable';
+import './CategoryManagement.css';
+import { Plus, Pencil, Trash2, Save, LoaderCircle, Layers, ListTree, List, SlidersHorizontal, ChevronDown, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -178,6 +183,13 @@ function SLASelect({ value, onChange, slaRules }: {
 }
 
 export default function CategoryManagement() {
+  const [showSlaNote, setShowSlaNote] = useState(true);
+  const filtersRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => { if (event.target instanceof Node && filtersRef.current && !filtersRef.current.contains(event.target)) filtersRef.current.open = false; };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, []);
   const { user } = useAuth();
   const managedAreaIds = user?.role === 'super_admin' ? null : (user?.area_admin_service_ids || []);
   const [categories, setCategories]       = useState<Category[]>([]);
@@ -188,6 +200,7 @@ export default function CategoryManagement() {
   const [serviceAreaFilter, setServiceAreaFilter] = useState('all');
   const [loading, setLoading]             = useState(true);
 
+  const [categoryTab, setCategoryTab] = useState<'category' | 'subcategory' | 'subitem'>('category');
   const [selectedCat, setSelectedCat]   = useState<Category | null>(null);
   const [selectedSub, setSelectedSub]   = useState<SubCategory | null>(null);
 
@@ -280,8 +293,8 @@ export default function CategoryManagement() {
   }
 
   async function handleSave() {
-    if (!form.name.trim()) { alert('Name is required.'); return; }
-    if (modalType === 'category' && !form.service_area_id) { alert('Select the responsible service area.'); return; }
+    if (!form.name.trim()) { showErrorToast('Name is required.'); return; }
+    if (modalType === 'category' && !form.service_area_id) { showErrorToast('Select the responsible service area.'); return; }
     setSaving(true);
     const payload = {
       name: form.name,
@@ -325,7 +338,7 @@ export default function CategoryManagement() {
       }
       setModalType(null);
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to save.');
+      showErrorToast(err.response?.data?.error || 'Failed to save.');
     } finally {
       setSaving(false);
     }
@@ -352,7 +365,7 @@ export default function CategoryManagement() {
       showToast(`"${item.name}" deleted.`);
       setDeleteTarget(null);
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete.');
+      showErrorToast(err.response?.data?.error || 'Failed to delete.');
     } finally {
       setDeleting(false);
     }
@@ -374,7 +387,7 @@ export default function CategoryManagement() {
     title, count, onAdd, color,
   }: { title: string; count?: number; onAdd?: () => void; color: string; }) {
     return (
-      <div style={{
+      <div className="category-column-header" style={{
         background: color, padding: '10px 14px',
         display: 'flex', justifyContent: 'space-between',
         alignItems: 'center',
@@ -391,7 +404,7 @@ export default function CategoryManagement() {
               color: '#fff', fontSize: 'clamp(8px, 1.5vw, 10px)', cursor: 'pointer',
             }}
           >
-            + Add
+            <Plus size={13} /> Add
           </button>
         )}
       </div>
@@ -412,7 +425,7 @@ export default function CategoryManagement() {
                 border: 'none', borderRadius: 4, cursor: 'pointer',
               }}
             >
-              + Add Now
+              <Plus size={13} /> Add Now
             </button>
           </div>
         )}
@@ -427,7 +440,7 @@ export default function CategoryManagement() {
   );
 
   return (
-    <div>
+    <div className="category-management-page">
       {/* BREADCRUMB */}
       <div style={{
         fontSize: 'clamp(9px, 1.8vw, 11px)',
@@ -440,7 +453,7 @@ export default function CategoryManagement() {
       </div>
 
       {/* INFO STRIP */}
-      <div style={{
+      {showSlaNote && <div className="category-sla-note" style={{
         background: '#E8F1FA',
         borderLeft: '3px solid var(--gov-navy)',
         borderRadius: '0 4px 4px 0',
@@ -450,328 +463,41 @@ export default function CategoryManagement() {
         marginBottom: 14,
         lineHeight: 1.5,
       }}>
-        SLA rules can be mapped at <strong>Category</strong>,{' '}
-        <strong>Sub-Category</strong>, or <strong>Sub-Item</strong> level.
-        The most specific level always takes priority
-        (Sub-Item → Sub-Category → Category).
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '10px 12px', marginBottom: 14 }}>
-        <div><strong style={{ color: 'var(--gov-navy)' }}>Category Service View</strong><div style={{ fontSize: 'var(--text-xs)', color: '#62748A', marginTop: 2 }}>{managedAreaIds ? 'Manage the selected assigned service area.' : 'FO3 Super Admin can view all services or focus on one service area.'}</div></div>
-        <select value={serviceAreaFilter} onChange={e => setServiceAreaFilter(e.target.value)} style={{ ...inputStyle, width: 260 }}>
-          {!managedAreaIds && <option value="all">All service areas</option>}
-          {serviceAreas.filter(area => area.is_active).map(area => <option key={area.id} value={area.id}>{area.code} — {area.name}</option>)}
-        </select>
-      </div>
-
-      {/* FALLBACK CHAIN LEGEND */}
-      <div style={{
-        background: '#fff',
-        border: '0.5px solid #D0D9E4',
-        borderRadius: 8,
-        padding: 'clamp(8px, 2vw, 12px)',
-        marginBottom: 14,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'clamp(6px, 1.5vw, 10px)',
-        flexWrap: 'wrap',
-        fontSize: 'clamp(8px, 1.5vw, 10px)',
-      }}>
-        <span style={{ color: '#6A7280', fontWeight: 500 }}>SLA Priority Chain:</span>
-        <span style={{
-          background: '#E8F5EE',
-          color: '#1B6B3A',
-          padding: '2px 8px',
-          borderRadius: 4,
-          fontWeight: 500,
-          whiteSpace: 'nowrap',
-        }}>
-          Sub-Item SLA
-        </span>
-        <span style={{ color: '#888', whiteSpace: 'nowrap' }}>→ if none →</span>
-        <span style={{
-          background: '#FEF3DC',
-          color: '#CC7700',
-          padding: '2px 8px',
-          borderRadius: 4,
-          fontWeight: 500,
-          whiteSpace: 'nowrap',
-        }}>
-          Sub-Category SLA
-        </span>
-        <span style={{ color: '#888', whiteSpace: 'nowrap' }}>→ if none →</span>
-        <span style={{
-          background: '#E8F1FA',
-          color: '#0D3B6E',
-          padding: '2px 8px',
-          borderRadius: 4,
-          fontWeight: 500,
-          whiteSpace: 'nowrap',
-        }}>
-          Category SLA
-        </span>
-        <span style={{ color: '#888', whiteSpace: 'nowrap' }}>→ if none →</span>
-        <span style={{
-          background: '#F0F0F0',
-          color: '#666',
-          padding: '2px 8px',
-          borderRadius: 4,
-          whiteSpace: 'nowrap',
-        }}>
-          No SLA
-        </span>
-      </div>
+        <span>SLA rules use the most specific mapping: <strong>Sub-Item</strong>, then <strong>Sub-Category</strong>, then <strong>Category</strong>. If none is configured, no SLA applies.</span>
+        <button type="button" aria-label="Dismiss SLA note" onClick={() => setShowSlaNote(false)}><X size={16} /></button>
+      </div>}
 
       {/* 3-COLUMN PANEL */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: 'clamp(10px, 2vw, 12px)',
-        alignItems: 'start',
-      }}>
-
-        {/* ── COLUMN 1: CATEGORIES ── */}
-        <div style={{
-          background: '#fff', border: '0.5px solid #D0D9E4',
-          borderRadius: 8, overflow: 'hidden',
-        }}>
-          <ColumnHeader
-            title="Categories"
-            count={visibleCategories.length}
-            color="var(--gov-navy)"
-            onAdd={() => openCreate('category')}
-          />
-          {visibleCategories.length === 0 ? (
-            <EmptyState
-              message="No categories yet."
-              onAdd={() => openCreate('category')}
-            />
-          ) : visibleCategories.map((cat, index) => (
-            <div
-              key={cat.id}
-            >
-              {serviceAreaFilter === 'all' && (index === 0 || visibleCategories[index - 1].service_area_id !== cat.service_area_id) && <div style={{ padding: '7px 12px', background: '#EDF4FB', borderBottom: '1px solid #D5E1EE', color: '#0D3B6E', fontSize: 'var(--text-xs)', fontWeight: 700 }}>
-                {cat.service_area_code || 'UNASSIGNED'} — {cat.service_area_name || 'Unassigned Service'}
-              </div>}
-              <div onClick={() => setSelectedCat(selectedCat?.id === cat.id ? null : cat)} style={{
-                padding: 'clamp(8px, 2vw, 10px) clamp(10px, 2vw, 14px)', cursor: 'pointer', borderBottom: '0.5px solid #EEF1F5', background: selectedCat?.id === cat.id ? '#E8F1FA' : '#fff', borderLeft: selectedCat?.id === cat.id ? '3px solid var(--gov-navy)' : '3px solid transparent',
-              }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                gap: '8px',
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{
-                    fontSize: 'clamp(11px, 2vw, 13px)',
-                    fontWeight: 500,
-                    color: '#1A2A3A',
-                    marginBottom: 2,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {cat.name}
-                  </p>
-                  {cat.description && (
-                    <p style={{
-                      fontSize: 'clamp(8px, 1.5vw, 10px)',
-                      color: '#6A7280',
-                      marginBottom: 2,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}>
-                      {cat.description}
-                    </p>
-                  )}
-                  <p style={{
-                    fontSize: 'clamp(8px, 1.5vw, 10px)',
-                    color: '#888',
-                  }}>
-                    {cat.sub_category_count} sub-categor{cat.sub_category_count !== 1 ? 'ies' : 'y'}
-                  </p>
-                  <SLABadges item={cat} />
-                </div>
-                <div style={{
-                  display: 'flex',
-                  gap: 4,
-                  flexShrink: 0,
-                }}>
-                  <button
-                    onClick={e => { e.stopPropagation(); openEdit('category', cat); }}
-                    style={{
-                      padding: 'clamp(2px, 0.8vw, 3px) clamp(6px, 1.2vw, 8px)',
-                      fontSize: 'clamp(7px, 1.2vw, 9px)',
-                      background: 'var(--gov-navy)',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: 3,
-                      cursor: 'pointer',
-                      fontWeight: 500,
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); setDeleteTarget({ type: 'category', item: cat }); }}
-                    style={{
-                      padding: '3px 8px', fontSize: 'clamp(8px, 1.5vw, 10px)',
-                      background: '#FDE8E8', color: '#8B1A1A',
-                      border: '1px solid #F5C0C0',
-                      borderRadius: 3, cursor: 'pointer',
-                    }}
-                  >Del</button>
-                </div>
-              </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── COLUMN 2: SUB-CATEGORIES ── */}
-        <div style={{
-          background: '#fff', border: '0.5px solid #D0D9E4',
-          borderRadius: 8, overflow: 'hidden',
-        }}>
-          <ColumnHeader
-            title={selectedCat ? `Sub-Categories — ${selectedCat.name}` : 'Sub-Categories'}
-            count={selectedCat ? subCategories.length : undefined}
-            color={selectedCat ? '#1A5490' : '#8A96A3'}
-            onAdd={selectedCat ? () => openCreate('subcategory') : undefined}
-          />
-          {!selectedCat ? (
-            <EmptyState message="← Select a category first" />
-          ) : subCategories.length === 0 ? (
-            <EmptyState
-              message="No sub-categories yet."
-              onAdd={() => openCreate('subcategory')}
-            />
-          ) : subCategories.map(sub => (
-            <div
-              key={sub.id}
-              onClick={() => setSelectedSub(
-                selectedSub?.id === sub.id ? null : sub
-              )}
-              style={{
-                padding: '10px 14px', cursor: 'pointer',
-                borderBottom: '0.5px solid #EEF1F5',
-                background: selectedSub?.id === sub.id ? '#FEF3DC' : '#fff',
-                borderLeft: selectedSub?.id === sub.id
-                  ? '3px solid #CC7700'
-                  : '3px solid transparent',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 'clamp(10px, 1.8vw, 12px)', fontWeight: 500, color: '#1A2A3A', marginBottom: 2 }}>
-                    {sub.name}
-                  </p>
-                  {sub.description && (
-                    <p style={{ fontSize: 'clamp(8px, 1.5vw, 10px)', color: '#6A7280', marginBottom: 2 }}>
-                      {sub.description}
-                    </p>
-                  )}
-                  <p style={{ fontSize: 'clamp(8px, 1.5vw, 10px)', color: '#888' }}>
-                    {sub.item_count} sub-item{sub.item_count !== 1 ? 's' : ''}
-                  </p>
-                  <SLABadges item={sub} />
-                </div>
-                <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 8 }}>
-                  <button
-                    onClick={e => { e.stopPropagation(); openEdit('subcategory', sub); }}
-                    style={{
-                      padding: '3px 8px', fontSize: 'clamp(8px, 1.5vw, 10px)',
-                      background: 'var(--gov-navy)', color: '#fff',
-                      border: 'none', borderRadius: 3, cursor: 'pointer',
-                    }}
-                  >Edit</button>
-                  <button
-                    onClick={e => { e.stopPropagation(); setDeleteTarget({ type: 'subcategory', item: sub }); }}
-                    style={{
-                      padding: '3px 8px', fontSize: 'clamp(8px, 1.5vw, 10px)',
-                      background: '#FDE8E8', color: '#8B1A1A',
-                      border: '1px solid #F5C0C0',
-                      borderRadius: 3, cursor: 'pointer',
-                    }}
-                  >Del</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── COLUMN 3: SUB-ITEMS ── */}
-        <div style={{
-          background: '#fff', border: '0.5px solid #D0D9E4',
-          borderRadius: 8, overflow: 'hidden',
-        }}>
-          <ColumnHeader
-            title={selectedSub ? `Sub-Items — ${selectedSub.name}` : 'Sub-Items'}
-            count={selectedSub ? subItems.length : undefined}
-            color={selectedSub ? '#1B6B3A' : '#8A96A3'}
-            onAdd={selectedSub ? () => openCreate('subitem') : undefined}
-          />
-          {!selectedSub ? (
-            <EmptyState message="← Select a sub-category first" />
-          ) : subItems.length === 0 ? (
-            <EmptyState
-              message="No sub-items yet."
-              onAdd={() => openCreate('subitem')}
-            />
-          ) : subItems.map(item => (
-            <div
-              key={item.id}
-              style={{
-                padding: '10px 14px',
-                borderBottom: '0.5px solid #EEF1F5',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#F5F8FC')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <div style={{
-                      width: 6, height: 6, borderRadius: '50%',
-                      background: 'var(--gov-green)', flexShrink: 0,
-                    }} />
-                    <p style={{ fontSize: 'clamp(10px, 1.8vw, 12px)', fontWeight: 500, color: '#1A2A3A' }}>
-                      {item.name}
-                    </p>
-                  </div>
-                  {item.description && (
-                    <p style={{ fontSize: 'clamp(8px, 1.5vw, 10px)', color: '#6A7280', marginLeft: 12, marginBottom: 2 }}>
-                      {item.description}
-                    </p>
-                  )}
-                  <div style={{ marginLeft: 12 }}>
-                    <SLABadges item={item} />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 8 }}>
-                  <button
-                    onClick={() => openEdit('subitem', item)}
-                    style={{
-                      padding: '3px 8px', fontSize: 'clamp(8px, 1.5vw, 10px)',
-                      background: 'var(--gov-navy)', color: '#fff',
-                      border: 'none', borderRadius: 3, cursor: 'pointer',
-                    }}
-                  >Edit</button>
-                  <button
-                    onClick={() => setDeleteTarget({ type: 'subitem', item })}
-                    style={{
-                      padding: '3px 8px', fontSize: 'clamp(8px, 1.5vw, 10px)',
-                      background: '#FDE8E8', color: '#8B1A1A',
-                      border: '1px solid #F5C0C0',
-                      borderRadius: 3, cursor: 'pointer',
-                    }}
-                  >Del</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="category-level-tabs" role="group" aria-label="Category levels">
+        <button aria-pressed={categoryTab === 'category'} onClick={() => setCategoryTab('category')}><Layers size={15} />Categories<span>{visibleCategories.length}</span></button>
+        <button aria-pressed={categoryTab === 'subcategory'} onClick={() => setCategoryTab('subcategory')}><ListTree size={15} />Subcategories{selectedCat && <span>{subCategories.length}</span>}</button>
+        <button aria-pressed={categoryTab === 'subitem'} onClick={() => setCategoryTab('subitem')}><List size={15} />Sub-items{selectedSub && <span>{subItems.length}</span>}</button>
       </div>
+      <section className="category-table-panel">
+        <div className="category-table-toolbar">
+          <div className="category-parent-filters">
+            <details className="sla-filter-dropdown" ref={filtersRef} onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
+              <summary><SlidersHorizontal size={14} />Filters{serviceAreaFilter !== 'all' && <span>1</span>}<ChevronDown size={14} /></summary>
+              <div className="sla-filter-menu"><label>Service area<select value={serviceAreaFilter} onChange={event => setServiceAreaFilter(event.target.value)}>{!managedAreaIds && <option value="all">All service areas</option>}{serviceAreas.filter(area => area.is_active).map(area => <option key={area.id} value={area.id}>{area.code} ? {area.name}</option>)}</select></label><div className="sla-filter-actions"><button onClick={() => setServiceAreaFilter(managedAreaIds?.[0] ? String(managedAreaIds[0]) : 'all')}>Clear filter</button><button onClick={() => { if (filtersRef.current) filtersRef.current.open = false; }}>Done</button></div></div>
+            </details>
+            {categoryTab !== 'category' && <label>Category<select value={selectedCat?.id || ''} onChange={event => { setSelectedSub(null); setSelectedCat(visibleCategories.find(category => category.id === Number(event.target.value)) || null); }}><option value="">Select a category</option>{visibleCategories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>}
+            {categoryTab === 'subitem' && <label>Subcategory<select disabled={!selectedCat} value={selectedSub?.id || ''} onChange={event => setSelectedSub(subCategories.find(sub => sub.id === Number(event.target.value)) || null)}><option value="">Select a subcategory</option>{subCategories.map(sub => <option key={sub.id} value={sub.id}>{sub.name}</option>)}</select></label>}
+            {categoryTab === 'category' && <span>Manage categories and their SLA rules</span>}
+          </div>
+          <button className="category-table-add" disabled={categoryTab === 'subcategory' ? !selectedCat : categoryTab === 'subitem' ? !selectedSub : false} onClick={() => openCreate(categoryTab)}><Plus size={14} />{categoryTab === 'category' ? 'New Category' : categoryTab === 'subcategory' ? 'New Subcategory' : 'New Sub-item'}</button>
+        </div>
+        <div className="category-table-scroll"><AppTable className="category-level-table"><thead><tr><th>Name</th>{categoryTab === 'category' && <th>Service Area</th>}<th>Description</th>{categoryTab !== 'subitem' && <th>{categoryTab === 'category' ? 'Subcategories' : 'Sub-items'}</th>}<th>Priority / SLA</th><th>Actions</th></tr></thead>
+          <tbody>{(categoryTab === 'category' ? visibleCategories : categoryTab === 'subcategory' ? (selectedCat ? subCategories : []) : (selectedSub ? subItems : [])).map(item => <tr key={item.id}>
+            <td>{categoryTab === 'category' ? <button className="category-drill-link" onClick={() => { setSelectedCat(item as Category); setSelectedSub(null); setCategoryTab('subcategory'); }}>{item.name}</button> : categoryTab === 'subcategory' ? <button className="category-drill-link" onClick={() => { setSelectedSub(item as SubCategory); setCategoryTab('subitem'); }}>{item.name}</button> : item.name}</td>
+            {categoryTab === 'category' && <td>{'service_area_code' in item ? item.service_area_code || 'Unassigned' : 'Unassigned'}</td>}
+            <td>{item.description || '—'}</td>
+            {categoryTab !== 'subitem' && <td>{'sub_category_count' in item ? item.sub_category_count : 'item_count' in item ? item.item_count : 0}</td>}
+            <td><SLABadges item={item} /></td>
+            <td><div className="category-table-actions"><button onClick={() => openEdit(categoryTab, item)}><Pencil size={13} />Edit</button><button onClick={() => setDeleteTarget({ type: categoryTab, item })}><Trash2 size={13} />Delete</button></div></td>
+          </tr>)}</tbody></AppTable>
+          {(categoryTab === 'category' ? visibleCategories.length === 0 : categoryTab === 'subcategory' ? !selectedCat || subCategories.length === 0 : !selectedSub || subItems.length === 0) && <p className="category-table-empty">{categoryTab === 'subcategory' && !selectedCat ? 'Select a category to view its subcategories.' : categoryTab === 'subitem' && !selectedSub ? 'Select a category and subcategory to view sub-items.' : 'No records yet. Use the New button to add one.'}</p>}
+        </div>
+      </section>
 
       {/* ===== ADD / EDIT MODAL ===== */}
       {modalType && (
@@ -784,11 +510,11 @@ export default function CategoryManagement() {
             alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <div
+          <div className="category-management-dialog"
             onClick={e => e.stopPropagation()}
             style={{
               background: '#fff',
-              width: 'clamp(90vw, 95vw, 480px)',
+              width: 'min(540px, calc(100vw - 32px))',
               maxWidth: '95vw',
               borderRadius: 10,
               border: '0.5px solid #C0C8D4',
@@ -1005,7 +731,7 @@ export default function CategoryManagement() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {saving ? 'Saving...' : modalMode === 'create' ? '✓ Save' : '✓ Save Changes'}
+                {saving ? <><LoaderCircle size={14} className="category-save-spinner" /> Saving...</> : <><Save size={14} /> {modalMode === 'create' ? 'Save' : 'Save Changes'}</>}
               </button>
             </div>
           </div>
@@ -1023,7 +749,7 @@ export default function CategoryManagement() {
             alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <div
+          <div className="category-management-dialog"
             onClick={e => e.stopPropagation()}
             style={{
               background: '#fff', width: 380,

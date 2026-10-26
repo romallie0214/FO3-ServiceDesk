@@ -1,0 +1,241 @@
+/* App theme: shared surfaces plus compatibility with existing inline styles. */
+:root{--ui-surface:#fff;--ui-text:#344456;--ui-border:#e1e7ee}
+.header-theme-toggle{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:36px;height:36px;padding:0;border:0;border-radius:7px;background:transparent;color:#fff;cursor:pointer}.header-theme-toggle:hover{background:#ffffff20}.header-theme-toggle:focus-visible{outline:2px solid #a5d3ff;outline-offset:2px}
+html[data-theme=dark]{color-scheme:dark;--background:#101722;--ui-surface:#192332;--ui-text:#d5dfed;--ui-border:#2d3c50;--select-border:#34465e;--select-text:#d5dfed;--select-focus:#72ace3}
+html[data-theme=dark] body{background:#101722;color:#d5dfed}
+html[data-theme=dark] :is(h1,h2,h3,h4){color:#c4dcf5}
+html[data-theme=dark] a{color:#9ec7f2}
+html[data-theme=dark] :is(.desk-shell,.desk-main,.submit-page){background:#101722;color:#d5dfed}
+html[data-theme=dark] .service-desk-header{background:#122d4a!important}
+html[data-theme=dark] :is(.desk-sidebar,.desk-mobile-bar){background:#151f2d;border-color:#2d3c50}
+html[data-theme=dark] .desk-nav-link{color:#afc1d7}html[data-theme=dark] .desk-nav-link:hover{background:#213047}html[data-theme=dark] .desk-nav-link.is-active{background:#233c59;color:#c5e0ff}html[data-theme=dark] .desk-nav-group h2{color:#7e95b0}
+html[data-theme=dark] :is(.desk-panel,.desk-stat,.ticket-grid,.ticket-monitor-grid,.category-table-panel,.admin-workload-panel,.service-area-panel,.service-area-form,.submit-requestor,.submit-details,.user-management-toolbar,.sla-filter-toolbar,.shared-resource-card){background:#192332!important;border-color:#2d3c50!important;color:#d5dfed}
+html[data-theme=dark] :is(.desk-dashboard,.shared-management-page,.user-management-page,.status-management-page,.category-management-page,.service-area-page){color:#d5dfed!important}
+html[data-theme=dark] :is(.desk-panel header,.ticket-grid-toolbar,.category-table-toolbar,.admin-queue-tabs,.ticket-sheet-meta>div,.monitor-report-filters){background:#192332!important;border-color:#2d3c50!important}
+html[data-theme=dark] :is(.ticket-grid td,.ticket-monitor-table td,.admin-ticket-table td,.user-management-table td,.status-management-table td,.category-level-table td,.service-area-table td,.shared-management-table td,.desk-panel td){border-color:#2a3648!important;color:#c7d4e5!important}
+html[data-theme=dark] :is(.ticket-grid,.ticket-monitor-table,.admin-ticket-table,.user-management-table,.status-management-table,.category-level-table,.service-area-table,.shared-management-table) tbody tr:hover{background:#23354b!important;outline-color:#4b78a6!important}
+html[data-theme=dark] :is(.desk-chart-caption,.desk-stat span,.desk-health dt,.desk-recent-person>div>span,.desk-recent-meta,.desk-radial-metrics dt){color:#94a7bf}
+html[data-theme=dark] :is(.desk-stat strong,.desk-panel h2,.desk-recent-person strong,.desk-recent-ticket p,.desk-radial-metrics dd){color:#d5dfed!important}
+html[data-theme=dark] :is(.desk-dashboard-reference .desk-totals,.desk-status-track,.admin-workload-track){background:#141e2b!important}
+html[data-theme=dark] :is(.desk-health-ring>div,.desk-recent-panel>header){background:#192332!important}
+html[data-theme=dark] :is(.desk-health-ring strong,.desk-recent-ticket-top strong){color:#d5dfed}
+html[data-theme=dark] :is(.desk-health>div,.desk-recent-ticket,.desk-radial-metrics>div){border-color:#2a3648!important}
+html[data-theme=dark] :is(.ticket-grid-search,.kb-management-search,.ticket-filter-dropdown summary,.sla-filter-dropdown summary,.user-management-filters summary,.ticket-comment-composer){background:#152030!important;border-color:#34465e!important;color:#bdcde0}
+html[data-theme=dark] :is(.ticket-filter-popover,.sla-filter-menu,.user-management-filter-menu){background:#192332!important;border-color:#34465e!important;color:#c7d4e5;box-shadow:0 12px 35px #0006}
+html[data-theme=dark] :is(input:not([type=checkbox]):not([type=radio]):not([type=color]),textarea){background-color:#152030!important;color:#d5dfed!important;border-color:#34465e!important}
+html[data-theme=dark] input::placeholder,html[data-theme=dark] textarea::placeholder{color:#788fa9}
+html[data-theme=dark] body select:not([multiple]):not([size]){background-color:#152030!important;color:#d5dfed!important;border-color:#34465e!important}
+html[data-theme=dark] body select:not([multiple]):not([size]):hover:not(:disabled){background-color:#1e2d41!important;border-color:#53769e!important}
+html[data-theme=dark] body select:not([multiple]):not([size]):disabled{background-color:#1b2634!important;color:#778ba4}
+html[data-theme=dark] select::picker(select){background:#192332;border-color:#34465e;box-shadow:0 10px 30px #0006}html[data-theme=dark] select option{background:#192332;color:#d5dfed}html[data-theme=dark] select option:hover,html[data-theme=dark] select option:focus,html[data-theme=dark] select option:checked{background:#2a4160;color:#d5e9ff}
+html[data-theme=dark] :is(.ticket-sheet,.monitor-report-modal,.shared-management-dialog,.user-management-dialog,.status-management-dialog,.category-management-dialog){background:#192332!important;border-color:#34465e!important;color:#d5dfed}
+html[data-theme=dark] :is(.ticket-sheet-body,.ticket-sheet-footer,.ticket-sheet-summary,.ticket-reclassify-pane,.ticket-reclassify-form){background-color:#192332!important;color:#d5dfed!important;border-color:#34465e!important}
+html[data-theme=dark] :is(.ticket-sheet-controls>div,.ticket-sheet-body>div:has(>p),.ticket-sheet-due-grid>div){background:#172130!important;border-color:#2d3c50!important}
+html[data-theme=dark] :is(.ticket-sheet-title,.ticket-sheet-summary-grid>div,.ticket-sheet-activity-section,.ticket-sheet-meta,.ticket-sheet-controls){border-color:#2d3c50!important}
+html[data-theme=dark] :is(.ticket-sheet-title h3,.ticket-sheet-title>strong,.ticket-sheet-summary-grid strong,.ticket-sheet-section-title,.ticket-sheet-assignment>p,.ticket-sheet-technicians>div:first-child,.ticket-sheet-created p){color:#c7d4e5!important}
+html[data-theme=dark] :is(.ticket-sheet-meta>div>div:last-child,.ticket-sheet-activity>div:last-child>span,.ticket-sheet-activity>div:last-child>div,.ticket-sheet-due-grid strong){color:#c7d4e5!important}
+html[data-theme=dark] :is(.monitor-report-header,.shared-management-dialog>div:first-child,.user-management-dialog-header,.status-management-dialog>div:first-child,.category-management-dialog>div:first-child){background:#202f43!important;border-color:#34465e!important;color:#c7d4e5!important}
+html[data-theme=dark] :is(.monitor-report-header h2,.shared-management-dialog>div:first-child :is(p,strong,h2,h3,span),.user-management-dialog-header>p,.status-management-dialog>div:first-child>p,.category-management-dialog>div:first-child p){color:#d5dfed!important}
+html[data-theme=dark] :is(.submit-info,.monitor-report-intro,.monitor-live-note,.shared-resource-intro,.assignment-note){background:#20344c!important;color:#b5cce5!important;border-color:#365576!important}
+html[data-theme=dark] :is(.submit-requestor h2,.submit-service-option,.submit-guide-button){background:#203047!important;color:#bed5ef!important;border-color:#344b66!important}
+html[data-theme=dark] .submit-service-option.is-selected{background:#284567!important;border-color:#6090c0!important}
+html[data-theme=dark] :is(.submit-profile-fields dd,.submit-identity>strong,.shared-resource-card h3){color:#d5dfed!important}
+html[data-theme=dark] :is(.header-profile-panel,.header-profile-details,.header-profile-signout,.driver-popover.submit-ticket-tour){background:#192332!important;color:#d5dfed!important;border-color:#34465e!important}
+html[data-theme=dark] :is(.header-profile-panel strong,.driver-popover-title,.driver-popover-description){color:#c7d4e5!important}
+html[data-theme=dark] [style*="background: rgb(255, 255, 255)"],
+html[data-theme=dark] [style*="background-color: rgb(255, 255, 255)"],
+html[data-theme=dark] [style*="background: rgb(248, 250, 252)"],
+html[data-theme=dark] [style*="background-color: rgb(248, 250, 252)"],
+html[data-theme=dark] [style*="background: rgb(245, 248, 252)"],
+html[data-theme=dark] [style*="background-color: rgb(245, 248, 252)"],
+html[data-theme=dark] [style*="background: rgb(244, 247, 251)"],
+html[data-theme=dark] [style*="background-color: rgb(244, 247, 251)"],
+html[data-theme=dark] [style*="background: rgb(247, 249, 253)"],
+html[data-theme=dark] [style*="background-color: rgb(247, 249, 253)"],
+html[data-theme=dark] [style*="background: rgb(243, 246, 250)"],
+html[data-theme=dark] [style*="background-color: rgb(243, 246, 250)"],
+html[data-theme=dark] [style*="background: rgb(250, 252, 254)"],
+html[data-theme=dark] [style*="background-color: rgb(250, 252, 254)"],
+html[data-theme=dark] [style*="background: rgb(240, 243, 247)"],
+html[data-theme=dark] [style*="background-color: rgb(240, 243, 247)"]{background-color:#192332!important;color:#c7d4e5}
+html[data-theme=dark] [style*="color: rgb(26, 42, 58)"],
+html[data-theme=dark] [style*="color: rgb(42, 42, 42)"],
+html[data-theme=dark] [style*="color: rgb(74, 74, 74)"],
+html[data-theme=dark] [style*="color: rgb(52, 68, 86)"],
+html[data-theme=dark] [style*="color: rgb(53, 75, 101)"],
+html[data-theme=dark] [style*="color: rgb(23, 43, 77)"],
+html[data-theme=dark] [style*="color: rgb(13, 59, 110)"],
+html[data-theme=dark] [style*="color: rgb(18, 54, 93)"],
+html[data-theme=dark] [style*="color: rgb(26, 26, 26)"],
+html[data-theme=dark] [style*="color: rgb(51, 51, 51)"],
+html[data-theme=dark] [style*="color: rgb(60, 70, 85)"]{color:#b9cde5!important}
+
+/* Complete shared-component coverage and readable secondary text. */
+html[data-theme=dark]{--ui-muted:#9cadc3;--ui-hover:#22364f}
+html[data-theme=dark] .summary-card{background:#192332!important;border-color:#304055!important;color:#e0e8f4!important}
+html[data-theme=dark] .summary-card strong{color:#e0e8f4}
+html[data-theme=dark] .summary-card-label,html[data-theme=dark] .summary-card small{color:#a3b4cb}
+html[data-theme=dark] button.summary-card[aria-pressed=true]{background:#233954!important;border-color:#669bcf!important}
+html[data-theme=dark] :is(.summary-card-icon,.desk-stat-icon){background:#253c58!important;color:#91c0f0!important}
+html[data-theme=dark] :is(.summary-card:nth-child(2) .summary-card-icon){background:#393020!important;color:#f0bc65!important}
+html[data-theme=dark] :is(.summary-card:nth-child(3) .summary-card-icon){background:#263a36!important;color:#8cceb1!important}
+html[data-theme=dark] :is(.summary-card:nth-child(4) .summary-card-icon){background:#342d48!important;color:#bfabed!important}
+html[data-theme=dark] :is(.ticket-grid-id,.ticket-grid-subject button,.category-drill-link){color:#a9d0f7!important}
+html[data-theme=dark] :is(.ticket-grid-id:hover,.category-drill-link:hover){color:#d4e9ff!important}
+html[data-theme=dark] :is(.ticket-grid td,.ticket-monitor-table td,.admin-ticket-table td,.user-management-table td,.shared-management-table td) :is(div,p,small){color:inherit}
+html[data-theme=dark] .assigned-tickets-grid .ticket-monitor-table td:nth-child(5){color:#b6c6da!important}
+html[data-theme=dark] :is(.admin-workload-info strong,.service-area-form h2,.category-table-toolbar,.category-parent-filters,.ticket-filter-popover-heading,.monitor-report-filters>div:first-child){color:#c4d5ea!important}
+html[data-theme=dark] :is(.admin-workload-info span,.admin-workload-info small,.ticket-grid-date,.ticket-filter-popover label>span,.sla-filter-menu label,.user-management-filter-menu,.category-parent-filters,.service-area-table small,.shared-resource-card p){color:#9aafc7!important}
+html[data-theme=dark] :is(.ticket-grid-category,.ticket-sheet-due-grid span,.desk-recent-avatar,.ticket-grid-avatar,.admin-workload-avatar,.ticket-sheet-created>span){background:#293a50!important;color:#a9bfd8!important}
+html[data-theme=dark] :is(.ticket-filter-footer,.sla-filter-actions,.monitor-report-actions,.monitor-report-presets,.admin-workload-row,.submit-identity,.submit-profile-note,.submit-profile-fields>div){border-color:#304055!important}
+html[data-theme=dark] :is(.admin-queue-tabs,.category-level-tabs,.user-management-tabs){background:transparent!important}
+html[data-theme=dark] :is(.admin-queue-tabs,.category-level-tabs,.user-management-tabs) button:not([aria-pressed=true]){border-color:#3a4e67;color:#aebfd4;background:transparent}
+html[data-theme=dark] :is(.admin-queue-tabs,.category-level-tabs,.user-management-tabs) button[aria-pressed=true]{background:#315d88;color:#edf6ff;border-color:#4b78a5}
+html[data-theme=dark] :is(.ticket-sheet-meta>div>div:first-child,.ticket-sheet-requestor dt,.ticket-sheet-created time,.ticket-sheet-activity time,.ticket-sheet-controls label,.monitor-report-fields label,.shared-management-dialog label){color:#a3b6ce!important}
+html[data-theme=dark] :is(.ticket-sheet-assignment>div:nth-child(2),.ticket-sheet-activity>div:last-child>span:nth-child(2)){color:#93a9c3!important}
+html[data-theme=dark] :is(.header-profile-details p,.header-profile-division,.header-profile-details dd,.desk-account small,.desk-sheet-heading){color:#a6bad3!important}
+html[data-theme=dark] .header-profile-panel::before{background:#192332;border-color:#34465e}
+html[data-theme=dark] .header-profile-signout{color:#c5d8ed!important}
+html[data-theme=dark] .header-profile-signout:hover{background:#263a52!important}
+html[data-theme=dark] .desk-sheet-heading{border-color:#304055}
+html[data-theme=dark] .ticket-sheet-controls>div{border-color:#304055!important}
+html[data-theme=dark] .monitor-report-content{color:#d5dfed}
+html[data-theme=dark] .ticket-comment-composer input{background:transparent!important}
+html[data-theme=dark] .ticket-comment-composer button:disabled{background:#2a394c;color:#7790ac}
+html[data-theme=dark] .driver-popover.submit-ticket-tour .driver-popover-title{color:#bddbfa}
+html[data-theme=dark] .driver-popover.submit-ticket-tour .driver-popover-description{color:#b3c4da}
+html[data-theme=dark] .driver-popover.submit-ticket-tour .driver-popover-prev-btn{background:#23354a;color:#c5d7ed;border-color:#3d526d;text-shadow:none}
+html[data-theme=dark] .shared-management-table tbody tr:has(td[colspan]) td{background:#20334b!important;color:#b7d0eb!important}
+html[data-theme=dark] :is(.ticket-grid,.ticket-monitor-grid,.assigned-tickets-grid,.submitted-tickets-grid,.shared-management-page,.user-management-page) button:disabled{color:#859bb5!important;border-color:#34465e!important;opacity:.6}
+/* Animate only palette properties during a user-triggered theme change. */
+@media(prefers-reduced-motion:no-preference){html.theme-changing *,html.theme-changing *::before,html.theme-changing *::after{transition-property:background-color,color,border-color,box-shadow!important;transition-duration:180ms!important;transition-timing-function:ease-out!important}}
+html[data-theme=dark] [style*="color: rgb(8, 80, 65)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(8, 124, 152)"]{color:#9fb2ca!important}
+html[data-theme=dark] [style*="color: rgb(100, 116, 139)"]{color:#9fb2ca!important}
+html[data-theme=dark] [style*="color: rgb(91, 33, 182)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(21, 128, 61)"]{color:#9fb2ca!important}
+html[data-theme=dark] [style*="color: rgb(58, 58, 58)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(98, 116, 138)"]{color:#9fb2ca!important}
+html[data-theme=dark] [style*="color: rgb(8, 122, 91)"]{color:#9fb2ca!important}
+html[data-theme=dark] [style*="color: rgb(18, 62, 112)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(51, 65, 85)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(82, 101, 122)"]{color:#9fb2ca!important}
+html[data-theme=dark] [style*="color: rgb(74, 74, 74)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(90, 100, 117)"]{color:#9fb2ca!important}
+html[data-theme=dark] [style*="color: rgb(42, 42, 42)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(0, 86, 164)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(26, 26, 26)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(74, 122, 90)"]{color:#9fb2ca!important}
+html[data-theme=dark] [style*="color: rgb(22, 92, 53)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(26, 84, 144)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(24, 16, 136)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(109, 75, 178)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(83, 74, 183)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(109, 40, 217)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(35, 75, 115)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(13, 59, 110)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(27, 107, 58)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(52, 91, 130)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(74, 93, 117)"]{color:#9fb2ca!important}
+html[data-theme=dark] [style*="color: rgb(24, 95, 165)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(23, 43, 77)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(106, 114, 128)"]{color:#9fb2ca!important}
+html[data-theme=dark] [style*="color: rgb(60, 52, 137)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: rgb(26, 42, 58)"]{color:#c1d3e9!important}
+html[data-theme=dark] [style*="color: var(--gov-navy)"],html[data-theme=dark] [style*="color: var(--gov-navy2)"]{color:#afd3f7!important}
+html[data-theme=dark] [style*="background: rgb(250, 252, 254)"],html[data-theme=dark] [style*="background-color: rgb(250, 252, 254)"]{background-color:#1d2a3b!important;color:#c4d3e5!important}
+html[data-theme=dark] [style*="background: rgb(225, 245, 238)"],html[data-theme=dark] [style*="background-color: rgb(225, 245, 238)"]{background-color:#203a32!important;color:#91d3b3!important}
+html[data-theme=dark] [style*="background: rgb(238, 246, 255)"],html[data-theme=dark] [style*="background-color: rgb(238, 246, 255)"]{background-color:#22354c!important;color:#adcdf0!important}
+html[data-theme=dark] [style*="background: rgb(240, 243, 247)"],html[data-theme=dark] [style*="background-color: rgb(240, 243, 247)"]{background-color:#22354c!important;color:#adcdf0!important}
+html[data-theme=dark] [style*="background: rgb(243, 239, 255)"],html[data-theme=dark] [style*="background-color: rgb(243, 239, 255)"]{background-color:#302b44!important;color:#c4b4ef!important}
+html[data-theme=dark] [style*="background: rgb(243, 240, 255)"],html[data-theme=dark] [style*="background-color: rgb(243, 240, 255)"]{background-color:#22354c!important;color:#adcdf0!important}
+html[data-theme=dark] [style*="background: rgb(252, 231, 243)"],html[data-theme=dark] [style*="background-color: rgb(252, 231, 243)"]{background-color:#3b252d!important;color:#f0a9b0!important}
+html[data-theme=dark] [style*="background: rgb(244, 247, 251)"],html[data-theme=dark] [style*="background-color: rgb(244, 247, 251)"]{background-color:#22354c!important;color:#adcdf0!important}
+html[data-theme=dark] [style*="background: rgb(254, 243, 220)"],html[data-theme=dark] [style*="background-color: rgb(254, 243, 220)"]{background-color:#3b252d!important;color:#f0a9b0!important}
+html[data-theme=dark] [style*="background: rgb(240, 240, 240)"],html[data-theme=dark] [style*="background-color: rgb(240, 240, 240)"]{background-color:#1d2a3b!important;color:#c4d3e5!important}
+html[data-theme=dark] [style*="background: rgb(253, 232, 232)"],html[data-theme=dark] [style*="background-color: rgb(253, 232, 232)"]{background-color:#3b252d!important;color:#f0a9b0!important}
+html[data-theme=dark] [style*="background: rgb(232, 245, 238)"],html[data-theme=dark] [style*="background-color: rgb(232, 245, 238)"]{background-color:#203a32!important;color:#91d3b3!important}
+html[data-theme=dark] [style*="background: rgb(245, 245, 245)"],html[data-theme=dark] [style*="background-color: rgb(245, 245, 245)"]{background-color:#1d2a3b!important;color:#c4d3e5!important}
+html[data-theme=dark] [style*="background: rgb(243, 246, 250)"],html[data-theme=dark] [style*="background-color: rgb(243, 246, 250)"]{background-color:#22354c!important;color:#adcdf0!important}
+html[data-theme=dark] [style*="background: rgb(232, 241, 250)"],html[data-theme=dark] [style*="background-color: rgb(232, 241, 250)"]{background-color:#22354c!important;color:#adcdf0!important}
+html[data-theme=dark] [style*="background: rgb(240, 228, 252)"],html[data-theme=dark] [style*="background-color: rgb(240, 228, 252)"]{background-color:#302b44!important;color:#c4b4ef!important}
+html[data-theme=dark] [style*="background: rgb(245, 248, 252)"],html[data-theme=dark] [style*="background-color: rgb(245, 248, 252)"]{background-color:#22354c!important;color:#adcdf0!important}
+html[data-theme=dark] [style*="background: rgb(248, 250, 252)"],html[data-theme=dark] [style*="background-color: rgb(248, 250, 252)"]{background-color:#1d2a3b!important;color:#c4d3e5!important}
+html[data-theme=dark] [style*="background: rgb(240, 234, 252)"],html[data-theme=dark] [style*="background-color: rgb(240, 234, 252)"]{background-color:#302b44!important;color:#c4b4ef!important}
+html[data-theme=dark] [style*="background: rgb(232, 236, 240)"],html[data-theme=dark] [style*="background-color: rgb(232, 236, 240)"]{background-color:#22354c!important;color:#adcdf0!important}
+html[data-theme=dark] [style*="background: rgb(253, 245, 220)"],html[data-theme=dark] [style*="background-color: rgb(253, 245, 220)"]{background-color:#3b3223!important;color:#edc17b!important}
+html[data-theme=dark] [style*="background: rgb(229, 234, 240)"],html[data-theme=dark] [style*="background-color: rgb(229, 234, 240)"]{background-color:#22354c!important;color:#adcdf0!important}
+html[data-theme=dark] [style*="background: rgb(248, 250, 253)"],html[data-theme=dark] [style*="background-color: rgb(248, 250, 253)"]{background-color:#1d2a3b!important;color:#c4d3e5!important}
+html[data-theme=dark] [style*="rgb(240, 183, 183)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(154, 201, 170)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(208, 217, 228)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(243, 208, 138)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(231, 237, 244)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(232, 200, 135)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(232, 201, 106)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(191, 211, 231)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(181, 212, 244)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(199, 216, 234)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(213, 223, 234)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(228, 180, 180)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(238, 241, 245)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(245, 216, 138)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(245, 192, 192)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(192, 200, 212)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(238, 240, 244)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(183, 223, 200)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(238, 242, 246)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(200, 208, 220)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(181, 221, 200)"]{border-color:#34465e!important}
+html[data-theme=dark] [style*="rgb(229, 234, 240)"]{border-color:#34465e!important}
+
+html[data-theme=dark] :is(.ticket-grid,.ticket-monitor-table) [data-priority=Low]{background:#203b31!important;color:#8ed3ad!important}
+html[data-theme=dark] :is(.ticket-grid,.ticket-monitor-table) [data-priority=Medium]{background:#3d3321!important;color:#edc77c!important}
+html[data-theme=dark] :is(.ticket-grid,.ticket-monitor-table) [data-priority=High]{background:#40282e!important;color:#f2a5ad!important}
+html[data-theme=dark] :is(.ticket-grid,.ticket-monitor-table) [data-priority=Critical]{background:#45283b!important;color:#f3a3ca!important}
+html[data-theme=dark] :is(.ticket-grid-id,.category-drill-link,.ticket-grid td:first-child button){color:#afd3f7!important}
+html[data-theme=dark] .summary-card{background:#192332!important;color:#e0e8f4!important}
+html[data-theme=dark] .summary-card-icon{background:#253c58!important;color:#91c0f0!important}
+
+/* Monitoring urgency rows need dark backgrounds, not their light-mode tints. */
+html[data-theme=dark] .ticket-monitor-table tbody tr{background:#192332!important}
+html[data-theme=dark] .ticket-monitor-table tr[data-sla=breached]{background:#2d222d!important}
+html[data-theme=dark] .ticket-monitor-table tr[data-sla=escalated],html[data-theme=dark] .ticket-monitor-table tr[data-sla=warning]{background:#302c22!important}
+html[data-theme=dark] .ticket-monitor-table tbody tr:hover{background:#263a51!important}
+html[data-theme=dark] .ticket-monitor-table td{border-color:#394052!important;color:#c9d7e8!important}
+html[data-theme=dark] .ticket-monitor-table td [style*="color: rgb(139, 26, 26)"]{color:#f2a0aa!important}
+html[data-theme=dark] .ticket-monitor-table td [style*="color: rgb(27, 107, 58)"]{color:#90d2ae!important}
+html[data-theme=dark] .ticket-monitor-table td [style*="color: rgb(204, 119, 0)"]{color:#efc178!important}
+html[data-theme=dark] .ticket-monitor-table td [style*="color: rgb(136, 136, 136)"]{color:#9cadc3!important}
+
+/* Submit Ticket: remove remaining light surfaces and low-contrast labels. */
+html[data-theme=dark] .submit-services{border-color:#3a526d}
+html[data-theme=dark] .submit-services-heading{background:#22354c;border-bottom-color:#3a526d}
+html[data-theme=dark] .submit-services-heading>strong{color:#c8dff7}
+html[data-theme=dark] .submit-services-heading p{color:#a5bad2}
+html[data-theme=dark] .submit-service-option strong{color:#bedbfa}
+html[data-theme=dark] .submit-service-option small{color:#b1c5dd}
+html[data-theme=dark] .submit-caption,html[data-theme=dark] .submit-profile-fields dt,html[data-theme=dark] .submit-file-hint{color:#9fb3cc}
+html[data-theme=dark] .submit-employee{background:#2a4261;color:#bedbfa}
+html[data-theme=dark] .submit-priority{background:#202d40;border-color:#3a4f6a;color:#b5c8df}
+html[data-theme=dark] .submit-priority strong{background:#2c4666;color:#b9d8fa}
+html[data-theme=dark] .submit-priority strong[data-priority=High]{background:#433823;color:#efc57f}
+html[data-theme=dark] .submit-priority strong[data-priority=Critical]{background:#452b34;color:#f2a5b4}
+html[data-theme=dark] .submit-priority small{color:#9bb0cb}
+html[data-theme=dark] .submit-actions{border-top-color:#34465e}
+html[data-theme=dark] .submit-actions button:not(.submit-confirm){background:#22334a;color:#bfd1e7;border-color:#3b526f}
+html[data-theme=dark] .submit-actions button:not(.submit-confirm):hover{background:#2c4260}
+html[data-theme=dark] .submit-sla,html[data-theme=dark] .submit-file{background:#22354c;color:#b7cce5;border-color:#46668b}
+html[data-theme=dark] .submit-file button{color:#f1a7af}
+html[data-theme=dark] .submit-feedback{background:#372f22;border-color:#6f5b35;color:#e3c797}
+
+/* Service-area table header and badges follow the dark surface palette. */
+html[data-theme=dark] .service-area-page .service-area-panel>div:first-child{background:#202f43!important;border-bottom:1px solid #34465e;color:#bfd2e9!important}
+html[data-theme=dark] .service-area-page .service-area-table .service-area-status{background:#3b3223!important;color:#e8bf7d!important}
+html[data-theme=dark] .service-area-page .service-area-table .service-area-status[data-active=true]{background:#223d33!important;color:#98d7b7!important}
+html[data-theme=dark] .service-area-page .service-area-table small{color:#9eb2cb!important}
+
+/* Keep dashboard icons crisp against their vivid colored tiles. */
+html[data-theme=dark] .desk-dashboard-reference .desk-stat-icon,
+html[data-theme=dark] .desk-dashboard-reference .desk-stat-icon svg{color:#fff!important}
+html[data-theme=dark] .desk-dashboard-reference .desk-stat-icon svg{stroke:currentColor;opacity:1}

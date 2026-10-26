@@ -1,0 +1,75 @@
+/* Shared dropdown theme. Native select behavior and keyboard support are retained. */
+:root {
+  --select-border: #dce3eb;
+  --select-text: #354456;
+  --select-focus: #5597d0;
+  --select-radius: 7px;
+}
+html body select:not([multiple]):not([size]) {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 34px;
+  padding: 7px 34px 7px 11px !important;
+  border: 1px solid var(--select-border) !important;
+  border-radius: var(--select-radius) !important;
+  background-color: #fff !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23768799' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 15px !important;
+  color: var(--select-text);
+  font-family: inherit;
+  line-height: 1.4;
+  box-shadow: 0 1px 2px rgb(15 40 65 / 3%);
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+html body select:not([multiple]):not([size]):hover:not(:disabled) { border-color: #b4c7da !important; background-color: #fbfdff !important; }
+html body select:not([multiple]):not([size]):focus-visible { outline: 2px solid #91bce3 !important; outline-offset: 2px; border-color: var(--select-focus) !important; box-shadow: 0 0 0 3px #eaf2fb; }
+html body select:not([multiple]):not([size]):disabled { background-color: #f4f6f8 !important; color: #96a0ac; border-color: #e5e9ee !important; box-shadow: none; cursor: not-allowed; opacity: .75; }
+html body select:not([multiple]):not([size])[aria-invalid=true] { border-color: #d17b7b !important; }
+select option { background: #fff; color: #354456; padding: 9px 12px; }
+select option:disabled { color: #939daa; }
+/* Enhanced option popovers in browsers supporting customizable selects. */
+@supports (appearance: base-select) {
+  html body select:not([multiple]):not([size]),
+  html body select:not([multiple]):not([size])::picker(select) { appearance: base-select; }
+  html body select:not([multiple]):not([size]) { background-image: none !important; padding-right: 11px !important; align-items: center; gap: 12px; }
+  select::picker-icon { color: #768799; transition: rotate 160ms ease; }
+  select:open::picker-icon { rotate: 180deg; }
+  select::picker(select) { margin-top: 5px; border: 1px solid #dce3eb; border-radius: 9px; padding: 5px; background: #fff; box-shadow: 0 10px 30px #18365620; max-height: min(320px, 60vh); overflow: auto; }
+  select option { min-height: 34px; padding: 8px 10px; gap: 8px; border-radius: 5px; font-size: 13px; cursor: pointer; }
+  select option:hover, select option:focus { background: #f0f5fb; outline: none; }
+  select option:checked { background: #e8f1fb; color: #174c7e; font-weight: 500; }
+  select option::checkmark { color: #2671ad; }
+}
+/* The dropdown already supplies its own indicator. */
+.ticket-sheet-status-field > svg { display: none; }
+@media (prefers-reduced-motion: reduce) { html body select:not([multiple]):not([size]), select::picker-icon { transition: none; } }
+
+@supports (appearance: base-select) {
+  html body select:not([multiple]):not([size])::picker(select) {
+    inset: auto;
+    position-area: block-end span-inline-end;
+    width: anchor-size(width);
+    min-width: anchor-size(width);
+    justify-self: start;
+    align-self: start;
+    position-try-fallbacks: none;
+    margin: 4px 0 0;
+    max-height: min(280px, 40vh);
+    overflow-y: auto;
+  }
+}
+
+/* Use an outlined chevron for customizable dropdown indicators. */
+@supports (appearance: base-select) {
+  html body select:not([multiple]):not([size])::picker-icon {
+    content: '';
+    display: block;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23768799' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / 14px no-repeat;
+  }
+}

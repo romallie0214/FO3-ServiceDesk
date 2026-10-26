@@ -1,0 +1,20 @@
+.service-area-select{position:relative;color:var(--ui-text,#344456)}
+.service-area-select summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:46px;padding:10px 13px;border:1px solid var(--ui-border,#dce4ed);border-radius:7px;background:var(--ui-surface,#fff);font-size:13px;cursor:pointer}
+.service-area-select summary::-webkit-details-marker{display:none}
+.service-area-select summary>span{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.service-area-select strong{font-size:13px;font-weight:500}
+.service-area-select small{font-size:10px;color:#71859a}
+.service-area-select summary>svg{flex-shrink:0;transition:transform .15s}
+.service-area-select[open] summary>svg{transform:rotate(180deg)}
+.service-area-select summary:focus-visible,.service-area-select-results button:focus-visible{outline:2px solid #7aa4cb;outline-offset:2px}
+.service-area-select-menu{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:30;padding:7px;border:1px solid var(--ui-border,#dce4ed);border-radius:9px;background:var(--ui-surface,#fff);box-shadow:0 8px 28px #152e4b22}
+.service-area-select-search{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--ui-border,#dce4ed);border-radius:6px;margin-bottom:6px;color:#7c90a5}
+.service-area-select-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:var(--ui-text,#344456);font:inherit;font-size:12px}
+.service-area-select-search:focus-within{outline:2px solid #7aa4cb}
+.service-area-select-results{max-height:260px;overflow-y:auto;overscroll-behavior:contain;padding:2px}
+.service-area-select-results button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;padding:10px;border:0;border-radius:5px;background:transparent;color:inherit;cursor:pointer}
+.service-area-select-results button>span{display:flex;flex-direction:column;gap:4px}
+.service-area-select-results button:hover,.service-area-select-results button[aria-pressed=true]{background:#eaf1f9}
+.service-area-select-results p{padding:15px;text-align:center;font-size:12px;color:#7c90a5}
+html[data-theme=dark] .service-area-select-results button:hover,html[data-theme=dark] .service-area-select-results button[aria-pressed=true]{background:#2a4057}
+html[data-theme=dark] .service-area-select small{color:#a2b5c8}

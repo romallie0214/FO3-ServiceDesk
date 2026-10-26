@@ -9,6 +9,8 @@ declare global {
   }
 }
 
+// Temporary local-development switch; production builds keep verification enabled.
+const RECAPTCHA_ENABLED = !(import.meta.env.DEV && import.meta.env.VITE_RECAPTCHA_ENABLED === 'false');
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
 
 export default function Login() {
@@ -43,7 +45,7 @@ export default function Login() {
 
   // Load reCAPTCHA script
   useEffect(() => {
-    if (!RECAPTCHA_SITE_KEY) return;
+    if (!RECAPTCHA_ENABLED || !RECAPTCHA_SITE_KEY) return;
 
     const script = document.createElement('script');
     script.src =
@@ -77,11 +79,15 @@ export default function Login() {
     setMfaSetupComplete(false);
 
     try {
+      let recaptchaToken = '';
+      if (RECAPTCHA_ENABLED) {
       // Get reCAPTCHA token
       if (!RECAPTCHA_SITE_KEY || !window.grecaptcha) throw new Error('reCAPTCHA is not configured or has not loaded.');
-      const recaptchaToken = await new Promise<string>((resolve, reject) => {
+      recaptchaToken = await new Promise<string>((resolve, reject) => {
         window.grecaptcha.ready(() => window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'login' }).then(resolve).catch(reject));
       });
+
+      }
 
       // Submit credentials + reCAPTCHA token
       const res = await api.post('/users/login', {

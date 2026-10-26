@@ -1,4 +1,8 @@
-import { useEffect, useState } from 'react';
+import { showErrorToast } from '../utils/notifications';
+import toast from 'react-hot-toast';
+import { useEffect, useRef, useState } from 'react';
+import { Ticket as TicketIcon, X, Maximize2, Minimize2, Shuffle, Users, UserPlus, Plus, Paperclip, Check, Undo2, Pause, TriangleAlert, ClipboardCheck, CircleDot, ChevronRight, Save, Send, LoaderCircle } from 'lucide-react';
+import './TicketDetailModal.css';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import CSMModal from './CSMModal';
@@ -16,6 +20,8 @@ interface Ticket {
   sub_item: string | null;
   requestor: string;
   division: string;
+  unit?: string | null;
+  office_location?: string | null;
   assigned_to: string | null;
   created_at: string;
   cancel_reason: string | null;
@@ -28,10 +34,10 @@ interface Ticket {
 interface Comment {
   id: number;
   content: string;
-  //full_name: string;
+  full_name: string;
   role: string;
   created_at: string;
-  author_name: string;
+  author_name?: string;
 }
 
 interface SLAInfo {
@@ -145,55 +151,6 @@ const inputStyle: React.CSSProperties = {
 
 
 
-function SuccessBox({
-  title, message, icon = '✅', color = 'var(--gov-green)', onClose,
-}: {
-  title: string; message: string; icon?: string;
-  color?: string; onClose: () => void;
-}) {
-  return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      background: 'rgba(0,0,0,0.55)',
-      display: 'flex', alignItems: 'center',
-      justifyContent: 'center', zIndex: 9999,
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: 10,
-        width: 380, overflow: 'hidden',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-      }}>
-        <div style={{
-          background: color,    // ✅ dynamic color
-          padding: '16px 20px',
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <span style={{ fontSize: 22 }}>{icon}</span>
-          <span style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: '#fff' }}>
-            {title}
-          </span>
-        </div>
-        <div style={{ padding: '20px 24px' }}>
-          <p style={{ fontSize: 'var(--text-base)', color: '#3A3A3A', lineHeight: 1.6, margin: 0 }}>
-            {message}
-          </p>
-        </div>
-        <div style={{ padding: '12px 24px 20px', display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{
-            padding: '8px 24px', fontSize: 'var(--text-base)',
-            background: 'var(--gov-navy)', color: '#fff',
-            border: 'none', borderRadius: 5,
-            cursor: 'pointer', fontWeight: 500,
-          }}>
-            OK
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
 function OnHoldReasonBox({
   ticketNumber, reason, onReasonChange, onConfirm, onCancel, loading,
 }: {
@@ -278,18 +235,47 @@ function OnHoldReasonBox({
   );
 }
 
-  export default function TicketDetailModal({ ticket, onClose, onResolved, forceRequestorView }: Props) {
+  export default function TicketDetailModal({ ticket: ticketProp, onClose: dismissSheet, onResolved, forceRequestorView }: Props) {
   const { user } = useAuth();
+  const [assignedName, setAssignedName] = useState<string | null>(null);
+  const assignmentChanged = useRef(false);
+  const ticket = ticketProp && assignedName !== null ? { ...ticketProp, assigned_to: assignedName } : ticketProp;
+  useEffect(() => { setAssignedName(null); assignmentChanged.current = false; }, [ticketProp?.id]);
+  function onClose() {
+    if (assignmentChanged.current) { assignmentChanged.current = false; onResolved(); }
+    dismissSheet();
+  }
+  const [expanded, setExpanded] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    setClosing(false);
+    return () => { if (closeTimer.current) clearTimeout(closeTimer.current); };
+  }, [ticket?.id]);
+  function closeSheet() {
+    if (closing) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { onClose(); return; }
+    setClosing(true);
+    closeTimer.current = setTimeout(onClose, 280);
+  }
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { setExpanded(false); setShowReclassify(false); }, [ticket?.id]);
+  useEffect(() => {
+    if (!ticket) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    sheetRef.current?.focus({ preventScroll: true });
+    return () => { document.body.style.overflow = previousOverflow; previousFocus?.focus({ preventScroll: true }); };
+  }, [ticket?.id]);
   const [comments, setComments]     = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [posting, setPosting]       = useState(false);
-  const [toast, setToast]           = useState('');
   const [showCSM, setShowCSM]       = useState(false);
   const [slaInfo, setSlaInfo]       = useState<SLAInfo | null>(null);
   const [ictmsStaff, setIctmsStaff] = useState<User[]>([]);
 
-  const [successBox, setSuccessBox] = useState<{ title: string; message: string; icon?: string } | null>(null);
-  
+
   const [showOnHoldBox, setShowOnHoldBox] = useState(false);
   const [onHoldReason,  setOnHoldReason]  = useState('');
 
@@ -359,6 +345,12 @@ function OnHoldReasonBox({
       }
     }
   }, [ticket?.id, ticket?.service_area_id, canAssignTickets, isIctmsOrAdmin]);
+
+  // Show the current assignee when the staff options finish loading.
+  useEffect(() => {
+    const currentStaff = ictmsStaff.find(staff => staff.full_name === ticket?.assigned_to);
+    setAssignTo(currentStaff ? String(currentStaff.id) : '');
+  }, [ticket?.id, ticket?.assigned_to, ictmsStaff]);
 
   // Load sub-categories when category changes
   useEffect(() => {
@@ -432,7 +424,7 @@ function OnHoldReasonBox({
       setAttachmentPreviewUrl(URL.createObjectURL(response.data));
       setViewingAttachment(file);
     } catch {
-      alert('Unable to load this attachment preview.');
+      showErrorToast('Unable to load this attachment preview.');
     }
   }
 
@@ -465,26 +457,33 @@ function OnHoldReasonBox({
   }
 
   async function handlePostComment() {
-    if (!newComment.trim() || !ticket || !user) return;
+    if (posting || !newComment.trim() || !ticket || !user) return;
 
     // ADD THIS — check what empno value actually is at post time
     console.log('user object:', user);
     console.log('empno being sent:', user?.empno);
 
     setPosting(true);
+    const postingStartedAt = Date.now();
     try {
       await api.post(`/tickets/${ticket.id}/comments`, {
         ticket_id: ticket.id,
         empno:     user?.empno,
         content:   newComment.trim(),
       });
+      const feedbackDelay = Math.max(0, 600 - (Date.now() - postingStartedAt));
+      if (feedbackDelay > 0) await new Promise(resolve => setTimeout(resolve, feedbackDelay));
       setNewComment('');
       fetchComments();
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Failed to post comment.';
       console.error('Comment error:', err.response?.data);
-      alert(msg);
-    } finally { setPosting(false); }
+      showErrorToast(msg);
+    } finally {
+      const remainingDelay = Math.max(0, 600 - (Date.now() - postingStartedAt));
+      if (remainingDelay > 0) await new Promise(resolve => setTimeout(resolve, remainingDelay));
+      setPosting(false);
+    }
   }
 
   async function handleDswdCancel() {
@@ -495,7 +494,7 @@ function OnHoldReasonBox({
       showToast('Ticket cancelled.');
       setTimeout(() => { onResolved(); onClose(); }, 1500);
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to cancel.');
+      showErrorToast(err.response?.data?.error || 'Failed to cancel.');
     } finally { setCancelling(false); setShowCancelConfirm(false); }
   }
 
@@ -517,7 +516,12 @@ function OnHoldReasonBox({
       setAssignTo('');
 
       // ✅ Show success box
-      setSuccessBox({
+      setAssignedName(selectedStaff?.full_name ?? ticket.assigned_to ?? 'Unassigned');
+      assignmentChanged.current = true;
+      fetchCoAssignees();
+      fetchSLA();
+      notifySuccess({
+        keepOpen: true,
         icon:    isReassign ? '🔄' : '👤',
         title:   isReassign ? 'Ticket Reassigned' : 'Ticket Assigned',
         message: isReassign
@@ -525,7 +529,7 @@ function OnHoldReasonBox({
           : `Ticket ${ticket.ticket_number} has been successfully assigned to ${selectedStaff?.full_name ?? 'the selected staff'}.`,
       });
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to assign.');
+      showErrorToast(err.response?.data?.error || 'Failed to assign.');
     } finally {
       setAssigning(false);
     }
@@ -563,21 +567,21 @@ function OnHoldReasonBox({
         });
         fetchComments();
         // ✅ Show In Progress success box
-        setSuccessBox({
+        notifySuccess({
           icon:    '🔧',
           color:   '#5B21B6',
           title:   'Ticket In Progress',
           message: `Ticket ${ticket.ticket_number} is now tagged as In Progress. The requestor has been notified.`,
         });
       } catch (err: any) {
-        alert(err.response?.data?.error || 'Failed to update status.');
+        showErrorToast(err.response?.data?.error || 'Failed to update status.');
       } finally { setUpdatingStatus(false); }
       return;
     }
   }
 
     async function handleOnHold() {
-    if (!onHoldReason.trim()) { alert('Please provide a reason.'); return; }
+    if (!onHoldReason.trim()) { showErrorToast('Please provide a reason.'); return; }
     setUpdatingStatus(true);
     try {
       await api.patch(`/tickets/${ticket!.id}/status`, {
@@ -591,19 +595,19 @@ function OnHoldReasonBox({
       setOnHoldReason('');
 
       // ✅ Show On-Hold success box
-      setSuccessBox({
+      notifySuccess({
         icon:    '⏸',
         color:   '#CC7700',
         title:   'Ticket On-Hold',
         message: `Ticket ${ticket!.ticket_number} has been placed on hold. The requestor has been informed.`,
       });
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to put ticket on hold.');
+      showErrorToast(err.response?.data?.error || 'Failed to put ticket on hold.');
     } finally { setUpdatingStatus(false); }
   }
 
   async function handleIctmsCancel() {
-    if (!cancelReason.trim()) { alert('Please provide a reason.'); return; }
+    if (!cancelReason.trim()) { showErrorToast('Please provide a reason.'); return; }
     setUpdatingStatus(true);
     try {
       await api.patch(`/tickets/${ticket!.id}/status`, {
@@ -616,20 +620,20 @@ function OnHoldReasonBox({
       fetchComments();
 
       // ✅ Show Cancelled success box
-      setSuccessBox({
+      notifySuccess({
         icon:    '❌',
         color:   '#8B1A1A',
         title:   'Ticket Cancelled',
         message: `Ticket ${ticket!.ticket_number} has been cancelled. The requestor has been notified.`,
       });
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to cancel.');
+      showErrorToast(err.response?.data?.error || 'Failed to cancel.');
     } finally { setUpdatingStatus(false); }
   }
 
   async function handleResolveTicket() {
     if (!resolutionDetails.trim()) {
-      alert('Please provide resolution details.');
+      showErrorToast('Please provide resolution details.');
       return;
     }
     setUpdatingStatus(true);
@@ -645,14 +649,14 @@ function OnHoldReasonBox({
       fetchComments();
 
       // ✅ Show Resolved success box
-      setSuccessBox({
+      notifySuccess({
         icon:    '✅',
         color:   '#1B6B3A',
         title:   'Ticket Resolved',
         message: `Ticket ${ticket!.ticket_number} has been marked as Resolved. The requestor has been notified and asked to fill out the CSMF.`,
       });
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to resolve ticket.');
+      showErrorToast(err.response?.data?.error || 'Failed to resolve ticket.');
     } finally { setUpdatingStatus(false); }
   }
 
@@ -680,19 +684,22 @@ function OnHoldReasonBox({
       //onResolved();
 
       // ✅ Show success box
-      setSuccessBox({
+      notifySuccess({
         icon:    '📋',
         title:   'Ticket Reclassified',
         message: `Ticket ${ticket.ticket_number} has been successfully reclassified. All changes have been logged in the comments.`,
       });
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to reclassify.');
+      showErrorToast(err.response?.data?.error || 'Failed to reclassify.');
     } finally { setReclassifying(false); }
   }
 
   function showToast(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(''), 3000);
+    toast.success(msg);
+  }
+  function notifySuccess({ title, message, keepOpen = false }: { title: string; message: string; icon?: string; color?: string; keepOpen?: boolean }) {
+    toast.success(<div><strong style={{ display: 'block', marginBottom: 3 }}>{title}</strong><span>{message}</span></div>);
+    if (!keepOpen) { onResolved(); onClose(); }
   }
 
   function getInitials(name: string) {
@@ -802,16 +809,26 @@ function OnHoldReasonBox({
 
   return (
     <>
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0,
+      <div className={`ticket-sheet-backdrop ${closing ? "ticket-sheet-closing" : ""}`} onClick={closeSheet} style={{ position: 'fixed', inset: 0,
           background: 'rgba(0,0,20,0.5)',
           zIndex: 100, display: 'flex',
           alignItems: 'center', justifyContent: 'center',
         }}
       >
         <div
+          ref={sheetRef}
+          className={`ticket-sheet ${expanded ? 'ticket-sheet-expanded' : ''} ${showReclassify ? 'ticket-sheet-reclassifying' : ''}`}
+          role="dialog" aria-modal="true" aria-labelledby="ticket-sheet-heading" tabIndex={-1}
+          onKeyDown={event => {
+            if (event.key === 'Escape') { event.stopPropagation(); if (showReclassify) setShowReclassify(false); else closeSheet(); }
+            if (event.key === 'Tab') {
+              const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')).filter(item => item.getClientRects().length > 0 && !item.closest('[inert]'));
+              const first = items[0]; const last = items[items.length - 1];
+              if (!first) { event.preventDefault(); return; }
+              if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) { event.preventDefault(); last.focus(); }
+              else if (!event.shiftKey && (document.activeElement === last || document.activeElement === event.currentTarget)) { event.preventDefault(); first.focus(); }
+            }
+          }}
           onClick={e => e.stopPropagation()}
           style={{
             background: '#fff', width: 680,
@@ -820,450 +837,14 @@ function OnHoldReasonBox({
             border: '0.5px solid #C0C8D4',
           }}
         >
-          {/* HEADER */}
-          <div style={{
-            background: 'var(--gov-navy)', padding: '14px 20px',
-            display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', position: 'sticky',
-            top: 0, zIndex: 10,
-          }}>
-            <div>
-              <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: '#fff' }}>
-                {ticket.ticket_number} — {ticket.subject}
-              </h3>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
-                {ticket.division} · Filed {new Date(ticket.created_at).toLocaleDateString()}
-              </div>
-            </div>
-            <button onClick={onClose} style={{
-              background: 'rgba(255,255,255,0.15)', border: 'none',
-              borderRadius: 4, width: 28, height: 28, cursor: 'pointer',
-              color: '#fff', fontSize: 'var(--text-xl)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>×</button>
-          </div>
-
-          <div style={{ padding: 20 }}>
-
-            {/* META GRID */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr',
-              gap: 8, marginBottom: 14,
-            }}>
-              {[
-                { label: 'Status',       value: <StatusBadge status={ticket.status} /> },
-                { label: 'Priority',     value: <PriorityBadge priority={ticket.priority} /> },
-                { label: 'Category',     value: ticket.category },
-                { label: 'Sub-Category', value: ticket.sub_category || '—' },
-                { label: 'Sub-Item',     value: ticket.sub_item || '—' },
-                { label: 'Requestor',    value: ticket.requestor },
-                { label: 'Assigned To',  value: ticket.assigned_to || 'Unassigned' },
-                { label: 'Date Filed',   value: new Date(ticket.created_at).toLocaleDateString() },
-              ].map(({ label, value }) => (
-                <div key={label} style={{
-                  background: '#F5F8FC', borderRadius: 4, padding: '8px 10px',
-                }}>
-                  <div style={{
-                    fontSize: 'var(--text-xs)', color: '#6A7280',
-                    textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2,
-                  }}>
-                    {label}
-                  </div>
-                  <div style={{ fontSize: 'var(--text-sm)', color: '#1A1A1A', fontWeight: 500 }}>
-                    {value}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* CANCELLATION REASON */}
-            {ticket.status === 'Cancelled' && ticket.cancel_reason && (
-              <div style={{
-                background: '#FDE8E8', borderRadius: 4,
-                padding: '8px 12px', marginBottom: 14,
-                fontSize: 'var(--text-xs)', color: '#8B1A1A',
-              }}>
-                <strong>Cancellation Reason:</strong> {ticket.cancel_reason}
-              </div>
-            )}
-
-            {/* ── ICTMS ASSIGN / RE-ASSIGN ── */}
-            {canAssignTickets && !isTerminal &&
-              ['Open','Assigned','In Progress','On-Hold'].includes(ticket.status) && (
-              <div style={{
-                background: ticket.status === 'Open' ? '#E8F1FA' : '#F5F8FC',
-                borderRadius: 6, padding: 12, marginBottom: 12,
-                border: `0.5px solid ${ticket.status === 'Open' ? '#B5D4F4' : '#D0D9E4'}`,
-              }}>
-                <p style={{
-                  fontSize: 'var(--text-xs)', fontWeight: 500,
-                  color: ticket.status === 'Open' ? '#0D3B6E' : '#4A4A4A',
-                  marginBottom: 8,
-                }}>
-                  {ticket.status === 'Open'
-                    ? `Assign this ticket to a staff member in ${ticket.service_area_name || ticket.service_area_code || 'its service area'}:`
-                    : `Re-assign (currently: ${ticket.assigned_to ?? 'Unassigned'}):`
-                  }
-                </p>
-                <div style={{ fontSize: 'var(--text-xs)', color: '#52657A', marginBottom: 8 }}>
-                  Service area: <strong>{ticket.service_area_code || 'Not assigned'}</strong>
-                  {ticket.service_area_name ? ` — ${ticket.service_area_name}` : ''}
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <select
-                    value={assignTo}
-                    onChange={e => setAssignTo(e.target.value)}
-                    disabled={!ticket.service_area_id}
-                    style={inputStyle}
-                  >
-                    <option value="">— Select new staff —</option>
-                    {ictmsStaff
-                      .filter(s => s.empno !== ticket?.empno)
-                      .map(s => (
-                        <option key={s.id} value={s.id}>
-                          {s.full_name}
-                        </option>
-                      ))
-                    }
-                  </select>
-                  <button
-                    onClick={handleAssign}
-                    disabled={!assignTo || assigning}
-                    style={{
-                      padding: '6px 14px', fontSize: 'var(--text-sm)',
-                      background: !assignTo ? '#C8D0DC' : 'var(--gov-navy)',
-                      color: '#fff', border: 'none', borderRadius: 4,
-                      cursor: !assignTo ? 'not-allowed' : 'pointer', fontWeight: 500,
-                    }}
-                  >
-                    {assigning ? 'Saving...' : ticket.status === 'Open' ? 'Assign' : '↩ Re-assign'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* CO-ASSIGNEES SECTION */}
-            {canAssignTickets && (
-              <div style={{
-                background: '#F8FAFC', border: '0.5px solid #D0D9E4',
-                borderRadius: 6, padding: 14, marginBottom: 12,
-              }}>
-                <div style={{
-                  fontSize: 'var(--text-xs)', fontWeight: 600, color: '#5A6475',
-                  textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10,
-                }}>
-                  👥 Assigned Technicians
-                </div>
-
-                {/* List of current assignees */}
-                <div style={{ marginBottom: 10 }}>
-                  {coAssignees.length === 0 ? (
-                    <div style={{ fontSize: 'var(--text-xs)', color: '#aaa', fontStyle: 'italic' }}>
-                      No technicians assigned yet.
-                    </div>
-                  ) : coAssignees.map(a => (
-                    <div key={a.id} style={{
-                      display: 'flex', alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '5px 0', borderBottom: '0.5px solid #EEF1F5',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{
-                          width: 28, height: 28, borderRadius: '50%',
-                          background: a.role === 'primary' ? 'var(--gov-navy)' : '#E8F1FA',
-                          color:      a.role === 'primary' ? '#fff' : 'var(--gov-navy)',
-                          display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', fontSize: 'var(--text-xs)', fontWeight: 700,
-                        }}>
-                          {a.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: '#1A2A3A' }}>
-                            {a.full_name}
-                          </div>
-                          <div style={{ fontSize: 'var(--text-xs)', color: '#888' }}>
-                            <span style={{
-                              background: a.role === 'primary' ? '#E8F1FA' : '#E8F5EE',
-                              color:      a.role === 'primary' ? '#0D3B6E' : '#1B6B3A',
-                              padding: '1px 6px', borderRadius: 3, fontSize: 'var(--text-xs)',
-                              fontWeight: 600, marginRight: 5,
-                            }}>
-                              {a.role === 'primary' ? 'Primary' : 'Co-Assignee'}
-                            </span>
-                            Since {new Date(a.assigned_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Remove button — only for co-assignees */}
-                      {a.role === 'co-assignee' && (
-                        <button
-                          onClick={async () => {
-                            await api.delete(
-                              `/tickets/${ticket!.id}/assignees/${a.user_id}`,
-                              { data: { removed_by: user?.empno, remover_name: user?.full_name } }
-                            );
-                            fetchCoAssignees();
-                            fetchComments();
-                          }}
-                          disabled={isTerminal}
-                          style={{
-                            background: 'none', border: `1px solid ${isTerminal ? '#D0D9E4' : '#FDE8E8'}`,
-                            color: isTerminal ? '#888' : '#8B1A1A', fontSize: 'var(--text-xs)', padding: '3px 8px',
-                            borderRadius: 4, cursor: isTerminal ? 'not-allowed' : 'pointer',
-                            opacity: isTerminal ? 0.5 : 1,
-                          }}
-                        >
-                          {isTerminal ? 'Cannot Remove' : 'Remove'}
-                        </button>
-                      )}
-                                          </div>
-                  ))}
-                </div>
-
-                {/* Add co-assignee — DISABLED when ticket is closed/cancelled */}
-                {!isTerminal ? (
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <select
-                      value={coAssignTo}
-                      onChange={e => setCoAssignTo(e.target.value)}
-                      disabled={!ticket.service_area_id}
-                      style={{
-                        flex: 1, padding: '5px 9px', fontSize: 'var(--text-xs)',
-                        border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff',
-                      }}
-                    >
-                      <option value="">— Add co-assignee —</option>
-                      {ictmsStaff
-                        .filter(s =>
-                          s.empno !== ticket?.empno &&                              // not requestor
-                          !coAssignees.some(a => a.user_id === s.id) &&            // not already co-assigned
-                          s.full_name !== ticket?.assigned_to                       // not the primary assignee
-                        )
-                        .map(s => (
-                          <option key={s.id} value={s.id}>{s.full_name}</option>
-                        ))
-                      }
-                    </select>
-                    <button
-                      onClick={async () => {
-                        if (!coAssignTo) return;
-                        setAddingCoAssign(true);
-                        try {
-                          const staff = ictmsStaff.find(s => s.id === Number(coAssignTo));
-                          await api.post(`/tickets/${ticket!.id}/assignees`, {
-                            user_id:           Number(coAssignTo),
-                            empno:             staff?.empno,
-                            full_name:         staff?.full_name,
-                            assigned_by_empno: user?.empno,
-                            assigner_name:     user?.full_name,
-                          });
-                          setCoAssignTo('');
-                          fetchCoAssignees();
-                          fetchComments();
-                        } catch (err: any) {
-                          alert(err.response?.data?.error || 'Failed to add co-assignee.');
-                        } finally { setAddingCoAssign(false); }
-                      }}
-                      disabled={!coAssignTo || addingCoAssign}
-                      style={{
-                        padding: '5px 14px', fontSize: 'var(--text-xs)',
-                        background: !coAssignTo ? '#C8D0DC' : '#1A5490',
-                        color: '#fff', border: 'none', borderRadius: 4,
-                        cursor: !coAssignTo ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      {addingCoAssign ? '...' : '+ Add'}
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{
-                    padding: '8px 12px', background: '#F5F8FC',
-                    borderRadius: 4, fontSize: 'var(--text-xs)', color: '#888',
-                    textAlign: 'center', border: '0.5px solid #D0D9E4',
-                  }}>
-                    ✓ This ticket is {ticket?.status.toLowerCase()}. No more team members can be added.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── ICTMS STATUS UPDATE ── */}
-            {isIctmsOrAdmin && !isTerminal && !showCancelReason &&
-              getAvailableStatuses().length > 0 && (
-              <div style={{
-                background: '#F5F8FC', borderRadius: 6,
-                padding: 12, marginBottom: 12,
-                border: '0.5px solid #D0D9E4',
-              }}>
-                <p style={{ fontSize: 'var(--text-xs)', color: '#4A4A4A', fontWeight: 500, marginBottom: 8 }}>
-                  Update ticket status:
-                </p>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {getAvailableStatuses().map(s => {
-                    const sc = statusColors[s] ?? { bg: '#E8F1FA', color: '#0D3B6E' };
-                    return (
-                      <button
-                        key={s}
-                        onClick={() => handleStatusUpdate(s)}
-                        disabled={updatingStatus}
-                        style={{
-                          padding: '5px 14px', fontSize: 'var(--text-xs)',
-                          background: sc.bg, color: sc.color,
-                          border: `1px solid ${sc.color}44`,
-                          borderRadius: 4, cursor: 'pointer', fontWeight: 500,
-                        }}
-                      >
-                        → {s}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* ── ICTMS CANCEL WITH REASON ── */}
-            {showCancelReason && (
-              <div style={{
-                background: '#FDE8E8', borderRadius: 6,
-                padding: 12, marginBottom: 12,
-                border: '0.5px solid #F5C0C0',
-              }}>
-                <p style={{ fontSize: 'var(--text-xs)', color: '#8B1A1A', fontWeight: 500, marginBottom: 8 }}>
-                  Reason for cancellation (required):
-                </p>
-                <textarea
-                  value={cancelReason}
-                  onChange={e => setCancelReason(e.target.value)}
-                  placeholder="Explain why this ticket is being cancelled..."
-                  rows={3}
-                  style={{
-                    ...inputStyle, resize: 'vertical',
-                    border: '1px solid #F5C0C0', marginBottom: 8,
-                  }}
-                />
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => { setShowCancelReason(false); setCancelReason(''); }}
-                    style={{
-                      padding: '5px 12px', fontSize: 'var(--text-xs)',
-                      border: '1px solid #C8D0DC', borderRadius: 4,
-                      background: '#fff', cursor: 'pointer',
-                    }}
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={handleIctmsCancel}
-                    disabled={updatingStatus || !cancelReason.trim()}
-                    style={{
-                      padding: '5px 14px', fontSize: 'var(--text-xs)',
-                      background: '#8B1A1A', color: '#fff',
-                      border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500,
-                    }}
-                  >
-                    {updatingStatus ? 'Cancelling...' : 'Confirm Cancel'}
-                  </button>
-                </div>
-              </div>
-            )}
-             {/* ── Resolution  ── */}
-            {showResolutionBox && (
-            <div style={{
-              background: '#E8F5EE',
-              borderRadius: 6,
-              padding: 12,
-              marginBottom: 12,
-              border: '0.5px solid #B7DFC8',
-            }}>
-
-              <p style={{
-                fontSize: 'var(--text-xs)',
-                color: '#1B6B3A',
-                fontWeight: 500,
-                marginBottom: 8,
-              }}>
-                Resolution Details (required):
-              </p>
-
-              <textarea
-                value={resolutionDetails}
-                onChange={e => setResolutionDetails(e.target.value)}
-                placeholder="Describe the resolution provided to the requestor..."
-                rows={4}
-                style={{
-                  ...inputStyle,
-                  resize: 'vertical',
-                  marginBottom: 8,
-                }}
-              />
-
-              <div style={{ display: 'flex', gap: 8 }}>
-
-                <button
-                  onClick={() => {
-                    setShowResolutionBox(false);
-                    setResolutionDetails('');
-                  }}
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: 'var(--text-xs)',
-                    border: '1px solid #C8D0DC',
-                    borderRadius: 4,
-                    background: '#fff',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={handleResolveTicket}
-                  disabled={updatingStatus || !resolutionDetails.trim()}
-                  style={{
-                    padding: '5px 14px',
-                    fontSize: 'var(--text-xs)',
-                    background: 'var(--gov-green)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                  }}
-                >
-                  {updatingStatus ? 'Resolving...' : '✓ Confirm Resolution'}
-                </button>
-
-              </div>
-            </div>
-          )}
-
-            {/* ── ICTMS RECLASSIFY ── */}
-            {isIctmsOrAdmin && !isTerminal && ticket.status !== 'Resolved' && (
-              <div style={{ marginBottom: 12 }}>
-                {!showReclassify ? (
-                  <button
-                    onClick={() => setShowReclassify(true)}
-                    style={{
-                      padding: '5px 14px', fontSize: 'var(--text-xs)',
-                      background: '#F3F0FF', color: '#534AB7',
-                      border: '1px solid #AFA9EC',
-                      borderRadius: 4, cursor: 'pointer', fontWeight: 500,
-                    }}
-                  >
-                    🔀 Reclassify Ticket
-                  </button>
-                ) : (
-                  <div style={{
+          <aside id="ticket-reclassify-pane" className="ticket-reclassify-pane" aria-label="Reclassify ticket" inert={!showReclassify}>
+            <div className="ticket-reclassify-header"><h3><Shuffle size={16} />Reclassify Ticket</h3><button type="button" aria-label="Close reclassification" onClick={() => setShowReclassify(false)}><X size={18} /></button></div>
+            <p className="ticket-reclassify-help">Update the classification and add a reason for the activity record.</p>
+                  <div className="ticket-reclassify-form" style={{
                     background: '#F3F0FF', borderRadius: 6,
                     padding: 14, border: '0.5px solid #AFA9EC',
                   }}>
-                    <p style={{
-                      fontSize: 'var(--text-xs)', fontWeight: 500,
-                      color: '#3C3489', marginBottom: 12,
-                    }}>
-                      🔀 Reclassify Ticket
-                    </p>
+
 
                     <div style={{
                       display: 'grid', gridTemplateColumns: '1fr 1fr',
@@ -1419,16 +1000,414 @@ function OnHoldReasonBox({
                           fontWeight: 500,
                         }}
                       >
-                        {reclassifying ? 'Reclassifying...' : '✓ Save Reclassification'}
+                        {reclassifying ? 'Reclassifying...' : <><Save size={14} /> Save Reclassification</>}
                       </button>
                     </div>
+                  </div>
+          </aside>
+          <header className="ticket-sheet-header">
+            <div className="ticket-sheet-heading"><span><TicketIcon size={18} /></span><h2 id="ticket-sheet-heading">{expanded ? 'Ticket Details' : 'Ticket Preview'}</h2></div>
+            <div className="ticket-sheet-header-actions"><button className="ticket-sheet-expand" onClick={() => setExpanded(value => !value)}>{expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}{expanded ? 'Compact View' : 'View Full Details'}</button><button className="ticket-sheet-close" onClick={closeSheet} aria-label="Close ticket"><X size={20} /></button></div>
+          </header>
+          <div className="ticket-sheet-body" style={{ padding: 20 }}>
+            <section className="ticket-sheet-summary" aria-label="Ticket summary">
+              <div className="ticket-sheet-title"><strong>{ticket.ticket_number}</strong><h3>{ticket.subject}</h3><StatusBadge status={ticket.status} /></div>
+              <div className="ticket-sheet-summary-grid">
+                <div><span>Ticket Category</span><strong>{ticket.category || 'Uncategorized'}</strong></div>
+                <div><span>Priority</span><PriorityBadge priority={ticket.priority} /></div>
+                <div><span>Assigned to</span><strong>{ticket.assigned_to || 'Unassigned'}</strong></div>
+              </div>
+            </section>
+            {slaInfo && !isTerminal && <div className="ticket-sheet-due-grid">
+              <div><span>First Response Due</span><strong>{formatDate(new Date(new Date(slaInfo.created_at || ticket.created_at).getTime() + slaInfo.sla_response_hours * 3600000).toISOString())}</strong></div>
+              <div><span>Resolution Due</span><strong>{slaInfo.assigned_at ? formatDate(new Date(new Date(slaInfo.assigned_at).getTime() + slaInfo.sla_resolution_hours * 3600000 + Number(slaInfo.total_hold_seconds || 0) * 1000).toISOString()) : 'Awaiting assignment'}</strong></div>
+            </div>}
+
+
+
+            <h4 className="ticket-sheet-section-title">Ticket Details</h4>
+            {/* META GRID */}
+            <div className="ticket-sheet-meta" style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr',
+              gap: 8, marginBottom: 14,
+            }}>
+              {[
+                { label: 'Status',       value: <StatusBadge status={ticket.status} /> },
+                { label: 'Priority',     value: <PriorityBadge priority={ticket.priority} /> },
+                { label: 'Category',     value: ticket.category },
+                { label: 'Sub-Category', value: ticket.sub_category || '—' },
+                { label: 'Sub-Item',     value: ticket.sub_item || '—' },
+                { label: 'Requestor',    value: ticket.requestor },
+                { label: 'Office Location', value: ticket.office_location || 'Not recorded' },
+                { label: 'Division / Unit', value: [ticket.division, ticket.unit].filter(Boolean).join(' / ') || 'Not recorded' },
+                { label: 'Assigned To',  value: ticket.assigned_to || 'Unassigned' },
+                { label: 'Date Filed',   value: new Date(ticket.created_at).toLocaleDateString() },
+              ].map(({ label, value }) => (
+                <div key={label} style={{
+                  background: '#F5F8FC', borderRadius: 4, padding: '8px 10px',
+                }}>
+                  <div style={{
+                    fontSize: 'var(--text-xs)', color: '#6A7280',
+                    textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2,
+                  }}>
+                    {label}
+                  </div>
+                  <div style={{ fontSize: 'var(--text-sm)', color: '#1A1A1A', fontWeight: 500 }}>
+                    {value}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* CANCELLATION REASON */}
+            {ticket.status === 'Cancelled' && ticket.cancel_reason && (
+              <div style={{
+                background: '#FDE8E8', borderRadius: 4,
+                padding: '8px 12px', marginBottom: 14,
+                fontSize: 'var(--text-xs)', color: '#8B1A1A',
+              }}>
+                <strong>Cancellation Reason:</strong> {ticket.cancel_reason}
+              </div>
+            )}
+
+            <section className="ticket-sheet-controls" aria-label="Ticket management">
+            {/* ── ICTMS ASSIGN / RE-ASSIGN ── */}
+            {canAssignTickets && !isTerminal &&
+              ['Open','Assigned','In Progress','On-Hold'].includes(ticket.status) && (
+              <div className="ticket-sheet-assignment" style={{
+                background: ticket.status === 'Open' ? '#E8F1FA' : '#F5F8FC',
+                borderRadius: 6, padding: 12, marginBottom: 12,
+                border: `0.5px solid ${ticket.status === 'Open' ? '#B5D4F4' : '#D0D9E4'}`,
+              }}>
+                <p style={{
+                  fontSize: 'var(--text-xs)', fontWeight: 500,
+                  color: ticket.status === 'Open' ? '#0D3B6E' : '#4A4A4A',
+                  marginBottom: 8,
+                }}>
+                  <UserPlus size={14} /> {ticket.status === 'Open' ? 'Assign to' : 'Reassign to'}
+                </p>
+                <div style={{ fontSize: 'var(--text-xs)', color: '#52657A', marginBottom: 8 }}>
+                  Service area: <strong>{ticket.service_area_code || 'Not assigned'}</strong>
+                  {ticket.service_area_name ? ` — ${ticket.service_area_name}` : ''}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select aria-label="Assign ticket to staff"
+                    value={assignTo}
+                    onChange={e => setAssignTo(e.target.value)}
+                    disabled={!ticket.service_area_id}
+                    style={inputStyle}
+                  >
+                    <option value="">{ticket.assigned_to && !ictmsStaff.some(staff => staff.full_name === ticket.assigned_to) ? `${ticket.assigned_to} (current assignee)` : 'Select staff'}</option>
+                    {ictmsStaff
+                      .filter(s => s.empno !== ticket?.empno)
+                      .map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.full_name}
+                        </option>
+                      ))
+                    }
+                  </select>
+                  <button
+                    onClick={handleAssign}
+                    disabled={!assignTo || assigning}
+                    style={{
+                      padding: '6px 14px', fontSize: 'var(--text-sm)',
+                      background: !assignTo ? '#C8D0DC' : 'var(--gov-navy)',
+                      color: '#fff', border: 'none', borderRadius: 4,
+                      cursor: !assignTo ? 'not-allowed' : 'pointer', fontWeight: 500,
+                    }}
+                  >
+                    {assigning ? 'Saving...' : ticket.status === 'Open' ? <><Plus size={14} /> Assign</> : <><Undo2 size={14} /> Reassign</>}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* CO-ASSIGNEES SECTION */}
+            {canAssignTickets && (
+              <div className="ticket-sheet-technicians" style={{
+                background: '#F8FAFC', border: '0.5px solid #D0D9E4',
+                borderRadius: 6, padding: 14, marginBottom: 12,
+              }}>
+                <div style={{
+                  fontSize: 'var(--text-xs)', fontWeight: 600, color: '#5A6475',
+                  textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10,
+                }}>
+                  <Users size={14} /> Assigned Technicians
+                </div>
+
+                {/* List of current assignees */}
+                <div style={{ marginBottom: 10 }}>
+                  {coAssignees.length === 0 ? (
+                    <div style={{ fontSize: 'var(--text-xs)', color: '#aaa', fontStyle: 'italic' }}>
+                      No technicians assigned yet.
+                    </div>
+                  ) : coAssignees.map(a => (
+                    <div key={a.id} style={{
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '5px 0', borderBottom: '0.5px solid #EEF1F5',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: '50%',
+                          background: a.role === 'primary' ? 'var(--gov-navy)' : '#E8F1FA',
+                          color:      a.role === 'primary' ? '#fff' : 'var(--gov-navy)',
+                          display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', fontSize: 'var(--text-xs)', fontWeight: 700,
+                        }}>
+                          {a.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: '#1A2A3A' }}>
+                            {a.full_name}
+                          </div>
+                          <div style={{ fontSize: 'var(--text-xs)', color: '#888' }}>
+                            <span style={{
+                              background: a.role === 'primary' ? '#E8F1FA' : '#E8F5EE',
+                              color:      a.role === 'primary' ? '#0D3B6E' : '#1B6B3A',
+                              padding: '1px 6px', borderRadius: 3, fontSize: 'var(--text-xs)',
+                              fontWeight: 600, marginRight: 5,
+                            }}>
+                              {a.role === 'primary' ? 'Primary' : 'Co-Assignee'}
+                            </span>
+                            Since {new Date(a.assigned_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Remove button — only for co-assignees */}
+                      {a.role === 'co-assignee' && (
+                        <button
+                          onClick={async () => {
+                            await api.delete(
+                              `/tickets/${ticket!.id}/assignees/${a.user_id}`,
+                              { data: { removed_by: user?.empno, remover_name: user?.full_name } }
+                            );
+                            fetchCoAssignees();
+                            fetchComments();
+                          }}
+                          disabled={isTerminal}
+                          style={{
+                            background: 'none', border: `1px solid ${isTerminal ? '#D0D9E4' : '#FDE8E8'}`,
+                            color: isTerminal ? '#888' : '#8B1A1A', fontSize: 'var(--text-xs)', padding: '3px 8px',
+                            borderRadius: 4, cursor: isTerminal ? 'not-allowed' : 'pointer',
+                            opacity: isTerminal ? 0.5 : 1,
+                          }}
+                        >
+                          {isTerminal ? 'Cannot Remove' : 'Remove'}
+                        </button>
+                      )}
+                                          </div>
+                  ))}
+                </div>
+
+                {/* Add co-assignee — DISABLED when ticket is closed/cancelled */}
+                {!isTerminal ? (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <select aria-label="Add co-assignee"
+                      value={coAssignTo}
+                      onChange={e => setCoAssignTo(e.target.value)}
+                      disabled={!ticket.service_area_id}
+                      style={{
+                        flex: 1, padding: '5px 9px', fontSize: 'var(--text-xs)',
+                        border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff',
+                      }}
+                    >
+                      <option value="">— Add co-assignee —</option>
+                      {ictmsStaff
+                        .filter(s =>
+                          s.empno !== ticket?.empno &&                              // not requestor
+                          !coAssignees.some(a => a.user_id === s.id) &&            // not already co-assigned
+                          s.full_name !== ticket?.assigned_to                       // not the primary assignee
+                        )
+                        .map(s => (
+                          <option key={s.id} value={s.id}>{s.full_name}</option>
+                        ))
+                      }
+                    </select>
+                    <button
+                      onClick={async () => {
+                        if (!coAssignTo) return;
+                        setAddingCoAssign(true);
+                        try {
+                          const staff = ictmsStaff.find(s => s.id === Number(coAssignTo));
+                          await api.post(`/tickets/${ticket!.id}/assignees`, {
+                            user_id:           Number(coAssignTo),
+                            empno:             staff?.empno,
+                            full_name:         staff?.full_name,
+                            assigned_by_empno: user?.empno,
+                            assigner_name:     user?.full_name,
+                          });
+                          setCoAssignTo('');
+                          fetchCoAssignees();
+                          fetchComments();
+                        } catch (err: any) {
+                          showErrorToast(err.response?.data?.error || 'Failed to add co-assignee.');
+                        } finally { setAddingCoAssign(false); }
+                      }}
+                      disabled={!coAssignTo || addingCoAssign}
+                      style={{
+                        padding: '5px 14px', fontSize: 'var(--text-xs)',
+                        background: !coAssignTo ? '#C8D0DC' : '#1A5490',
+                        color: '#fff', border: 'none', borderRadius: 4,
+                        cursor: !coAssignTo ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {addingCoAssign ? '...' : '+ Add'}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '8px 12px', background: '#F5F8FC',
+                    borderRadius: 4, fontSize: 'var(--text-xs)', color: '#888',
+                    textAlign: 'center', border: '0.5px solid #D0D9E4',
+                  }}>
+                    ✓ This ticket is {ticket?.status.toLowerCase()}. No more team members can be added.
                   </div>
                 )}
               </div>
             )}
 
-            {/* DESCRIPTION */}
+            {/* ── ICTMS STATUS UPDATE ── */}
+            {isIctmsOrAdmin && !isTerminal && !showCancelReason &&
+              getAvailableStatuses().length > 0 && (
+              <div className="ticket-sheet-status-control">
+                <div className="ticket-sheet-status-heading"><label htmlFor="ticket-status-change"><CircleDot size={14} />Change Status</label><StatusBadge status={ticket.status} /></div>
+                <div className="ticket-sheet-status-field"><select id="ticket-status-change" value="" disabled={updatingStatus} onChange={event => { if (event.target.value) handleStatusUpdate(event.target.value); }}>
+                  <option value="" disabled>{updatingStatus ? 'Updating status...' : 'Select new status'}</option>
+                  {getAvailableStatuses().map(status => <option key={status} value={status}>{status}</option>)}
+                </select><ChevronRight size={14} aria-hidden="true" /></div>
+              </div>
+            )}
+
+            {/* ── ICTMS CANCEL WITH REASON ── */}
+            {showCancelReason && (
+              <div style={{
+                background: '#FDE8E8', borderRadius: 6,
+                padding: 12, marginBottom: 12,
+                border: '0.5px solid #F5C0C0',
+              }}>
+                <p style={{ fontSize: 'var(--text-xs)', color: '#8B1A1A', fontWeight: 500, marginBottom: 8 }}>
+                  Reason for cancellation (required):
+                </p>
+                <textarea
+                  value={cancelReason}
+                  onChange={e => setCancelReason(e.target.value)}
+                  placeholder="Explain why this ticket is being cancelled..."
+                  rows={3}
+                  style={{
+                    ...inputStyle, resize: 'vertical',
+                    border: '1px solid #F5C0C0', marginBottom: 8,
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => { setShowCancelReason(false); setCancelReason(''); }}
+                    style={{
+                      padding: '5px 12px', fontSize: 'var(--text-xs)',
+                      border: '1px solid #C8D0DC', borderRadius: 4,
+                      background: '#fff', cursor: 'pointer',
+                    }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleIctmsCancel}
+                    disabled={updatingStatus || !cancelReason.trim()}
+                    style={{
+                      padding: '5px 14px', fontSize: 'var(--text-xs)',
+                      background: '#8B1A1A', color: '#fff',
+                      border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500,
+                    }}
+                  >
+                    {updatingStatus ? 'Cancelling...' : 'Confirm Cancel'}
+                  </button>
+                </div>
+              </div>
+            )}
+             {/* ── Resolution  ── */}
+            {showResolutionBox && (
             <div style={{
+              background: '#E8F5EE',
+              borderRadius: 6,
+              padding: 12,
+              marginBottom: 12,
+              border: '0.5px solid #B7DFC8',
+            }}>
+
+              <p style={{
+                fontSize: 'var(--text-xs)',
+                color: '#1B6B3A',
+                fontWeight: 500,
+                marginBottom: 8,
+              }}>
+                Resolution Details (required):
+              </p>
+
+              <textarea
+                value={resolutionDetails}
+                onChange={e => setResolutionDetails(e.target.value)}
+                placeholder="Describe the resolution provided to the requestor..."
+                rows={4}
+                style={{
+                  ...inputStyle,
+                  resize: 'vertical',
+                  marginBottom: 8,
+                }}
+              />
+
+              <div style={{ display: 'flex', gap: 8 }}>
+
+                <button
+                  onClick={() => {
+                    setShowResolutionBox(false);
+                    setResolutionDetails('');
+                  }}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: 'var(--text-xs)',
+                    border: '1px solid #C8D0DC',
+                    borderRadius: 4,
+                    background: '#fff',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleResolveTicket}
+                  disabled={updatingStatus || !resolutionDetails.trim()}
+                  style={{
+                    padding: '5px 14px',
+                    fontSize: 'var(--text-xs)',
+                    background: 'var(--gov-green)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                  }}
+                >
+                  {updatingStatus ? 'Resolving...' : '✓ Confirm Resolution'}
+                </button>
+
+              </div>
+            </div>
+          )}
+
+            {/* ── ICTMS RECLASSIFY ── */}
+            {isIctmsOrAdmin && !isTerminal && ticket.status !== 'Resolved' && (
+              <div style={{ marginBottom: 12 }}>
+                <button className="ticket-sheet-reclassify-trigger" aria-expanded={showReclassify} aria-controls="ticket-reclassify-pane" onClick={() => setShowReclassify(value => !value)}><Shuffle size={14} /> Reclassify Ticket</button>
+              </div>
+            )}
+
+            </section>
+
+            {/* DESCRIPTION */}
+            <div className="ticket-sheet-section-title" style={{
               fontSize: 'var(--text-xs)', fontWeight: 500, color: '#6A7280',
               textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6,
             }}>
@@ -1558,23 +1537,27 @@ function OnHoldReasonBox({
               </div>
             )}
 
+
+            <section className="ticket-sheet-activity-section" aria-label="Ticket activity">
+            <h4 className="ticket-sheet-section-title">Ticket Activity <span>{comments.length}</span></h4>
+            <div className="ticket-sheet-created"><span><TicketIcon size={14} /></span><div><p><strong>{ticket.requestor || 'Requestor'}</strong> created this ticket</p><time>{formatDate(ticket.created_at)}</time></div></div>
             {/* COMMENTS */}
-            <div style={{
+            <div className="ticket-sheet-old-activity-title" style={{
               fontSize: 'var(--text-xs)', fontWeight: 500, color: '#6A7280',
               textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10,
             }}>
-              Comments & Updates ({comments.length})
+              Ticket Activity ({comments.length})
             </div>
 
             {comments.length === 0 ? (
               <div style={{ fontSize: 'var(--text-xs)', color: '#999', marginBottom: 12 }}>
-                No comments yet.
+                No additional activity yet.
               </div>
             ) : comments.map(c => {
               const isSystem = isSystemComment(c.content);
               const systemStyle = getSystemCommentStyle(c.content);
               return (
-                <div key={c.id} style={{ display: 'flex', gap: 9, marginBottom: 10 }}>
+                <div className="ticket-sheet-activity" key={c.id} style={{ display: 'flex', gap: 9, marginBottom: 10 }}>
                   <div style={{
                     width: 28, height: 28, borderRadius: '50%',
                     background: isSystem ? systemStyle.iconBg : '#E8F1FA',
@@ -1613,31 +1596,20 @@ function OnHoldReasonBox({
 
             {/* COMMENT INPUT */}
             {!isTerminal ? (
-              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <form className="ticket-comment-composer" aria-busy={posting} onSubmit={event => { event.preventDefault(); if (!posting) handlePostComment(); }}>
                 <input
                   type="text"
+                  aria-label="Comment"
                   value={newComment}
-                  onChange={e => setNewComment(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handlePostComment()}
+                  disabled={posting}
+                  onChange={event => setNewComment(event.target.value)}
                   placeholder={isDswdStaff ? 'Add a follow-up comment...' : 'Add a comment or update...'}
-                  style={{
-                    flex: 1, padding: '7px 10px',
-                    border: '1px solid #C8D0DC', borderRadius: 4, fontSize: 'var(--text-sm)',
-                  }}
                 />
-                <button
-                  onClick={handlePostComment}
-                  disabled={posting || !newComment.trim()}
-                  style={{
-                    padding: '7px 14px', fontSize: 'var(--text-sm)',
-                    background: posting ? '#888' : 'var(--gov-navy)',
-                    color: '#fff', border: 'none',
-                    borderRadius: 4, cursor: posting ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {posting ? '...' : 'Post'}
+                <button type="submit" disabled={posting || !newComment.trim()} aria-label={posting ? 'Sending comment' : 'Send comment'} title={posting ? 'Sending...' : 'Send comment'}>
+                  {posting ? <LoaderCircle size={18} className="ticket-comment-spinner" /> : <Send size={18} />}
                 </button>
-              </div>
+                <span className="ticket-grid-sr" role="status">{posting ? 'Sending comment...' : ''}</span>
+              </form>
             ) : (
               <div style={{
                 marginTop: 12, padding: '8px 12px',
@@ -1647,10 +1619,12 @@ function OnHoldReasonBox({
                 This ticket is {ticket.status.toLowerCase()}. No further comments can be added.
               </div>
             )}
+            </section>
+
           </div>
 
           {/* FOOTER */}
-          <div style={{
+          <div className="ticket-sheet-footer" style={{
             padding: '12px 20px', borderTop: '0.5px solid #E5EAF0',
             display: 'flex', justifyContent: 'space-between',
             alignItems: 'center', background: '#F8FAFC',
@@ -1686,7 +1660,7 @@ function OnHoldReasonBox({
                     }}
 
 
-                    
+
                   >
                     {cancelling ? 'Cancelling...' : 'Yes, Cancel'}
                   </button>
@@ -1706,13 +1680,7 @@ function OnHoldReasonBox({
 
             {/* RIGHT */}
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={onClose} style={{
-                padding: '6px 14px', fontSize: 'var(--text-sm)',
-                border: '1px solid #C8D0DC', borderRadius: 4,
-                background: '#fff', cursor: 'pointer',
-              }}>
-                Close
-              </button>
+
 
               {/* DSWD Staff — fill CSM when Resolved */}
               {isDswdStaff && isTicketRequestor && ticket.status === 'Resolved' && (
@@ -1725,7 +1693,7 @@ function OnHoldReasonBox({
                     cursor: 'pointer', fontWeight: 500,
                   }}
                 >
-                  📋 Fill CSM to Close Ticket
+                  <ClipboardCheck size={15} aria-hidden="true" /> Fill CSM to Close Ticket
                 </button>
               )}
 
@@ -1734,18 +1702,6 @@ function OnHoldReasonBox({
           </div>
         </div>
       </div>
-
-      {/* TOAST */}
-      {toast && (
-        <div style={{
-          position: 'fixed', bottom: 20, right: 20,
-          background: 'var(--gov-green)', color: '#fff',
-          padding: '10px 16px', borderRadius: 4,
-          fontSize: 'var(--text-sm)', fontWeight: 500, zIndex: 300,
-        }}>
-          {toast}
-        </div>
-      )}
 
       {/* CSM MODAL */}
       {showCSM && ticket && (
@@ -1793,22 +1749,10 @@ function OnHoldReasonBox({
         />
       )}
 
-      
+
 
       {/* ✅ SUCCESS BOX  */}
-      {successBox && (
-        <SuccessBox
-          icon={successBox.icon}
-          title={successBox.title}
-          message={successBox.message}
-          color={successBox.color}    
-          onClose={() => {
-            setSuccessBox(null);
-            onResolved();
-            onClose();
-          }}
-        />
-      )}
+
 
     </>
   );

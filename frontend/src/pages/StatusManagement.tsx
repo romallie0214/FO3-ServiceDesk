@@ -1,3 +1,8 @@
+import { showErrorToast } from '../utils/notifications';
+import AppTable from '../components/AppTable';
+import './StatusManagement.css';
+import SummaryCards from '../components/dashboard/SummaryCards';
+import { Tags, LoaderCircle, CircleCheck, Plus, Pencil, Trash2, Save, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 
@@ -92,7 +97,7 @@ export default function StatusManagement() {
   }
 
   async function handleSave() {
-    if (!form.name.trim()) { alert('Name is required.'); return; }
+    if (!form.name.trim()) { showErrorToast('Name is required.'); return; }
     setSaving(true);
     try {
       if (editStatus) {
@@ -105,7 +110,7 @@ export default function StatusManagement() {
       setShowModal(false);
       fetchStatuses();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to save status.');
+      showErrorToast(err.response?.data?.error || 'Failed to save status.');
     } finally {
       setSaving(false);
     }
@@ -120,7 +125,7 @@ export default function StatusManagement() {
       setDeleteTarget(null);
       fetchStatuses();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete status.');
+      showErrorToast(err.response?.data?.error || 'Failed to delete status.');
     } finally {
       setDeleting(false);
     }
@@ -136,7 +141,7 @@ export default function StatusManagement() {
   );
 
   return (
-    <div>
+    <div className="status-management-page">
       {/* BREADCRUMB */}
       <div style={{
         fontSize: 'clamp(9px, 1.8vw, 11px)',
@@ -169,7 +174,7 @@ export default function StatusManagement() {
           be deleted but can be edited. Custom statuses can be fully managed.
         </span>
         <button
-          onClick={openCreate}
+          className="status-create-button" onClick={openCreate}
           style={{
             padding: 'clamp(5px, 1.5vw, 8px) clamp(10px, 2vw, 14px)',
             fontSize: 'clamp(10px, 1.8vw, 12px)',
@@ -183,49 +188,15 @@ export default function StatusManagement() {
             flex: '0 0 auto',
           }}
         >
-          + New Status
+          <Plus size={14} /> New Status
         </button>
       </div>
 
-      {/* SUMMARY CARDS */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: 'clamp(8px, 2vw, 12px)',
-        marginBottom: 18,
-      }}>
-        {[
-          { label: 'Total Statuses',       value: statuses.length,    color: 'var(--gov-navy)'  },
-          { label: 'In Progress Types',    value: inProgress.length,  color: 'var(--gov-amber)' },
-          { label: 'Completed Types',      value: completed.length,   color: 'var(--gov-green)' },
-        ].map(c => (
-          <div key={c.label} style={{
-            background: '#fff',
-            border: '0.5px solid #D0D9E4',
-            borderRadius: 8,
-            padding: 'clamp(10px, 2.5vw, 14px)',
-            borderTop: `3px solid ${c.color}`,
-          }}>
-            <div style={{
-              fontSize: 'clamp(9px, 1.8vw, 11px)',
-              color: '#4A4A4A',
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 6,
-              fontWeight: 500,
-            }}>
-              {c.label}
-            </div>
-            <div style={{
-              fontSize: 'clamp(20px, 6vw, 28px)',
-              fontWeight: 500,
-              color: c.color,
-            }}>
-              {c.value}
-            </div>
-          </div>
-        ))}
-      </div>
+      <SummaryCards cards={[
+        { label: 'Total Statuses', value: statuses.length, color: '#0D3B6E', background: '#E8F1FA', icon: Tags },
+        { label: 'In Progress Types', value: inProgress.length, color: '#CC7700', background: '#FEF3DC', icon: LoaderCircle },
+        { label: 'Completed Types', value: completed.length, color: '#1B6B3A', background: '#E8F5EE', icon: CircleCheck },
+      ]} />
 
       {/* STATUS TABLE */}
       <div style={{
@@ -238,7 +209,7 @@ export default function StatusManagement() {
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
         }}>
-        <table style={{
+        <AppTable className="status-management-table" style={{
           width: '100%',
           borderCollapse: 'collapse',
           minWidth: '600px',
@@ -372,7 +343,7 @@ export default function StatusManagement() {
                         fontWeight: 500,
                       }}
                     >
-                      Edit
+                      <Pencil size={13} /> Edit
                     </button>
                     {!s.is_default && (
                       <button
@@ -388,7 +359,7 @@ export default function StatusManagement() {
                           fontWeight: 500,
                         }}
                       >
-                        Delete
+                        <Trash2 size={13} /> Delete
                       </button>
                     )}
                   </div>
@@ -396,7 +367,7 @@ export default function StatusManagement() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </AppTable>
         </div>
       </div>
 
@@ -411,11 +382,11 @@ export default function StatusManagement() {
             alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <div
+          <div className="status-management-dialog"
             onClick={e => e.stopPropagation()}
             style={{
               background: '#fff',
-              width: 'clamp(90vw, 95vw, 480px)',
+              width: 'min(520px, calc(100vw - 32px))',
               maxWidth: '95vw',
               borderRadius: 10,
               border: '0.5px solid #C0C8D4',
@@ -627,7 +598,7 @@ export default function StatusManagement() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {saving ? 'Saving...' : editStatus ? '✓ Save Changes' : '✓ Save'}
+                {saving ? <><LoaderCircle size={14} className="status-save-spinner" /> Saving...</> : <><Save size={14} /> {editStatus ? 'Save Changes' : 'Save'}</>}
               </button>
             </div>
           </div>
@@ -645,7 +616,7 @@ export default function StatusManagement() {
             alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <div
+          <div className="status-management-dialog"
             onClick={e => e.stopPropagation()}
             style={{
               background: '#fff', width: 380,

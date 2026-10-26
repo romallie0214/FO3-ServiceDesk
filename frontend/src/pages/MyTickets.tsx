@@ -1,3 +1,10 @@
+import Pagination from '../components/Pagination';
+import AppTable from '../components/AppTable';
+import './TicketList.css';
+import './TicketMonitoring.css';
+import { Search, SlidersHorizontal, ChevronDown, CircleDot, Flag, CalendarDays } from 'lucide-react';
+import SummaryCards from '../components/dashboard/SummaryCards';
+import { UserCheck, LoaderCircle, PauseCircle, CircleCheck, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -50,6 +57,7 @@ export default function MyTickets() {
   const [tickets, setTickets]       = useState<Ticket[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
+  const [showAssignmentNote, setShowAssignmentNote] = useState(true);
   const [search, setSearch]         = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
@@ -139,7 +147,7 @@ export default function MyTickets() {
       </div>
 
       {/* INFO STRIP */}
-      <div style={{
+      {showAssignmentNote && <div className="assignment-note" style={{
         background: '#E8F1FA',
         borderLeft: '3px solid var(--gov-navy)',
         borderRadius: '0 4px 4px 0',
@@ -149,149 +157,33 @@ export default function MyTickets() {
         marginBottom: 14,
         lineHeight: 1.5,
       }}>
-        Showing all tickets currently assigned to <strong>{user?.full_name}</strong>
-        {isServiceAdmin ? ' within your designated service area.' : '.'}
-      </div>
+        <span>Showing all tickets currently assigned to <strong>{user?.full_name}</strong>
+        {isServiceAdmin ? ' within your designated service area.' : '.'}</span>
+        <button type="button" aria-label="Dismiss assignment note" onClick={() => setShowAssignmentNote(false)}><X size={16} /></button>
+      </div>}
 
-      {/* SUMMARY CARDS */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: 'clamp(8px, 2vw, 12px)',
-        marginBottom: 16,
-      }}>
-        {[
-          { label: 'Assigned',    value: assigned,   color: 'var(--gov-amber)' },
-          { label: 'In Progress', value: inProgress, color: '#5B21B6'          },
-          { label: 'On-Hold',     value: onHold,     color: 'var(--gov-red)'   },
-          { label: 'Resolved',    value: resolved,   color: 'var(--gov-green)' },
-        ].map(c => (
-          <div key={c.label} style={{
-            background: '#fff',
-            border: '0.5px solid #D0D9E4',
-            borderRadius: 8,
-            padding: 'clamp(10px, 2.5vw, 14px)',
-            borderTop: `3px solid ${c.color}`,
-          }}>
-            <div style={{
-              fontSize: 'clamp(9px, 1.8vw, 11px)',
-              color: '#4A4A4A',
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 6,
-              fontWeight: 500,
-            }}>
-              {c.label}
+      <SummaryCards cards={[
+        { label: 'Assigned', value: assigned, color: '#CC7700', background: '#FEF3DC', icon: UserCheck },
+        { label: 'In Progress', value: inProgress, color: '#5B21B6', background: '#F3EFFF', icon: LoaderCircle },
+        { label: 'On-Hold', value: onHold, color: '#B91C1C', background: '#FDE8E8', icon: PauseCircle },
+        { label: 'Resolved', value: resolved, color: '#1B6B3A', background: '#E8F5EE', icon: CircleCheck },
+      ]} />
+
+      <section className="ticket-monitor-grid assigned-tickets-grid">
+        <div className="ticket-grid-toolbar">
+          <label className="ticket-grid-search"><Search size={14} /><input aria-label="Search tickets" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} /></label>
+          <details className="ticket-filter-dropdown" onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
+            <summary><SlidersHorizontal size={15} />Ticket Filters{[!!filterStatus, !!filterPriority, !!dateFrom, !!dateTo].filter(Boolean).length > 0 && <span className="ticket-filter-count">{[!!filterStatus, !!filterPriority, !!dateFrom, !!dateTo].filter(Boolean).length}</span>}<ChevronDown size={14} /></summary>
+            <div className="ticket-filter-popover">
+              <div className="ticket-filter-popover-heading">Filter tickets</div>
+              <label><span><CircleDot size={14} />Status</span><select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="">All statuses</option>{['Open', 'Assigned', 'On-Hold', 'Cancelled', 'In Progress', 'Resolved', 'Closed'].map(status => <option key={status}>{status}</option>)}</select></label>
+              <label><span><Flag size={14} />Priority</span><select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}><option value="">All priorities</option>{['Critical', 'High', 'Medium', 'Low'].map(priority => <option key={priority}>{priority}</option>)}</select></label>
+              <div className="ticket-filter-date-heading"><CalendarDays size={14} />Date Added</div>
+              <div className="ticket-filter-dates"><label><span>From</span><input type="date" value={dateFrom} max={dateTo || undefined} onChange={e => setDateFrom(e.target.value)} /></label><label><span>To</span><input type="date" value={dateTo} min={dateFrom || undefined} onChange={e => setDateTo(e.target.value)} /></label></div>
+              <div className="ticket-filter-footer"><button onClick={() => { setFilterStatus(''); setFilterPriority(''); setDateFrom(''); setDateTo(''); }}>Clear filters</button><button onClick={event => { const details = event.currentTarget.closest('details'); if (details) details.open = false; }}>Done</button></div>
             </div>
-            <div style={{
-              fontSize: 'clamp(18px, 5vw, 26px)',
-              fontWeight: 500,
-              color: c.color,
-            }}>
-              {c.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* FILTER BAR */}
-      <div style={{
-        background: '#fff',
-        border: '0.5px solid #D0D9E4',
-        borderRadius: 8,
-        padding: 'clamp(8px, 2vw, 12px)',
-        marginBottom: 14,
-        display: 'flex',
-        gap: 'clamp(6px, 1.5vw, 10px)',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-      }}>
-        <input
-          type="text"
-          placeholder="Search by ticket no, subject, requestor..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{
-            flex: '1 1 auto',
-            minWidth: 'clamp(150px, 50vw, 280px)',
-            padding: 'clamp(5px, 1.5vw, 6px) clamp(8px, 1.5vw, 10px)',
-            fontSize: 'clamp(10px, 1.8vw, 12px)',
-            border: '1px solid #C8D0DC',
-            borderRadius: 4,
-          }}
-        />
-        <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          style={{
-            padding: 'clamp(5px, 1.5vw, 6px) clamp(8px, 1.5vw, 10px)',
-            fontSize: 'clamp(10px, 1.8vw, 12px)',
-            border: '1px solid #C8D0DC',
-            borderRadius: 4,
-            flex: '0 1 auto',
-            minWidth: '130px',
-          }}
-        >
-          <option value="">All Statuses</option>
-          {['Assigned', 'In Progress', 'On-Hold', 'Resolved'].map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-        <select
-          value={filterPriority}
-          onChange={e => setFilterPriority(e.target.value)}
-          style={{
-            padding: 'clamp(5px, 1.5vw, 6px) clamp(8px, 1.5vw, 10px)',
-            fontSize: 'clamp(10px, 1.8vw, 12px)',
-            border: '1px solid #C8D0DC',
-            borderRadius: 4,
-            flex: '0 1 auto',
-            minWidth: '130px',
-          }}
-        >
-          <option value="">All Priorities</option>
-          {['Low', 'Medium', 'High', 'Critical'].map(p => (
-            <option key={p} value={p}>{p}</option>
-          ))}
-        </select>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
-          From
-          <input type="date" aria-label="Date filed from" value={dateFrom} max={dateTo || undefined} onChange={e => setDateFrom(e.target.value)} style={{ padding: 'clamp(5px, 1.5vw, 6px)', fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
-          To
-          <input type="date" aria-label="Date filed to" value={dateTo} min={dateFrom || undefined} onChange={e => setDateTo(e.target.value)} style={{ padding: 'clamp(5px, 1.5vw, 6px)', fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
-        </label>
-        {(search || filterStatus || filterPriority || dateFrom || dateTo) && (
-          <button
-            onClick={() => { setSearch(''); setFilterStatus(''); setFilterPriority(''); setDateFrom(''); setDateTo(''); }}
-            style={{
-              padding: 'clamp(5px, 1.5vw, 6px) clamp(8px, 1.5vw, 12px)',
-              fontSize: 'clamp(10px, 1.8vw, 12px)',
-              border: '1px solid #C8D0DC',
-              borderRadius: 4,
-              background: '#F5F8FC',
-              cursor: 'pointer',
-              color: '#4A4A4A',
-              fontWeight: 500,
-              whiteSpace: 'nowrap',
-              flex: '0 0 auto',
-            }}
-          >
-            ✕ Clear
-          </button>
-        )}
-        <span style={{
-          fontSize: 'clamp(9px, 1.8vw, 11px)',
-          color: '#6A7280',
-          marginLeft: 'auto',
-          whiteSpace: 'nowrap',
-          flex: '0 0 auto',
-        }}>
-          {filtered.length} of {tickets.length}
-        </span>
-      </div>
-
+          </details>
+        </div>
       {/* TICKETS TABLE */}
       <div style={{
         background: '#fff',
@@ -303,14 +195,14 @@ export default function MyTickets() {
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
         }}>
-        <table style={{
+        <AppTable className="ticket-monitor-table" style={{
           width: '100%',
           borderCollapse: 'collapse',
           minWidth: '1000px',
         }}>
           <thead>
             <tr>
-              {['Ticket No.', 'Subject', 'Requestor', 'Division / Unit', 'Office Location', 'Category', 'Priority', 'Status', 'Date Filed', 'Action'].map(h => (
+              {['Ticket No.', 'Subject', 'Requestor', 'Division / Unit', 'Office Location', 'Category', 'Priority', 'Status', 'Date Filed'].map(h => (
                 <th key={h} style={{
                   textAlign: 'left',
                   padding: 'clamp(6px, 1.5vw, 9px) clamp(8px, 2vw, 14px)',
@@ -328,7 +220,7 @@ export default function MyTickets() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={10} style={{
+                <td colSpan={9} style={{
                   padding: 'clamp(24px, 5vw, 48px)',
                   textAlign: 'center',
                 }}>
@@ -381,6 +273,7 @@ export default function MyTickets() {
               return (
                 <tr
                   key={t.id}
+                  className="ticket-grid-clickable" onClick={() => setSelectedTicket(t)}
                   onMouseEnter={e => (e.currentTarget.style.background = '#F5F8FC')}
                   onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
                 >
@@ -389,13 +282,13 @@ export default function MyTickets() {
                     padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px)',
                     whiteSpace: 'nowrap',
                   }}>
-                    <span style={{
+                    <button className="ticket-grid-id" aria-label={`View ticket ${t.ticket_number}`} style={{
                       fontSize: 'clamp(8px, 1.5vw, 10px)',
                       fontWeight: 600,
                       color: 'var(--gov-navy)',
                     }}>
                       {t.ticket_number}
-                    </span>
+                    </button>
                   </td>
 
                   {/* Subject */}
@@ -489,7 +382,7 @@ export default function MyTickets() {
                     padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px)',
                     whiteSpace: 'nowrap',
                   }}>
-                    <span style={{
+                    <span data-priority={t.priority} style={{
                       background: ps.bg,
                       color: ps.color,
                       fontSize: 'clamp(7px, 1.2vw, 9px)',
@@ -527,58 +420,21 @@ export default function MyTickets() {
                   }}>
                     {formatDate(t.created_at)}
                   </td>
-                  
-                  {/* Action Button */}
-                  <td style={{
-                    padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px)',
-                  }}>
-                    <button
-                      onClick={() => setSelectedTicket(t)}
-                      style={{
-                        padding: 'clamp(3px, 1vw, 5px) clamp(8px, 1.5vw, 12px)',
-                        fontSize: 'clamp(8px, 1.5vw, 10px)',
-                        background: 'var(--gov-navy)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        fontWeight: 500,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      View
-                    </button>
-                  </td>
+
+
                 </tr>
               );
             })}
           </tbody>
-        </table>
+        </AppTable>
         </div>
-      </div>
-      {filtered.length > 0 && (
-        <div style={{
-          marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
-          flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px',
-        }}>
-          <div style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
-            Showing <strong>{pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> tickets
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-            <label style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
-              Rows
-              <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}>
-                <option value={10}>10</option><option value={25}>25</option><option value={50}>50</option>
-              </select>
-            </label>
-            <button onClick={() => setPage(1)} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>First</button>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
-            <span style={{ color: '#334155', fontSize: 'clamp(9px, 1.8vw, 11px)', whiteSpace: 'nowrap' }}>Page {currentPage} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Next</button>
-            <button onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Last</button>
-          </div>
-        </div>
+{filtered.length > 0 && (
+        <Pagination attached page={currentPage} total={filtered.length} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
       )}
+
+      </div>
+      </section>
+
         <TicketDetailModal
           ticket={selectedTicket}
           onClose={() => setSelectedTicket(null)}

@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import { Check, X, ArrowLeft, ArrowRight, Send, LoaderCircle, CircleCheck, Frown, Meh, Smile, Laugh } from 'lucide-react';
+import './CSMModal.css';
+import { showErrorToast } from '../utils/notifications';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -33,24 +36,11 @@ function RatingSelector({ value, onChange }: {
   value: number; onChange: (v: number) => void;
 }) {
   const labels = ['', 'Very Unsatisfied', 'Unsatisfied', 'Neither', 'Satisfied', 'Very Satisfied'];
-  const colors  = ['', '#8B1A1A', '#CC7700', '#4A4A4A', '#1B6B3A', '#0D3B6E'];
   return (
-    <div style={{ display: 'flex', gap: 6 }}>
+    <div className="csm-quality-ratings" role="group" aria-label="Satisfaction rating">
       {[1, 2, 3, 4, 5].map(n => (
-        <button
-          key={n}
-          title={labels[n]}
-          onClick={() => onChange(n)}
-          style={{
-            width: 36, height: 36, borderRadius: '50%',
-            border: `2px solid ${value === n ? colors[n] : '#C8D0DC'}`,
-            background: value === n ? colors[n] : '#fff',
-            color: value === n ? '#fff' : '#4A4A4A',
-            fontWeight: 600, fontSize: 'var(--text-base)', cursor: 'pointer',
-            transition: 'all 0.15s',
-          }}
-        >
-          {n}
+        <button type="button" key={n} title={labels[n]} aria-label={`${n}: ${labels[n]}`} aria-pressed={value === n} onClick={() => onChange(n)}>
+          <span>{n}</span>
         </button>
       ))}
     </div>
@@ -61,6 +51,24 @@ export default function CSMModal({
   ticketId, ticketNumber, assignedTo, onClose, onSubmitted,
 }: Props) {
   const { user } = useAuth();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const submissionLock = useRef(false);
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialogRef.current?.focus();
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const items = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]') || []).filter(item => item.getClientRects().length);
+      const first = items[0], last = items[items.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', trap);
+    return () => { document.body.style.overflow = oldOverflow; document.removeEventListener('keydown', trap); previous?.focus(); };
+  }, []);
   const [step, setStep]             = useState(1);
   const [submitting, setSubmitting]   = useState(false);
   const [loadingInfo, setLoadingInfo] = useState(true);
@@ -72,7 +80,7 @@ export default function CSMModal({
   role:        'primary' | 'co-assignee';
   assigned_at: string;
 }[]>([]);
-  
+
 
   const [form, setForm] = useState({
     // Respondent Info
@@ -187,12 +195,35 @@ export default function CSMModal({
     setForm(prev => ({ ...prev, [field]: value }));
   }
 
+  const [validationError, setValidationError] = useState('');
+  function validateStep(target: number): string {
+    if (target === 1 && (loadingInfo || !form.empno.trim() || !form.client_name.trim())) return 'Your respondent information is not ready. Please reopen the form to reload your profile.';
+    if (target === 2 && ![1, 2, 3, 4, 5].includes(form.officer_rating)) return 'Please rate the attending officer or team before continuing.';
+    if (target === 3) {
+      const missing = dimensions.find(d => !d.disabled && ![1, 2, 3, 4, 5].includes(Number((form as any)[d.key])));
+      if (missing) return `Please rate ${missing.label} before continuing.`;
+    }
+    if (target === 4 && (!form.cc_awareness || !form.cc_visibility || !form.cc_helpfulness)) return "Please answer all three Citizen's Charter questions before continuing.";
+    return '';
+  }
+  function continueStep() {
+    const error = validateStep(step);
+    setValidationError(error);
+    if (error) return;
+    setStep(previous => previous + 1);
+    bodyRef.current?.scrollTo(0, 0);
+  }
+
   async function handleSubmit() {
-    if (form.officer_rating === 0) {
-        alert('Please rate the attending officer.');
-        return;
-      }
+    if (submissionLock.current) return;
+    for (let target = 1; target <= 4; target++) {
+      const error = validateStep(target);
+      if (error) { setStep(target); setValidationError(error); bodyRef.current?.scrollTo(0, 0); return; }
+    }
+    setValidationError('');
+      submissionLock.current = true;
       setSubmitting(true);
+      const startedAt = Date.now();
       try {
         // ✅ Convert sex 0/1 → 'Male'/'Female' before sending
         const sexLabel =
@@ -205,11 +236,14 @@ export default function CSMModal({
           ...form,
           sex: sexLabel,
         });
+        await new Promise(resolve => setTimeout(resolve, Math.max(0, 900 - (Date.now() - startedAt))));
+        setSubmitting(false);
         setSubmitted(true);
       } catch (err: any) {
-        alert(err.response?.data?.error || 'Failed to submit. Please try again.');
-      } finally {
+        await new Promise(resolve => setTimeout(resolve, Math.max(0, 900 - (Date.now() - startedAt))));
         setSubmitting(false);
+        submissionLock.current = false;
+        showErrorToast(err.response?.data?.error || 'Failed to submit. Please try again.');
       }
   }
 
@@ -227,70 +261,13 @@ export default function CSMModal({
   const stepLabels = ['Respondent Info', 'Officer Rating', 'Service Quality', "Citizen's Charter", 'Feedback'];
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0,
-        background: 'rgba(0,0,20,0.6)',
-        zIndex: 200, display: 'flex',
-        alignItems: 'center', justifyContent: 'center',
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: '#fff', width: 680,
-          maxWidth: '95vw', maxHeight: '92vh',
-          overflowY: 'auto', borderRadius: 10,
-          border: '0.5px solid #C0C8D4',
-        }}
-      >
-        {/* HEADER */}
-        <div style={{ background: 'var(--gov-navy)', padding: '14px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <p style={{ color: '#fff', fontSize: 'var(--text-base)', fontWeight: 600 }}>
-                CLIENT SATISFACTION MEASUREMENT FORM
-              </p>
-              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 'var(--text-xs)', marginTop: 2 }}>
-                DSWD-QMS-GF-005 | REV 04 | 06 MAR 2023 · Ticket: {ticketNumber}
-              </p>
-            </div>
-            <button onClick={onClose} style={{
-              background: 'rgba(255,255,255,0.15)', border: 'none',
-              borderRadius: 4, width: 28, height: 28,
-              color: '#fff', fontSize: 'var(--text-xl)', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>×</button>
-          </div>
-
-          {/* Step indicators */}
-          <div style={{ display: 'flex', gap: 4, marginTop: 12 }}>
-            {stepLabels.map((s, i) => (
-              <div
-                key={s}
-                onClick={() => i + 1 < step && setStep(i + 1)}
-                style={{
-                  flex: 1, padding: '4px 6px', borderRadius: 4,
-                  fontSize: 'var(--text-xs)', textAlign: 'center',
-                  fontWeight: step === i + 1 ? 600 : 400,
-                  cursor: i + 1 < step ? 'pointer' : 'default',
-                  background: step === i + 1
-                    ? '#F5A623'
-                    : step > i + 1
-                    ? 'rgba(255,255,255,0.3)'
-                    : 'rgba(255,255,255,0.1)',
-                  color: '#fff',
-                }}
-              >
-                {i + 1}. {s}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* BODY */}
-        <div style={{ padding: 20 }}>
+    <div className="csm-overlay" onClick={() => { if (!submitting) onClose(); }}>
+      <div className={`csm-dialog${submitted ? ' csm-dialog-success' : ''}`} ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={submitted ? 'csm-success-title' : 'csm-title'} tabIndex={-1} onClick={event => event.stopPropagation()}>
+        {!submitted && <header className="csm-header"><div><h2 id="csm-title">Client satisfaction measurement</h2><p>Help us improve your service experience.</p><small>DSWD-QMS-GF-005 | REV 04 | 06 MAR 2023</small><span className="csm-reference">{ticketNumber}</span></div><button className="csm-close" type="button" aria-label="Close feedback form" disabled={submitting} onClick={onClose}><X size={19} /></button></header>}
+        {!submitted && <nav className="csm-stepper" aria-label="Feedback progress"><ol>{stepLabels.map((label, index) => <li key={label} className={step === index + 1 ? 'is-current' : step > index + 1 ? 'is-complete' : ''}>
+          <button type="button" aria-current={step === index + 1 ? 'step' : undefined} disabled={index + 1 > step || submitting} onClick={() => { setValidationError(''); setStep(index + 1); bodyRef.current?.scrollTo(0, 0); }}><span className="csm-step-number">{step > index + 1 ? <Check size={15} /> : index + 1}</span><span className="csm-step-label">{label}</span></button>
+        </li>)}</ol></nav>}
+        {!submitted && <div className="csm-body" ref={bodyRef}>
 
           {/* Loading indicator */}
           {loadingInfo && step === 1 && (
@@ -299,18 +276,14 @@ export default function CSMModal({
               padding: '8px 12px', fontSize: 'var(--text-xs)',
               color: 'var(--gov-navy)', marginBottom: 12,
             }}>
-              ⏳ Loading your information from HR system...
+              <span className="csm-loading"><LoaderCircle size={15} className="csm-spinner" aria-hidden="true" />Loading your information from HR system...</span>
             </div>
           )}
 
           {/* ═══ STEP 1 — RESPONDENT INFO ═══ */}
           {step === 1 && (
             <div>
-              <div style={{
-                background: 'var(--gov-navy)', padding: '8px 14px',
-                fontSize: 'var(--text-xs)', fontWeight: 500, color: '#fff',
-                marginBottom: 14, borderRadius: 4,
-              }}>
+              <div className="csm-section-title">
                 Part 1 — Respondent Information
               </div>
 
@@ -426,17 +399,13 @@ export default function CSMModal({
               </div>
             </div>
           )}
-       
+
           {/* ═══ STEP 2 — OFFICER / TEAM RATING ═══ */}
-          `{/* ═══ STEP 2 — OFFICER / TEAM RATING ═══ */}
+          {/* ═══ STEP 2 — OFFICER / TEAM RATING ═══ */}
           {step === 2 && (
             <div>
               {/* Section header */}
-              <div style={{
-                background: 'var(--gov-navy)', padding: '8px 14px',
-                fontSize: 'var(--text-xs)', fontWeight: 500, color: '#fff',
-                marginBottom: 14, borderRadius: 4,
-              }}>
+              <div className="csm-section-title">
                 Part 2 — Officer / Team Rating
               </div>
 
@@ -540,15 +509,15 @@ export default function CSMModal({
                 gap: 8, marginBottom: 12,
               }}>
                 {[
-                  { n: 1, emoji: '😞', label: 'Very unsatisfied' },
-                  { n: 2, emoji: '😕', label: 'Unsatisfied'      },
-                  { n: 3, emoji: '😐', label: 'Neither'          },
-                  { n: 4, emoji: '😊', label: 'Satisfied'        },
-                  { n: 5, emoji: '😄', label: 'Very satisfied'   },
+                  { n: 1, icon: Frown, label: 'Very unsatisfied' },
+                  { n: 2, icon: Frown, label: 'Unsatisfied'      },
+                  { n: 3, icon: Meh, label: 'Neither'          },
+                  { n: 4, icon: Smile, label: 'Satisfied'        },
+                  { n: 5, icon: Laugh, label: 'Very satisfied'   },
                 ].map(r => {
                   const isActive = form.officer_rating === r.n;
                   return (
-                    <div
+                    <button type="button" aria-label={r.label} aria-pressed={form.officer_rating === r.n} className="csm-officer-rating"
                       key={r.n}
                       onClick={() => set('officer_rating', r.n)}
                       style={{ textAlign: 'center', cursor: 'pointer' }}
@@ -559,7 +528,7 @@ export default function CSMModal({
                         background: isActive ? '#FEF3DC' : '#fff',
                         transition: 'all .15s',
                       }}>
-                        <div style={{ fontSize: 22, marginBottom: 4 }}>{r.emoji}</div>
+                        <div style={{ fontSize: 22, marginBottom: 4 }}><r.icon size={26} strokeWidth={1.7} aria-hidden="true" /></div>
                         <div style={{
                           fontSize: 'var(--text-md)', fontWeight: 500,
                           color: isActive ? '#CC7700' : '#4A4A4A',
@@ -574,7 +543,7 @@ export default function CSMModal({
                       }}>
                         {r.label}
                       </p>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -588,7 +557,7 @@ export default function CSMModal({
                   4: { bg: '#FEF3DC', border: '#CC7700', color: '#CC7700' },
                   5: { bg: '#E8F5EE', border: '#1B6B3A', color: '#1B6B3A' },
                 };
-                const emojis = ['', '😞', '😕', '😐', '😊', '😄'];
+                const RatingIcon = [Frown, Frown, Meh, Smile, Laugh][form.officer_rating - 1];
                 const labels = ['', '1 — Very unsatisfied', '2 — Unsatisfied',
                                 '3 — Neither', '4 — Satisfied', '5 — Very satisfied'];
                 const c = colors[form.officer_rating];
@@ -598,7 +567,7 @@ export default function CSMModal({
                     borderRadius: 6, padding: '10px 14px', marginBottom: 16,
                     display: 'flex', alignItems: 'center', gap: 10,
                   }}>
-                    <span style={{ fontSize: 22 }}>{emojis[form.officer_rating]}</span>
+                    <span style={{ fontSize: 22 }}><RatingIcon size={26} strokeWidth={1.7} aria-hidden="true" /></span>
                     <div>
                       <p style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: c.color }}>
                         {labels[form.officer_rating]}
@@ -637,19 +606,15 @@ export default function CSMModal({
           {/* ═══ STEP 3 — SERVICE QUALITY ═══ */}
           {step === 3 && (
             <div>
-              <div style={{
-                background: 'var(--gov-navy)', padding: '8px 14px',
-                fontSize: 'var(--text-xs)', fontWeight: 500, color: '#fff',
-                marginBottom: 14, borderRadius: 4,
-              }}>
+              <div className="csm-section-title">
                 Part 3 — 8 Service Quality Dimensions
               </div>
               <p style={{ fontSize: 'var(--text-xs)', color: '#4A4A4A', marginBottom: 14, lineHeight: 1.5 }}>
                 Rate your satisfaction (5 = Very Satisfied, 4 = Satisfied, 3 = Neither, 2 = Unsatisfied, 1 = Very Unsatisfied)
               </p>
               {dimensions.map(d => (
-                <div key={d.key} style={{
-                  opacity: d.disabled ? 0.5 : 1,
+                <div className="csm-quality-card" data-disabled={d.disabled || undefined} key={d.key} style={{
+                  opacity: 1,
                   pointerEvents: d.disabled ? 'none' : 'auto',
                 }}>
                   <p style={{fontSize: 'var(--text-sm)', fontWeight: 500, color: '#1A2A3A', marginBottom: 2}}>
@@ -666,6 +631,7 @@ export default function CSMModal({
                       </span>
                     )}
                   </p>
+                  <p className="csm-quality-description">{d.sub}</p>
                   {!d.disabled ? (
                     <RatingSelector
                       value={(form as any)[d.key]}
@@ -688,11 +654,7 @@ export default function CSMModal({
           {/* ═══ STEP 4 — CITIZEN'S CHARTER ═══ */}
           {step === 4 && (
             <div>
-              <div style={{
-                background: 'var(--gov-navy)', padding: '8px 14px',
-                fontSize: 'var(--text-xs)', fontWeight: 500, color: '#fff',
-                marginBottom: 14, borderRadius: 4,
-              }}>
+              <div className="csm-section-title">
                 Part 4 — Citizen's Charter Questions
               </div>
               {[
@@ -723,12 +685,10 @@ export default function CSMModal({
                   ],
                 },
               ].map(q => (
-                <div key={q.field} style={{ marginBottom: 18 }}>
-                  <p style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: '#1A2A3A', marginBottom: 8, lineHeight: 1.5 }}>
-                    {q.question}
-                  </p>
+                <fieldset className="csm-question" key={q.field}>
+                  <legend>{q.question}</legend>
                   {q.options.map(opt => (
-                    <label key={opt} style={{
+                    <label className="csm-choice" key={opt} style={{
                       display: 'flex', alignItems: 'flex-start',
                       gap: 8, marginBottom: 6, cursor: 'pointer',
                     }}>
@@ -743,7 +703,7 @@ export default function CSMModal({
                       <span style={{ fontSize: 'var(--text-xs)', color: '#3A3A3A', lineHeight: 1.5 }}>{opt}</span>
                     </label>
                   ))}
-                </div>
+                </fieldset>
               ))}
             </div>
           )}
@@ -751,11 +711,7 @@ export default function CSMModal({
           {/* ═══ STEP 5 — FEEDBACK ═══ */}
           {step === 5 && (
             <div>
-              <div style={{
-                background: 'var(--gov-navy)', padding: '8px 14px',
-                fontSize: 'var(--text-xs)', fontWeight: 500, color: '#fff',
-                marginBottom: 14, borderRadius: 4,
-              }}>
+              <div className="csm-section-title">
                 Part 5 — Commendation & Suggestions (Optional)
               </div>
 
@@ -802,149 +758,13 @@ export default function CSMModal({
             </div>
           )}
 
-        </div>
-
-        {/* FOOTER */}
-        {!submitted && (
-        <div style={{
-          padding: '12px 20px', borderTop: '0.5px solid #E5EAF0',
-          display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', background: '#F8FAFC',
-          position: 'sticky', bottom: 0,
-        }}>
-          <span style={{ fontSize: 'var(--text-xs)', color: '#888' }}>
-            Step {step} of 5
-          </span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {step > 1 && (
-              <button
-                onClick={() => setStep(s => s - 1)}
-                style={{
-                  padding: '6px 14px', fontSize: 'var(--text-sm)',
-                  border: '1px solid #C8D0DC', borderRadius: 4,
-                  background: '#fff', cursor: 'pointer',
-                }}
-              >
-                ← Back
-              </button>
-            )}
-            {step < 5 ? (
-              <button
-                onClick={() => setStep(s => s + 1)}
-                style={{
-                  padding: '6px 16px', fontSize: 'var(--text-sm)',
-                  background: 'var(--gov-navy)', color: '#fff',
-                  border: 'none', borderRadius: 4,
-                  cursor: 'pointer', fontWeight: 500,
-                }}
-              >
-                Next →
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                style={{
-                  padding: '6px 16px', fontSize: 'var(--text-sm)',
-                  background: submitting ? '#888' : 'var(--gov-green)',
-                  color: '#fff', border: 'none', borderRadius: 4,
-                  cursor: submitting ? 'not-allowed' : 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                {submitting ? 'Submitting...' : '✓ Submit CSM & Close Ticket'}
-              </button>
-            )}
-          </div>
-        </div>
-        )}
-
-        {/* SUCCESS SCREEN */}
-        {submitted && (
-          <div style={{
-            position: 'fixed', inset: 0,
-            background: 'rgba(0,0,20,0.5)',
-            zIndex: 9999, display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            <div style={{
-              background: '#fff', borderRadius: 8,
-              border: '0.5px solid #D0D9E4', width: 320,
-              overflow: 'hidden',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-            }}>
-              {/* Green header */}
-              <div style={{
-                background: 'var(--gov-green)',
-                padding: '10px 14px',
-                display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                <span style={{ fontSize: 'var(--text-lg)' }}>✅</span>
-                <span style={{ color: '#fff', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
-                  CSMF Submitted!
-                </span>
-              </div>
-
-              {/* Body */}
-              <div style={{ padding: '14px 16px' }}>
-                {/* Ticket reference */}
-                <div style={{
-                  background: '#F5F8FC', borderRadius: 6,
-                  border: '0.5px solid #D0D9E4',
-                  padding: '10px 12px', marginBottom: 12,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                }}>
-                  <div>
-                    <div style={{
-                      fontSize: 'var(--text-xs)', color: '#6A7280', fontWeight: 600,
-                      textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3,
-                    }}>
-                      Ticket Reference
-                    </div>
-                    <div style={{ fontSize: 'var(--text-md)', fontWeight: 700, color: 'var(--gov-navy)' }}>
-                      {ticketNumber}
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 'var(--text-xl)' }}>🎫</span>
-                </div>
-
-                {/* Message */}
-                <div style={{ fontSize: 'var(--text-sm)', color: '#1A2A3A', lineHeight: 1.6, marginBottom: 12 }}>
-                  Thank you, <strong>{form.client_name || 'respondent'}</strong>!
-                  Your feedback has been submitted and your ticket has been closed.
-                </div>
-
-                {/* Info note */}
-                <div style={{
-                  background: '#E8F1FA', borderLeft: '3px solid var(--gov-navy)',
-                  borderRadius: '0 4px 4px 0', padding: '8px 10px',
-                  fontSize: 'var(--text-xs)', color: 'var(--gov-navy)', lineHeight: 1.6,
-                  marginBottom: 14,
-                }}>
-                  📋 Your CSMF has been recorded. This helps us improve our IT support services.
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div style={{
-                padding: '10px 16px', borderTop: '0.5px solid #EEF0F4',
-                background: '#F8FAFC',
-              }}>
-                <button
-                  onClick={onSubmitted}
-                  style={{
-                    width: '100%', padding: '6px',
-                    background: 'var(--gov-navy)', color: '#fff',
-                    border: 'none', borderRadius: 4,
-                    fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer',
-                  }}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>}
+        {!submitted && validationError && <div className="csm-validation" role="alert">{validationError}</div>}
+        {!submitted && <footer className="csm-footer"><span>Step <strong>{step}</strong> of 5</span><div>
+          {step > 1 && <button type="button" className="csm-secondary" disabled={submitting} onClick={() => { setValidationError(''); setStep(previous => previous - 1); bodyRef.current?.scrollTo(0, 0); }}><ArrowLeft size={15} />Back</button>}
+          {step < 5 ? <button type="button" className="csm-primary" disabled={loadingInfo} onClick={() => { continueStep(); }}>Continue<ArrowRight size={15} /></button> : <button type="button" className="csm-primary" disabled={submitting} onClick={handleSubmit}>{submitting ? <LoaderCircle size={16} className="csm-spinner" /> : <Send size={15} />}{submitting ? 'Submitting...' : 'Submit feedback'}</button>}
+        </div></footer>}
+        {submitted && <div className="csm-success" role="status"><span><CircleCheck size={32} /></span><h3 id="csm-success-title">Thank you for your feedback</h3><p>Your response has been recorded and your ticket is now closed.</p><strong>{ticketNumber}</strong><button type="button" className="csm-primary" onClick={onSubmitted}>Done<Check size={16} /></button></div>}
       </div>
     </div>
   );

@@ -1,0 +1,35 @@
+.app-pagination { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-top:12px; padding:12px 14px; background:var(--ui-surface, #fff); color:var(--ui-text, #344456); border:1px solid var(--ui-border, #e1e7ee); border-radius:8px; font-size:12px; }
+.app-pagination-count { color:inherit; opacity:.85; }
+.app-pagination-count strong { font-weight:600; }
+.app-pagination-controls, .app-pagination-size, .app-pagination-pages, .app-pagination-page-item { display:flex; align-items:center; gap:6px; }
+.app-pagination-controls { flex-wrap:wrap; gap:18px; }
+.app-pagination-size { gap:8px; white-space:nowrap; }
+.app-pagination-size select { min-width:62px; height:34px; border:1px solid var(--ui-border, #e1e7ee); border-radius:6px; background:var(--ui-surface, #fff); color:inherit; padding:4px 8px; }
+.app-pagination-pages button { display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:34px; padding:0 8px; border:1px solid transparent; border-radius:6px; background:transparent; color:inherit; font:inherit; cursor:pointer; transition:background .15s, border-color .15s; }
+.app-pagination-pages button:hover:not(:disabled) { background:rgba(80,130,185,.12); border-color:var(--ui-border, #e1e7ee); }
+.app-pagination-pages button[aria-current=page] { background:#164779; color:#fff; border-color:#164779; font-weight:600; }
+.app-pagination-pages button:disabled { opacity:.35; cursor:default; }
+.app-pagination-pages button:focus-visible, .app-pagination-size select:focus-visible { outline:2px solid #78a9e0; outline-offset:2px; }
+.app-pagination-ellipsis { padding:0 3px; opacity:.65; }
+.app-pagination-mobile { display:none; }
+html[data-theme=dark] .app-pagination { background:var(--ui-surface, #192332); border-color:var(--ui-border, #2d3c50); color:var(--ui-text, #d5dfed); }
+html[data-theme=dark] .app-pagination-pages button[aria-current=page] { background:#315f8c; border-color:#315f8c; color:#fff; }
+@media(max-width:640px) { .app-pagination { padding:10px; gap:10px; } .app-pagination-controls { width:100%; justify-content:space-between; gap:8px; } .app-pagination-page-item { display:none; } .app-pagination-mobile { display:inline; min-width:48px; text-align:center; } }
+
+/* Keep the compact page-size menu native so it remains visible at the viewport edge. */
+html body .app-pagination .app-pagination-size select:not([multiple]):not([size]) {
+  appearance: auto;
+  -webkit-appearance: auto;
+  min-width: 76px;
+  background-image: none !important;
+  padding: 4px 8px !important;
+  color: var(--ui-text, #344456);
+  background-color: var(--ui-surface, #fff) !important;
+  color-scheme: light;
+}
+html[data-theme=dark] body .app-pagination .app-pagination-size select { color-scheme: dark; }
+@supports (appearance: base-select) {
+  html body .app-pagination .app-pagination-size select::picker(select) { appearance: auto; }
+}
+
+.app-pagination.app-pagination-attached { margin-top:0; border:0; border-top:1px solid var(--ui-border, #e1e7ee); border-radius:0; }

@@ -1,4 +1,15 @@
-import { useEffect, useState, useCallback } from 'react';
+import Pagination from '../components/Pagination';
+import { showErrorToast } from '../utils/notifications';
+import AppTable from '../components/AppTable';
+import { createPortal } from 'react-dom';
+import './TicketList.css';
+import './TicketMonitoring.css';
+import { Search, SlidersHorizontal, ChevronDown, CircleDot, Flag, Layers, CalendarDays } from 'lucide-react';
+import { calcSLA } from '../utils/ticketSla';
+import SummaryCards from '../components/dashboard/SummaryCards';
+import { TriangleAlert, TrendingUp, Clock, CircleCheck, CircleHelp, Tickets, Archive, Inbox } from 'lucide-react';
+import { X, FileChartColumn, Download, LoaderCircle } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -62,51 +73,6 @@ interface SLACalc {
 // ─────────────────────────────────────────────────────────────────────────────
 // SLA HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
-function calcSLA(ticket: MonitorTicket): SLACalc | null {
-  if (ticket.status === 'Cancelled' || !ticket.sla_response_hours) return null;
-  const now = new Date();
-  const resolvedAt = ticket.resolved_at ? new Date(ticket.resolved_at) : null;
-  const created = new Date(ticket.created_at);
-  const assignedAt = ticket.assigned_at ? new Date(ticket.assigned_at) : null;
-  const escalationStartedAt = ticket.escalation_started_at ? new Date(ticket.escalation_started_at) : null;
-  const holdStartedAt = ticket.hold_started_at ? new Date(ticket.hold_started_at) : null;
-  const responseStoppedAt = ticket.first_response_at
-    ? new Date(ticket.first_response_at)
-    : resolvedAt || now;
-  const terminalTime = resolvedAt || now;
-  // Include both completed holds and the currently running hold, so the
-  // resolution SLA clock is paused while a ticket is On-Hold.
-  const activeHoldSeconds = ticket.status === 'On-Hold' && holdStartedAt
-    ? Math.max(0, (terminalTime.getTime() - holdStartedAt.getTime()) / 1000)
-    : 0;
-  const pausedResolutionSeconds = Number(ticket.total_hold_seconds || 0) + activeHoldSeconds;
-
-  const responseDeadline = new Date(created.getTime() + ticket.sla_response_hours * 3600000);
-  const resolutionDeadline = assignedAt && ticket.sla_resolution_hours
-    ? new Date(assignedAt.getTime() + (ticket.sla_resolution_hours * 3600000) + (pausedResolutionSeconds * 1000))
-    : null;
-  const escalationDeadline = escalationStartedAt && ticket.sla_escalation_hours
-    ? new Date(escalationStartedAt.getTime() + ticket.sla_escalation_hours * 3600000)
-    : null;
-  const responseBreached = responseStoppedAt > responseDeadline;
-  const resolutionBreached = Boolean(resolutionDeadline && terminalTime > resolutionDeadline);
-  const escalationBreached = Boolean(escalationDeadline && terminalTime > escalationDeadline);
-  const activeDeadline = resolutionDeadline || responseDeadline;
-  const hoursRemaining = (activeDeadline.getTime() - terminalTime.getTime()) / 3600000;
-
-  let status: SLAStatus = 'ok';
-  if (resolutionBreached)  status = 'breached';
-  else if (escalationBreached) status = 'escalated';
-  else if (hoursRemaining <= 2) status = 'warning';
-
-  return {
-    status, responseBreached, escalationBreached,
-    resolutionBreached, responseDeadline,
-    resolutionDeadline, escalationDeadline,
-    hoursRemaining,
-  };
-}
-
 function getSLAStatusLabel(ticket: ReportTicket): string {
   const sla = calcSLA(ticket);
   if (!sla) return 'No SLA';
@@ -272,7 +238,18 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
   const [pageSize, setPageSize]             = useState(10);
 
   // Report state
-  const [activeTab, setActiveTab]       = useState<'monitoring' | 'report'>('monitoring');
+  const [showReport, setShowReport] = useState(false);
+  const [showReportNote, setShowReportNote] = useState(true);
+  const [showMonitoringNote, setShowMonitoringNote] = useState(true);
+  const reportModalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showReport) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    reportModalRef.current?.focus({ preventScroll: true });
+    return () => { document.body.style.overflow = previousOverflow; previousFocus?.focus({ preventScroll: true }); };
+  }, [showReport]);
   const [dateFrom, setDateFrom]         = useState(firstDayOfMonth());
   const [dateTo, setDateTo]             = useState(todayStr());
   const [staffFilter, setStaffFilter]   = useState('');
@@ -329,9 +306,9 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
 
   // ── Generate Report ────────────────────────────────────────────────────────
   async function generateReport() {
-    if (!dateFrom || !dateTo) { alert('Please select a date range.'); return; }
+    if (!dateFrom || !dateTo) { showErrorToast('Please select a date range.'); return; }
     if (new Date(dateFrom) > new Date(dateTo)) {
-      alert('Start date cannot be after end date.');
+      showErrorToast('Start date cannot be after end date.');
       return;
     }
     setReportLoading(true);
@@ -348,7 +325,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
       setReportGenerated(true);
     } catch (err) {
       console.error('Report generation failed');
-      alert('Failed to generate report. Please try again.');
+      showErrorToast('Failed to generate report. Please try again.');
     } finally {
       setReportLoading(false);
     }
@@ -443,70 +420,37 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
           flexWrap: 'wrap',
           gap: 'clamp(8px, 2vw, 12px)',
         }}>
- 
+
         <div style={{ fontSize: publicMode ? 'clamp(16px, 2vw, 22px)' : 'var(--text-xs)', color: 'var(--gov-navy)', fontWeight: publicMode ? 600 : 400 }}>
           {publicMode ? 'ICTMS Live Ticket Monitoring' : (
             <>Home <span style={{ color: 'var(--gov-navy)', fontWeight: 500 }}>/ Ticket Monitoring</span></>
           )}
         </div>
-        {activeTab === 'monitoring' && (
+        {true && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 'var(--text-xs)', color: '#888' }}>
               Last refresh: {lastRefresh.toLocaleTimeString('en-PH')} · Auto-refreshes every 2 min
             </span>
             <button
-              onClick={fetchData}
+              className="monitor-refresh-button" onClick={fetchData}
               style={{
                 padding: '4px 12px', fontSize: 'var(--text-xs)',
                 background: 'var(--gov-navy)', color: '#fff',
                 border: 'none', borderRadius: 4, cursor: 'pointer',
               }}
             >
-              ↻ Refresh
+              Refresh
             </button>
           </div>
         )}
       </div>
 
-      {/* TABS */}
-      {!publicMode && <div style={{
-        display: 'flex', gap: 0,
-        borderBottom: '2px solid #D0D9E4',
-        marginBottom: 16,
-      }}>
-        {[
-          { key: 'monitoring', label: '📡 Live Monitoring' },
-          { key: 'report',     label: '📊 Generate Report' },
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as typeof activeTab)}
-            style={{
-              padding: 'clamp(6px, 1.5vw, 8px) clamp(12px, 2vw, 20px)',
-              fontSize: 'clamp(10px, 1.8vw, 13px)',     
-              border: 'none', cursor: 'pointer',
-              fontWeight: activeTab === tab.key ? 600 : 400,
-              color:      activeTab === tab.key ? 'var(--gov-navy)' : '#6A7280',
-              background: 'transparent',
-              borderBottom: activeTab === tab.key
-                ? '2px solid var(--gov-navy)'
-                : '2px solid transparent',
-              marginBottom: -2,
-              transition: 'all 0.15s',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>}
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* TAB 1 — LIVE MONITORING                                            */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'monitoring' && (
+      {true && (
         <>
           {/* INFO STRIP */}
-          <div style={{
+          {showMonitoringNote && <div className="monitor-live-note" style={{
             background: '#E8F1FA',
             borderLeft: '3px solid var(--gov-navy)',
             borderRadius: '0 4px 4px 0',
@@ -515,123 +459,39 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
             color: 'var(--gov-navy)',
             marginBottom: 14,
           }}>
-            Real-time SLA monitoring for all active tickets.
+            <span>Real-time SLA monitoring for all active tickets.
             Tickets are sorted by urgency — breached tickets appear first.
-            Page auto-refreshes every 2 minutes.
-          </div>
+            Page auto-refreshes every 2 minutes.</span>
+            <button type="button" aria-label="Dismiss SLA monitoring note" onClick={() => setShowMonitoringNote(false)}><X size={16} /></button>
+          </div>}
 
-          {/* SLA SUMMARY CARDS */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-            gap: 'clamp(8px, 2vw, 12px)',
-            marginBottom: 16,
-          }}>
-            {[
-              { label: 'SLA Breached',  value: breached,  color: '#8B1A1A', bg: '#FDE8E8', key: 'breached'  },
-              { label: 'Escalated',     value: escalated, color: '#CC7700', bg: '#FEF3DC', key: 'escalated' },
-              { label: 'Warning <2hrs', value: warning,   color: '#854F0B', bg: '#FDF5DC', key: 'warning'   },
-              { label: 'On Track',      value: onTrack,   color: '#1B6B3A', bg: '#E8F5EE', key: 'ok'        },
-              { label: 'No SLA Mapped', value: noSLA,     color: '#4A4A4A', bg: '#F0F0F0', key: 'no-sla'    },
-            ].map(c => (
-              <div
-                key={c.key}
-                onClick={() => setFilterSLA(filterSLA === c.key ? '' : c.key as SLAStatus)}
-                style={{
-                  background: filterSLA === c.key ? c.bg : '#fff',
-                  border: `${filterSLA === c.key ? '2px' : '0.5px'} solid ${filterSLA === c.key ? c.color : '#D0D9E4'}`,
-                  borderRadius: 8,
-                  padding: 'clamp(8px, 2vw, 12px)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                <div style={{
-                  fontSize: 'var(--text-xs)', color: '#4A4A4A',
-                  textTransform: 'uppercase', letterSpacing: 0.5,
-                  marginBottom: 4, fontWeight: 500,
-                }}>
-                  {c.label}
-                </div>
-                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 500, color: c.color }}>
-                  {c.value}
-                </div>
-                <div style={{ fontSize: 'var(--text-xs)', color: '#888', marginTop: 2 }}>
-                  {filterSLA === c.key ? 'Click to clear' : 'Click to filter'}
-                </div>
-              </div>
-            ))}
-          </div>
+          <SummaryCards cards={[
+            { label: 'SLA Breached', value: breached, color: '#8B1A1A', background: '#FDE8E8', icon: TriangleAlert, key: 'breached' },
+            { label: 'Escalated', value: escalated, color: '#CC7700', background: '#FEF3DC', icon: TrendingUp, key: 'escalated' },
+            { label: 'Warning <2hrs', value: warning, color: '#854F0B', background: '#FDF5DC', icon: Clock, key: 'warning' },
+            { label: 'On Track', value: onTrack, color: '#1B6B3A', background: '#E8F5EE', icon: CircleCheck, key: 'ok' },
+            { label: 'No SLA Mapped', value: noSLA, color: '#4A4A4A', background: '#F0F0F0', icon: CircleHelp, key: 'no-sla' },
+          ].map(card => ({ ...card, active: filterSLA === card.key, onClick: () => setFilterSLA(filterSLA === card.key ? '' : card.key as SLAStatus) }))} />
 
-          {/* FILTER BAR */}
-          <div style={{
-            background: '#fff', border: '0.5px solid #D0D9E4',
-            borderRadius: 8, padding: '10px 14px',
-            marginBottom: 16, display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 'clamp(8px, 2vw, 12px)',
-          }}>
-            <input
-              type="text"
-              placeholder={publicMode ? 'Search ticket #, subject, assignee...' : 'Search ticket #, subject, requestor, assignee...'}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{
-                flex: 1, minWidth: 180, padding: '5px 9px',
-                fontSize: 'var(--text-xs)', border: '1px solid #C8D0DC', borderRadius: 4,
-              }}
-            />
-            <select
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              style={{ padding: '5px 9px', fontSize: 'var(--text-xs)', border: '1px solid #C8D0DC', borderRadius: 4 }}
-            >
-              <option value="">All Status</option>
-              {['Open','Assigned','In Progress','On-Hold','Resolved','Closed'].map(s => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-            <select
-              value={filterPriority}
-              onChange={e => setFilterPriority(e.target.value)}
-              style={{ padding: '5px 9px', fontSize: 'var(--text-xs)', border: '1px solid #C8D0DC', borderRadius: 4 }}
-            >
-              <option value="">All Priority</option>
-              {['Critical','High','Medium','Low'].map(p => (
-                <option key={p}>{p}</option>
-              ))}
-            </select>
-            {user?.role === 'super_admin' && (
-              <select value={liveServiceAreaFilter} onChange={e => setLiveServiceAreaFilter(e.target.value)} style={{ padding: '5px 9px', fontSize: 'var(--text-xs)', border: '1px solid #C8D0DC', borderRadius: 4 }}>
-                <option value="all">All Service Areas</option>
-                {serviceAreas.map(area => <option key={area.id} value={area.id}>{area.code} — {area.name}</option>)}
-              </select>
-            )}
-            <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value as typeof sortBy)}
-              style={{ padding: '5px 9px', fontSize: 'var(--text-xs)', border: '1px solid #C8D0DC', borderRadius: 4 }}
-            >
-              <option value="sla">Sort: SLA Urgency</option>
-              <option value="priority">Sort: Priority</option>
-              <option value="created">Sort: Date Filed</option>
-            </select>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#5A6475', fontSize: 'var(--text-xs)' }}>
-              From
-              <input type="date" aria-label="Live tickets filed from" value={liveDateFrom} max={liveDateTo || undefined} onChange={e => setLiveDateFrom(e.target.value)} style={{ padding: '5px 7px', fontSize: 'var(--text-xs)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#5A6475', fontSize: 'var(--text-xs)' }}>
-              To
-              <input type="date" aria-label="Live tickets filed to" value={liveDateTo} min={liveDateFrom || undefined} onChange={e => setLiveDateTo(e.target.value)} style={{ padding: '5px 7px', fontSize: 'var(--text-xs)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
-            </label>
-            {(filterSLA || filterStatus || filterPriority || liveServiceAreaFilter !== 'all' || search || liveDateFrom || liveDateTo) && (
-              <button onClick={() => { setFilterSLA(''); setFilterStatus(''); setFilterPriority(''); setLiveServiceAreaFilter('all'); setSearch(''); setLiveDateFrom(''); setLiveDateTo(''); }} style={{ padding: '5px 9px', fontSize: 'var(--text-xs)', border: '1px solid #C8D0DC', borderRadius: 4, background: '#F5F8FC', cursor: 'pointer', color: '#4A4A4A' }}>Clear</button>
-            )}
-            <span style={{ fontSize: 'var(--text-xs)', color: '#888', whiteSpace: 'nowrap' }}>
-              {sorted.length} of {tickets.length} tickets
-            </span>
-          </div>
-
+          <section className="ticket-monitor-grid">
+        <div className="ticket-grid-toolbar">
+          <label className="ticket-grid-search"><Search size={14} /><input aria-label="Search tickets" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} /></label>
+          <details className="ticket-filter-dropdown" onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
+            <summary><SlidersHorizontal size={15} />Ticket Filters{[!!filterSLA, !!filterStatus, !!filterPriority, liveServiceAreaFilter !== 'all', !!liveDateFrom, !!liveDateTo].filter(Boolean).length > 0 && <span className="ticket-filter-count">{[!!filterSLA, !!filterStatus, !!filterPriority, liveServiceAreaFilter !== 'all', !!liveDateFrom, !!liveDateTo].filter(Boolean).length}</span>}<ChevronDown size={14} /></summary>
+            <div className="ticket-filter-popover">
+              <div className="ticket-filter-popover-heading">Filter tickets</div>
+              <label><span><CircleDot size={14} />Status</span><select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="">All statuses</option>{['Open', 'Assigned', 'On-Hold', 'Cancelled', 'In Progress', 'Resolved', 'Closed'].map(status => <option key={status}>{status}</option>)}</select></label>
+              <label><span><Flag size={14} />Priority</span><select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}><option value="">All priorities</option>{['Critical', 'High', 'Medium', 'Low'].map(priority => <option key={priority}>{priority}</option>)}</select></label>
+              {user?.role === 'super_admin' && <label><span><Layers size={14} />Service Area</span><select value={liveServiceAreaFilter} onChange={e => setLiveServiceAreaFilter(e.target.value)}><option value="all">All service areas</option>{serviceAreas.map(area => <option key={area.id} value={area.id}>{area.code}</option>)}</select></label>}
+              <label><span><Clock size={14} />SLA Status</span><select value={filterSLA} onChange={e => setFilterSLA(e.target.value as typeof filterSLA)}><option value="">All SLA statuses</option>{Object.entries(SLA_STYLE).map(([value, style]) => <option key={value} value={value}>{style.label}</option>)}</select></label>
+              <label><span>Sort by</span><select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}><option value="sla">SLA Urgency</option><option value="priority">Priority</option><option value="created">Date Filed</option></select></label>
+              <div className="ticket-filter-date-heading"><CalendarDays size={14} />Date Added</div>
+              <div className="ticket-filter-dates"><label><span>From</span><input type="date" value={liveDateFrom} max={liveDateTo || undefined} onChange={e => setLiveDateFrom(e.target.value)} /></label><label><span>To</span><input type="date" value={liveDateTo} min={liveDateFrom || undefined} onChange={e => setLiveDateTo(e.target.value)} /></label></div>
+              <div className="ticket-filter-footer"><button onClick={() => { setFilterSLA(''); setSortBy('sla'); setFilterStatus(''); setFilterPriority(''); setLiveDateFrom(''); setLiveDateTo(''); setLiveServiceAreaFilter('all'); }}>Clear filters</button><button onClick={event => { const details = event.currentTarget.closest('details'); if (details) details.open = false; }}>Done</button></div>
+            </div>
+          </details>
+          {!publicMode && <button className="monitor-report-open" onClick={() => setShowReport(true)}><FileChartColumn size={15} />Generate Report</button>}
+        </div>
           {/* MONITORING TABLE */}
           <div style={{
             background: '#fff', border: '0.5px solid #D0D9E4',
@@ -643,179 +503,37 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
               borderRadius: '6px',
               border: '0.5px solid #D0D9E4',
             }}>
-                <table style={{
-                  width: '100%', borderCollapse: 'collapse', tableLayout: 'auto',
-                  minWidth: '800px',
-                }}>
-                <thead>
-                  <tr>
-                    {[
-                      { label: 'SLA',         w: '9%'  },
-                      { label: 'Ticket #',    w: '8%'  },
-                      { label: 'Service Area',w: '9%'  },
-                      { label: 'Subject',     w: '16%' },
-                      { label: 'Category',    w: '11%' },
-                      { label: 'Status',      w: '9%'  },
-                      { label: 'Priority',    w: '8%'  },
-                      { label: 'Assigned To', w: '9%'  },
-                      { label: 'Response',    w: '11%' },
-                      { label: 'Escalation',  w: '11%' },
-                      { label: 'Resolution',  w: '8%'  },
-                    ].map(h => (
-                      <th key={h.label} style={{
-                        textAlign: 'left', padding: '8px 10px',
-                        fontSize: 'var(--text-xs)', fontWeight: 500,
-                        color: '#fff', background: 'var(--gov-navy)',
-                        whiteSpace: 'nowrap', width: h.w,
-                      }}>
-                        {h.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sorted.length === 0 ? (
-                    <tr>
-                      <td colSpan={11} style={{ textAlign: 'center', padding: 32, color: '#888' }}>
-                        No tickets found.
-                      </td>
-                    </tr>
-                  ) : paginatedMonitoringTickets.map(ticket => {
-                    const sla       = ticket.sla;
-                    const slaStatus: SLAStatus = sla?.status ?? 'no-sla';
-                    const slaStyle  = SLA_STYLE[slaStatus];
-                    const stStyle   = STATUS_STYLE[ticket.status] ?? STATUS_STYLE['Open'];
-                    const prStyle   = PRIORITY_STYLE[ticket.priority] ?? PRIORITY_STYLE['Medium'];
-                    const rowBg     = slaStatus === 'breached'  ? '#FFF8F8'
-                      : slaStatus === 'escalated' ? '#FFFBF0'
-                      : slaStatus === 'warning'   ? '#FFFDF0'
-                      : '#fff';
-
-                    return (
-                      <tr
-                        key={ticket.id}
-                        style={{
-                          background: rowBg,
-                          borderLeft: slaStatus === 'breached'
-                            ? '3px solid #8B1A1A'
-                            : slaStatus === 'escalated'
-                            ? '3px solid #CC7700'
-                            : '3px solid transparent',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
-                        onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-                      >
-                        <td style={{ padding: '8px 10px' }}>
-                          <span style={{
-                            ...slaStyle, fontSize: 'var(--text-xs)', padding: '2px 6px',
-                            borderRadius: 3, fontWeight: 500, display: 'inline-block',
-                          }}>
-                            {slaStyle.label}
-                          </span>
-                          {sla && (
-                            <div style={{
-                              fontSize: 'var(--text-xs)', marginTop: 3,
-                              color: slaStatus === 'breached' || slaStatus === 'escalated'
-                                ? '#8B1A1A' : '#888',
-                            }}>
-                              {formatHours(sla.hoursRemaining)}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '8px 10px', fontWeight: 500, color: 'var(--gov-navy)', fontSize: 'var(--text-xs)' }}>
-                          {ticket.ticket_number}
-                        </td>
-                        <td style={{ padding: '8px 10px', fontSize: 'var(--text-xs)', color: '#52657A', fontWeight: 600 }}>
-                          {ticket.service_area_code || 'Unassigned'}
-                        </td>
-                        <td style={{ padding: '8px 10px', fontSize: 'var(--text-xs)' }}>
-                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {ticket.subject}
-                          </div>
-                          {ticket.sub_item && (
-                            <div style={{ fontSize: 'var(--text-xs)', color: '#888', marginTop: 2 }}>
-                              {ticket.sub_item}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '8px 10px', fontSize: 'var(--text-xs)', color: '#5A6475' }}>
-                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {ticket.category}
-                          </div>
-                          {ticket.sub_category && (
-                            <div style={{ fontSize: 'var(--text-xs)', color: '#999' }}>
-                              {ticket.sub_category}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '8px 10px' }}>
-                          <span style={{ ...stStyle, fontSize: 'var(--text-xs)', padding: '2px 6px', borderRadius: 3, fontWeight: 500 }}>
-                            {ticket.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '8px 10px' }}>
-                          <span style={{ ...prStyle, fontSize: 'var(--text-xs)', padding: '2px 6px', borderRadius: 3, fontWeight: 500 }}>
-                            {ticket.priority}
-                          </span>
-                        </td>
-                        <td style={{ padding: '8px 10px', fontSize: 'var(--text-xs)', color: '#5A6475' }}>
-                          {ticket.assigned_to || (
-                            <span style={{ color: '#CC7700', fontSize: 'var(--text-xs)', fontWeight: 500 }}>
-                              Unassigned
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '8px 10px' }}>
-                          {sla ? (
-                            <>
-                              <div style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: sla.responseBreached ? '#8B1A1A' : '#1B6B3A' }}>
-                                {sla.responseBreached ? '⚠ Breached' : '✓ On Time'}
-                              </div>
-                              <div style={{ fontSize: 'var(--text-xs)', color: '#888', marginTop: 2 }}>{fmt(sla.responseDeadline)}</div>
-                            </>
-                          ) : <span style={{ fontSize: 'var(--text-xs)', color: '#999' }}>—</span>}
-                        </td>
-                        <td style={{ padding: '8px 10px' }}>
-                          {sla ? (
-                            <>
-                              <div style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: sla.escalationBreached ? '#CC7700' : '#1B6B3A' }}>
-                                {sla.escalationBreached ? '⚠ Escalated' : '✓ Not Yet'}
-                              </div>
-                              <div style={{ fontSize: 'var(--text-xs)', color: '#888', marginTop: 2 }}>{fmt(sla.escalationDeadline)}</div>
-                            </>
-                          ) : <span style={{ fontSize: 'var(--text-xs)', color: '#999' }}>—</span>}
-                        </td>
-                        <td style={{ padding: '8px 10px' }}>
-                          {sla ? (
-                            <>
-                              <div style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: sla.resolutionBreached ? '#8B1A1A' : '#1B6B3A' }}>
-                                {sla.resolutionBreached ? '⚠ Breached' : '✓ On Time'}
-                              </div>
-                              <div style={{ fontSize: 'var(--text-xs)', color: '#888', marginTop: 2 }}>{fmt(sla.resolutionDeadline)}</div>
-                            </>
-                          ) : <span style={{ fontSize: 'var(--text-xs)', color: '#999' }}>—</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <AppTable className="ticket-monitor-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1450 }}>
+                <thead><tr>{['SLA','Ticket #','Service Area','Subject','Category','Status','Priority','Assigned To','Response','Escalation','Resolution'].map(label => <th key={label} style={{ textAlign: 'left' }}>{label}</th>)}</tr></thead>
+                <tbody>{sorted.length === 0 ? <tr><td colSpan={11} style={{ textAlign: 'center', padding: 32 }}>No tickets found.</td></tr> : paginatedMonitoringTickets.map(ticket => {
+                  const sla = ticket.sla;
+                  const slaStatus: SLAStatus = sla?.status ?? 'no-sla';
+                  const slaStyle = SLA_STYLE[slaStatus];
+                  const statusStyle = STATUS_STYLE[ticket.status] ?? STATUS_STYLE.Open;
+                  const priorityStyle = PRIORITY_STYLE[ticket.priority] ?? PRIORITY_STYLE.Medium;
+                  const rowBg = slaStatus === 'breached' ? '#FFF8F8' : slaStatus === 'escalated' ? '#FFFBF0' : slaStatus === 'warning' ? '#FFFDF0' : '#fff';
+                  return <tr key={ticket.id} data-sla={slaStatus} style={{ background: rowBg }}>
+                    <td><span style={{ background: slaStyle.bg, color: slaStyle.color, padding: '2px 6px' }}>{slaStyle.label}</span>{sla && <div style={{ color: slaStyle.color, marginTop: 3 }}>{formatHours(sla.hoursRemaining)}</div>}</td>
+                    <td style={{ color: 'var(--gov-navy)', fontWeight: 500 }}>{ticket.ticket_number}</td>
+                    <td style={{ fontWeight: 600 }}>{ticket.service_area_code || 'Unassigned'}</td>
+                    <td><div>{ticket.subject}</div>{ticket.sub_item && <div style={{ color: '#888', marginTop: 2 }}>{ticket.sub_item}</div>}</td>
+                    <td><div>{ticket.category}</div>{ticket.sub_category && <div style={{ color: '#999' }}>{ticket.sub_category}</div>}</td>
+                    <td><span style={{ background: statusStyle.bg, color: statusStyle.color, padding: '2px 6px' }}>{ticket.status}</span></td>
+                    <td><span data-priority={ticket.priority} style={{ background: priorityStyle.bg, color: priorityStyle.color }}>{ticket.priority}</span></td>
+                    <td>{ticket.assigned_to || <span style={{ color: '#CC7700' }}>Unassigned</span>}</td>
+                    <td>{sla ? <><div style={{ color: sla.responseBreached ? '#8B1A1A' : '#1B6B3A' }}>{sla.responseBreached ? '⚠ Breached' : '✓ On Time'}</div><div style={{ color: '#888', marginTop: 2 }}>{fmt(sla.responseDeadline)}</div></> : '—'}</td>
+                    <td>{sla ? <><div style={{ color: sla.escalationBreached ? '#CC7700' : '#1B6B3A' }}>{sla.escalationBreached ? '⚠ Escalated' : '✓ Not Yet'}</div><div style={{ color: '#888', marginTop: 2 }}>{fmt(sla.escalationDeadline)}</div></> : '—'}</td>
+                    <td>{sla ? <><div style={{ color: sla.resolutionBreached ? '#8B1A1A' : '#1B6B3A' }}>{sla.resolutionBreached ? '⚠ Breached' : '✓ On Time'}</div><div style={{ color: '#888', marginTop: 2 }}>{fmt(sla.resolutionDeadline)}</div></> : '—'}</td>
+                  </tr>;
+                })}</tbody>
+              </AppTable>
             </div>
+            {sorted.length > 0 && (
+              <Pagination attached page={currentMonitoringPage} total={sorted.length} pageSize={pageSize} onPageChange={setMonitoringPage} onPageSizeChange={setPageSize} />
+            )}
           </div>
 
-          {sorted.length > 0 && (
-            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px' }}>
-              <div style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Showing <strong>{monitoringStart + 1}–{Math.min(monitoringStart + pageSize, sorted.length)}</strong> of <strong>{sorted.length}</strong> tickets</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                <label style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Rows <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select></label>
-                <button onClick={() => setMonitoringPage(1)} disabled={currentMonitoringPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentMonitoringPage === 1 ? 0.5 : 1 }}>First</button>
-                <button onClick={() => setMonitoringPage(p => Math.max(1, p - 1))} disabled={currentMonitoringPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentMonitoringPage === 1 ? 0.5 : 1 }}>Previous</button>
-                <span style={{ color: '#334155', fontSize: 'var(--text-xs)' }}>Page {currentMonitoringPage} of {monitoringTotalPages}</span>
-                <button onClick={() => setMonitoringPage(p => Math.min(monitoringTotalPages, p + 1))} disabled={currentMonitoringPage === monitoringTotalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentMonitoringPage === monitoringTotalPages ? 0.5 : 1 }}>Next</button>
-                <button onClick={() => setMonitoringPage(monitoringTotalPages)} disabled={currentMonitoringPage === monitoringTotalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentMonitoringPage === monitoringTotalPages ? 0.5 : 1 }}>Last</button>
-              </div>
-            </div>
-          )}
+          </section>
 
           {/* LEGEND */}
           <div style={{
@@ -843,20 +561,32 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* TAB 2 — GENERATE REPORT                                             */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'report' && (
-        <>
+      {showReport && !publicMode && createPortal(
+        <div className="monitor-report-backdrop" onClick={() => setShowReport(false)}>
+          <div ref={reportModalRef} className="monitor-report-modal" role="dialog" aria-modal="true" aria-labelledby="monitor-report-title" tabIndex={-1} onClick={event => event.stopPropagation()} onKeyDown={event => {
+            if (event.key === 'Escape') { event.stopPropagation(); setShowReport(false); }
+            if (event.key === 'Tab') {
+              const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], textarea:not(:disabled)')).filter(item => item.getClientRects().length > 0);
+              const first = items[0]; const last = items[items.length - 1];
+              if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) { event.preventDefault(); last?.focus(); }
+              else if (!event.shiftKey && (document.activeElement === last || document.activeElement === event.currentTarget)) { event.preventDefault(); first?.focus(); }
+            }
+          }}>
+            <header className="monitor-report-header"><h2 id="monitor-report-title">Generate Report</h2><button aria-label="Close report" onClick={() => setShowReport(false)}><X size={20} /></button></header>
+            <div className="monitor-report-content">
           {/* INFO STRIP */}
-          <div style={{
+          {showReportNote && <div className="monitor-report-intro" style={{
             background: '#E8F1FA', borderLeft: '3px solid var(--gov-navy)',
             borderRadius: '0 4px 4px 0', padding: '8px 12px',
             fontSize: 'var(--text-xs)', color: 'var(--gov-navy)', marginBottom: 14,
           }}>
-            Generate a detailed served-ticket report for a specific date range. Cancelled tickets are excluded.
-            Optionally filter by ICTMS Technical Staff. Export to Excel for submission.
-          </div>
+            <span>Generate a detailed served-ticket report for a specific date range. Cancelled tickets are excluded.
+            Optionally filter by ICTMS Technical Staff. Export to Excel for submission.</span>
+            <button type="button" aria-label="Dismiss report note" onClick={() => setShowReportNote(false)}><X size={16} /></button>
+          </div>}
 
           {/* REPORT FILTERS */}
-          <div style={{
+          <div className="monitor-report-filters" style={{
             background: '#fff', border: '0.5px solid #D0D9E4',
             borderRadius: 8, padding: 20, marginBottom: 14,
           }}>
@@ -867,7 +597,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
               Report Filters
             </div>
 
-            <div style={{
+            <div className="monitor-report-fields" style={{
               display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
               gap: 14, marginBottom: 16,
             }}>
@@ -988,7 +718,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
             </div>
 
             {/* Quick date range presets */}
-            <div style={{
+            <div className="monitor-report-presets" style={{
               display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16,
             }}>
               <span style={{ fontSize: 'var(--text-xs)', color: '#6A7280', marginRight: 4, alignSelf: 'center' }}>
@@ -1056,7 +786,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
             </div>
 
             {/* Action buttons */}
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="monitor-report-actions" style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={generateReport}
                 disabled={reportLoading}
@@ -1068,7 +798,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                   fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6,
                 }}
               >
-                {reportLoading ? '⏳ Generating...' : '🔍 Generate Report'}
+                {reportLoading ? <><LoaderCircle size={15} className="monitor-report-spinner" /> Generating...</> : <><FileChartColumn size={15} /> Generate Report</>}
               </button>
 
               {reportGenerated && reportData.length > 0 && (
@@ -1082,7 +812,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                     display: 'flex', alignItems: 'center', gap: 6,
                   }}
                 >
-                  📥 Export to Excel
+                  <Download size={14} /> Export to Excel
                 </button>
               )}
             </div>
@@ -1091,65 +821,13 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
           {/* REPORT RESULTS */}
           {reportGenerated && (
             <>
-              {/* Report Summary Cards */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                gap: 'clamp(8px, 2vw, 12px)',
-                marginBottom: 14,
-              }}>
-                {[
-                  {
-                    label: 'Served Ticket',
-                    value: reportData.length,
-                    color: 'var(--gov-navy)',
-                    bg: '#E8F1FA',
-                  },
-                  {
-                    label: 'SLA Breached',
-                    value: reportData.filter(t => getSLAStatusLabel(t) === 'SLA Breached').length,
-                    color: '#8B1A1A',
-                    bg: '#FDE8E8',
-                  },
-                  {
-                    label: 'Resolved',
-                    value: reportData.filter(t => t.status === 'Resolved').length,
-                    color: '#1B6B3A',
-                    bg: '#E8F5EE',
-                  },
-                  {
-                    label: 'Closed',
-                    value: reportData.filter(t => t.status === 'Closed').length,
-                    color: '#4A4A4A',
-                    bg: '#F0F0F0',
-                  },
-                  {
-                    label: 'Still Open/Active',
-                    value: reportData.filter(t =>
-                      ['Open','Assigned','In Progress','On-Hold'].includes(t.status)
-                    ).length,
-                    color: '#CC7700',
-                    bg: '#FEF3DC',
-                  },
-                ].map(c => (
-                  <div key={c.label} style={{
-                    background: c.bg, border: `0.5px solid ${c.color}`,
-                    borderRadius: 8, padding: 12,
-                    borderTop: `3px solid ${c.color}`,
-                  }}>
-                    <div style={{
-                      fontSize: 'var(--text-xs)', color: c.color,
-                      textTransform: 'uppercase', letterSpacing: 0.5,
-                      marginBottom: 4, fontWeight: 600,
-                    }}>
-                      {c.label}
-                    </div>
-                    <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 600, color: c.color }}>
-                      {c.value}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <SummaryCards cards={[
+                { label: 'Served Ticket', value: reportData.length, color: '#123e70', background: '#E8F1FA', icon: Tickets },
+                { label: 'SLA Breached', value: reportData.filter(t => getSLAStatusLabel(t) === 'SLA Breached').length, color: '#8B1A1A', background: '#FDE8E8', icon: TriangleAlert },
+                { label: 'Resolved', value: reportData.filter(t => t.status === 'Resolved').length, color: '#1B6B3A', background: '#E8F5EE', icon: CircleCheck },
+                { label: 'Closed', value: reportData.filter(t => t.status === 'Closed').length, color: '#4A4A4A', background: '#F0F0F0', icon: Archive },
+                { label: 'Still Open/Active', value: reportData.filter(t => ['Open','Assigned','In Progress','On-Hold'].includes(t.status)).length, color: '#CC7700', background: '#FEF3DC', icon: Inbox },
+              ]} />
 
               {/* Report info bar */}
               <div style={{
@@ -1175,7 +853,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                     cursor: 'pointer', fontWeight: 500,
                   }}
                 >
-                  📥 Export Excel
+                  <Download size={14} /> Export Excel
                 </button>
               </div>
 
@@ -1190,7 +868,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                   borderRadius: '6px', border: '0.5px solid #D0D9E4',
                   maxHeight: 560, overflowY: 'auto',
                 }}>
-                  <table style={{
+                  <AppTable style={{
                     width: '100%', borderCollapse: 'collapse', tableLayout: 'auto',
                     minWidth: '800px',
                   }}>
@@ -1393,23 +1071,15 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                         );
                       })}
                     </tbody>
-                  </table>
+                  </AppTable>
                 </div>
+{reportData.length > 0 && (
+                <Pagination attached page={currentReportPage} total={reportData.length} pageSize={pageSize} onPageChange={setReportPage} onPageSizeChange={setPageSize} />
+              )}
+
               </div>
 
-              {reportData.length > 0 && (
-                <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px' }}>
-                  <div style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Showing <strong>{reportStart + 1}–{Math.min(reportStart + pageSize, reportData.length)}</strong> of <strong>{reportData.length}</strong> report tickets</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                    <label style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Rows <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select></label>
-                    <button onClick={() => setReportPage(1)} disabled={currentReportPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentReportPage === 1 ? 0.5 : 1 }}>First</button>
-                    <button onClick={() => setReportPage(p => Math.max(1, p - 1))} disabled={currentReportPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentReportPage === 1 ? 0.5 : 1 }}>Previous</button>
-                    <span style={{ color: '#334155', fontSize: 'var(--text-xs)' }}>Page {currentReportPage} of {reportTotalPages}</span>
-                    <button onClick={() => setReportPage(p => Math.min(reportTotalPages, p + 1))} disabled={currentReportPage === reportTotalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentReportPage === reportTotalPages ? 0.5 : 1 }}>Next</button>
-                    <button onClick={() => setReportPage(reportTotalPages)} disabled={currentReportPage === reportTotalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentReportPage === reportTotalPages ? 0.5 : 1 }}>Last</button>
-                  </div>
-                </div>
-              )}
+
 
               {/* Legend — same as monitoring */}
               <div style={{
@@ -1436,10 +1106,12 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                 </span>
               </div>
 
-        
+
             </>
           )}
-        </>
+            </div>
+          </div>
+        </div>, document.body
       )}
     </div>
   );

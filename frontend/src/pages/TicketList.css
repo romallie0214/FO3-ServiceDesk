@@ -1,0 +1,154 @@
+.ticket-quick-filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}.ticket-quick-filters button{display:inline-flex;align-items:center;gap:8px;border:1px solid #c5d1e1;border-radius:24px;background:white;color:#153252;padding:10px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}.ticket-quick-filters button i{width:8px;height:8px;border-radius:50%}.ticket-quick-filters button span{background:#edf1f7;border-radius:10px;padding:1px 7px;font-size:11px}.ticket-quick-filters button[aria-pressed=true]{background:#123e70;border-color:#123e70;color:white}.ticket-quick-filters button[aria-pressed=true] span{background:white;color:#123e70}.ticket-quick-filters button:disabled{opacity:.5;cursor:default}.ticket-quick-filters button:focus-visible{outline:2px solid #14518d;outline-offset:2px}.ticket-search{position:relative;flex:1 1 280px;min-width:0}.ticket-search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;pointer-events:none}.ticket-search input{padding-left:34px!important;width:100%;min-width:0!important}.ticket-filter-bar select{flex:1 1 130px;min-width:0;max-width:250px}.ticket-filter-bar input,.ticket-filter-bar select{min-height:40px}.ticket-sla-warning{font-size:12px;color:#925200;margin-bottom:10px}@media(max-width:600px){.ticket-search{flex-basis:100%}.ticket-quick-filters button{padding:8px 11px;font-size:12px}.ticket-filter-bar label{flex:1 1 140px}.ticket-filter-bar label input{min-width:0;width:100%}}
+
+/* Reference table preview; isolated from other ticket screens. */
+.ticket-grid{background:#fff;border:1px solid #e7e9ec;border-radius:6px;overflow:hidden;color:#30343a}
+.ticket-grid-toolbar{display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #eceef0;min-height:48px}
+.ticket-grid-search{display:flex;align-items:center;gap:8px;border:1px solid #e1e5e9;border-radius:6px;padding:4px 8px;color:#a1a7ae;box-shadow:0 1px 2px #00000005;width:185px}
+.ticket-grid-search input{border:0;outline:0;width:100%;min-width:0;font:inherit;font-size:14px;background:transparent;color:#30343a}
+.ticket-grid-filter{display:inline-flex;align-items:center;gap:7px;color:#60656a;font-size:14px;background:transparent;border:0;padding:4px 0;cursor:pointer}
+.ticket-grid-filter select{border:0;background:transparent;color:inherit;font:inherit;max-width:140px;cursor:pointer}
+.ticket-grid-extra,.ticket-grid-selection{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid #eceef0;font-size:14px}
+.ticket-grid-extra label{display:flex;align-items:center;gap:8px}.ticket-grid-extra input,.ticket-grid-extra button,.ticket-grid-selection button{border:1px solid #e1e5e9;border-radius:4px;background:#fff;padding:5px 8px;color:#60656a;font:inherit}
+.ticket-grid-scroll{overflow-x:auto}.ticket-grid table{width:100%;min-width:1180px;border-collapse:collapse;table-layout:fixed}
+.ticket-grid th{text-align:left;height:44px;background:var(--gov-navy);color:#fff;font-size:12px;font-weight:500;padding:0 12px;border-bottom:1px solid #e7e9ec;white-space:nowrap}
+.ticket-grid th:nth-child(1){width:140px}.ticket-grid th:nth-child(2){width:23%}.ticket-grid th:nth-child(3){width:100px}.ticket-grid th:nth-child(4){width:150px}.ticket-grid th:nth-child(5){width:180px}.ticket-grid th:nth-child(6){width:120px}.ticket-grid th:nth-child(7){width:190px}
+.ticket-grid td{height:40px;padding:0 12px;font-size:14px;border-bottom:1px solid #edf0f2;border-right:1px solid #f1f3f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ticket-grid tbody tr:last-child td{border-bottom:0}.ticket-grid td:last-child{border-right:0}.ticket-grid tbody tr:hover{background:#f6fbff;outline:1px solid #79c2f0;outline-offset:-1px}
+
+.ticket-grid button{cursor:pointer}.ticket-grid-id,.ticket-grid-subject button{border:0;background:transparent;color:inherit;font:inherit;padding:0}.ticket-grid-subject button{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}.ticket-grid-id:hover,.ticket-grid-subject button:hover{color:#177bb9}
+.ticket-grid [data-priority]{display:inline-flex;align-items:center;gap:4px;border-radius:20px!important;padding:1px 6px!important;font-size:12px!important;line-height:20px}.ticket-grid [data-priority]::before{content:'';width:4px;height:4px;border-radius:50%;background:currentColor}.ticket-grid [data-priority="Critical"]{background:#fde7ed!important;color:#b4234d!important}.ticket-grid [data-priority="High"]{background:#fff0ef!important;color:#d74c4c!important}.ticket-grid [data-priority="Medium"]{background:#fdf5e5!important;color:#a5792b!important}.ticket-grid [data-priority="Low"]{background:#eefaef!important;color:#2e9b62!important}
+.ticket-grid-category{display:inline-flex;align-items:center;gap:4px;background:#f5f6f7;border-radius:5px;padding:2px 5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:12px}.ticket-grid-person{display:flex;align-items:center;gap:7px}.ticket-grid-avatar{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:22px;height:22px;border-radius:50%;background:#e1eaf0;color:#526b7e;font-size:10px;font-weight:600}.ticket-grid td:nth-child(6)>span{border-radius:20px!important;font-size:12px!important;padding:2px 6px!important}.ticket-grid-date{font-size:12px!important}.ticket-grid-empty{text-align:center;height:110px!important;color:#737b85}.ticket-grid-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.ticket-grid :is(input,select,button):focus-visible{outline:2px solid #70bdf0;outline-offset:2px}
+@media(max-width:700px){.ticket-grid-toolbar{gap:12px;padding:10px}.ticket-grid-search{width:100%}}
+
+
+
+.ticket-grid-clickable{cursor:pointer}.ticket-grid-clickable:focus-within{background:#f6fbff;outline:2px solid #79c2f0;outline-offset:-2px}
+
+.ticket-grid{overflow:visible}.ticket-grid-scroll{border-radius:0 0 6px 6px}.ticket-filter-dropdown{position:relative;color:#4d5e71}.ticket-filter-dropdown summary{list-style:none;display:flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid #dce3eb;border-radius:6px;background:#fff;font-size:13px;cursor:pointer;user-select:none}.ticket-filter-dropdown summary::-webkit-details-marker{display:none}.ticket-filter-dropdown[open] summary{background:#f1f6fc;border-color:#a9c1da;color:var(--gov-navy)}.ticket-filter-dropdown[open] summary>svg:last-child{transform:rotate(180deg)}.ticket-filter-count{background:var(--gov-navy);color:#fff;padding:1px 6px;border-radius:10px;font-size:10px}.ticket-filter-popover{position:absolute;top:calc(100% + 8px);left:0;width:320px;max-width:calc(100vw - 48px);padding:16px;border:1px solid #e1e7ef;border-radius:9px;background:#fff;box-shadow:0 12px 35px #15355522;z-index:30;animation:ticket-filters-open 150ms ease-out}.ticket-filter-popover-heading{font-size:14px;font-weight:600;color:#34465b;margin-bottom:16px}.ticket-filter-popover>label{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}.ticket-filter-popover label>span,.ticket-filter-date-heading{display:flex;align-items:center;gap:6px;font-size:12px;color:#63758a}.ticket-filter-popover select{width:100%;font-size:13px}.ticket-filter-date-heading{margin-bottom:8px}.ticket-filter-dates{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ticket-filter-dates label{min-width:0;display:flex;flex-direction:column;gap:5px}.ticket-filter-dates input{width:100%;min-width:0;padding:7px;border:1px solid #dce3eb;border-radius:5px;font-size:12px;background:#fff;color:#4a5d72}.ticket-filter-footer{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:12px;border-top:1px solid #edf0f4}.ticket-filter-footer button{padding:6px 11px;border:1px solid #dde5ef;background:#fff;color:#52657b;border-radius:5px;font-size:12px;cursor:pointer}.ticket-filter-footer button:last-child{background:var(--gov-navy);border-color:var(--gov-navy);color:white}.ticket-filter-dropdown summary:focus-visible{outline:2px solid #70bdf0;outline-offset:2px}@keyframes ticket-filters-open{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}@media(prefers-reduced-motion:reduce){.ticket-filter-popover{animation:none}}
+
+.ticket-grid-toolbar .ticket-grid-search{flex:0 1 280px;width:280px;min-width:0}
+.ticket-grid-toolbar .ticket-filter-dropdown{flex-shrink:0}
+
+/* Align the search and filter controls on the same baseline. */
+.ticket-grid-toolbar{gap:10px}
+.ticket-grid-toolbar .ticket-grid-search{height:36px;box-sizing:border-box;padding:0 10px}
+.ticket-grid-toolbar .ticket-grid-search input{height:100%;font-size:13px}
+.ticket-grid-toolbar .ticket-filter-dropdown summary{height:36px;box-sizing:border-box;padding:0 11px}
+
+.ticket-grid-toolbar{padding-top:18px}
+
+
+.ticket-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:30px 16px;color:var(--ui-text,#344456)}
+.ticket-empty-icon{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:14px;background:#eaf1f9;color:#37638e}
+.ticket-empty-state strong{font-size:14px;font-weight:600}
+.ticket-empty-state p{margin:0;color:inherit;opacity:.7;font-size:12px}
+.ticket-empty-create{display:inline-flex;align-items:center;gap:7px;margin-top:5px;padding:9px 14px;border-radius:6px;background:#164779;color:#fff!important;text-decoration:none;font-size:12px;font-weight:600;transition:background .15s}
+.ticket-empty-create:hover{background:#20578e}
+html[data-theme=dark] .ticket-empty-icon{background:#263d55;color:#a6c7e8}
+.ticket-grid-empty::before{display:none!important}
+
+.ticket-empty-state a.ticket-empty-create:is(:link,:visited,:hover,:active,:focus){text-decoration:none!important}
+
+.ticket-benefits-banner{position:relative;display:flex;align-items:center;justify-content:space-between;gap:24px;margin:48px 0 20px;padding:22px 30px;min-height:150px;box-sizing:border-box;border:1px solid #4055b9;border-radius:8px;background:linear-gradient(105deg,#3346a5,#5059cf);color:#fff;overflow:visible}
+.ticket-benefits-copy{position:relative;z-index:1;max-width:620px;flex:1;min-width:0}
+.ticket-benefits-eyebrow{font-size:10px;font-weight:600;letter-spacing:.09em;color:#dce3ff}
+.ticket-benefits-copy h2{margin:7px 0 8px;font-size:20px;line-height:1.3;font-weight:650;color:#fff}
+.ticket-benefits-copy p{margin:0;max-width:560px;font-size:12px;line-height:1.6;color:#e1e6ff}
+.ticket-benefits-action{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:0 0 3px;border:0;border-bottom:1px solid #ffffff70;border-radius:0;background:transparent;color:#fff!important;font-size:12px;font-weight:600;text-decoration:none!important;transition:opacity .15s}
+.ticket-benefits-action:hover{opacity:.75}
+.ticket-benefits-close{position:absolute;top:8px;right:8px;z-index:2;display:flex;align-items:center;justify-content:center;width:26px;height:26px;border:0;border-radius:5px;background:transparent;color:#e4e8ff;cursor:pointer}
+.ticket-benefits-close:hover{background:#ffffff20}
+.ticket-benefits-art{position:relative;align-self:stretch;flex:0 0 330px;min-height:135px;pointer-events:none}
+.ticket-benefits-illustration{position:absolute;right:0;bottom:-22px;width:330px;height:270px;max-width:none;object-fit:contain;object-position:center bottom}
+html[data-theme=dark] .ticket-benefits-banner{background:linear-gradient(105deg,#29377a,#41489f);border-color:#4a56a4}
+@media(min-width:1400px){.ticket-benefits-art{flex-basis:390px}.ticket-benefits-illustration{width:370px;height:290px}}
+@media(max-width:900px){.ticket-benefits-banner{padding:20px 24px}.ticket-benefits-art{flex-basis:240px}.ticket-benefits-illustration{width:260px;height:245px;bottom:-20px}.ticket-benefits-copy h2{font-size:18px}}
+@media(max-width:640px){.ticket-benefits-banner{margin-top:36px;padding:20px;gap:12px}.ticket-benefits-art{flex-basis:150px}.ticket-benefits-illustration{width:180px;height:205px;right:-10px}.ticket-benefits-copy h2{font-size:16px}}
+@media(max-width:440px){.ticket-benefits-banner{margin-top:16px;padding:20px}.ticket-benefits-art{display:none}}
+
+/* A small overlap keeps the artwork clear of the page navigation. */
+.ticket-benefits-banner{margin-top:26px;padding:20px 30px;min-height:150px}
+.ticket-benefits-art{flex-basis:260px;min-height:130px}
+.ticket-benefits-illustration{width:250px;height:205px;right:12px;bottom:-20px}
+@media(min-width:1400px){.ticket-benefits-art{flex-basis:290px}.ticket-benefits-illustration{width:265px;height:215px}}
+@media(max-width:900px){.ticket-benefits-banner{padding:20px 24px}.ticket-benefits-art{flex-basis:210px}.ticket-benefits-illustration{width:215px;height:190px;right:0;bottom:-20px}}
+@media(max-width:640px){.ticket-benefits-banner{margin-top:20px;padding:20px}.ticket-benefits-art{flex-basis:145px}.ticket-benefits-illustration{width:165px;height:175px;right:-5px}}
+@media(max-width:440px){.ticket-benefits-banner{margin-top:16px}}
+
+.ticket-benefits-banner{background:#e8eff6;border-color:#d5e0eb;color:#234563}
+.ticket-benefits-copy h2{color:#234563}
+.ticket-benefits-eyebrow{color:#607b94}
+.ticket-benefits-copy p{color:#526b82}
+.ticket-benefits-action{color:#234f78!important;border-bottom-color:#234f7845}
+.ticket-benefits-close{color:#60788f}
+.ticket-benefits-close:hover{background:#234f7810}
+.ticket-benefits-illustration{right:42px}
+html[data-theme=dark] .ticket-benefits-banner{background:#203246;border-color:#334b63;color:#d5e4f2}
+html[data-theme=dark] .ticket-benefits-copy h2{color:#d5e4f2}
+html[data-theme=dark] .ticket-benefits-eyebrow,html[data-theme=dark] .ticket-benefits-copy p{color:#a7bbce}
+html[data-theme=dark] .ticket-benefits-action{color:#d5e4f2!important;border-bottom-color:#a7bbce60}
+html[data-theme=dark] .ticket-benefits-close{color:#a7bbce}
+@media(max-width:900px){.ticket-benefits-illustration{right:20px}}
+@media(max-width:640px){.ticket-benefits-illustration{right:5px}}
+
+.ticket-benefits-banner .ticket-benefits-action{padding:9px 14px;border:1px solid #164779;border-radius:6px;background:#164779;color:#fff!important;text-decoration:none!important;transition:background .15s,border-color .15s}
+.ticket-benefits-banner .ticket-benefits-action:hover{background:#205b91;border-color:#205b91;opacity:1}
+.ticket-benefits-banner .ticket-benefits-action:focus-visible{outline:2px solid #78a9e0;outline-offset:3px}
+html[data-theme=dark] .ticket-benefits-banner .ticket-benefits-action{background:#315f8c;border-color:#4679a8;color:#fff!important}
+html[data-theme=dark] .ticket-benefits-banner .ticket-benefits-action:hover{background:#3d729f;border-color:#598cb8}
+
+/* Offset the image's transparent bottom pixels so the laptop meets the banner edge. */
+.ticket-benefits-banner .ticket-benefits-illustration{bottom:-27px;object-position:center bottom}
+
+.ticket-benefits-banner .ticket-benefits-illustration{width:280px;height:230px}
+@media(min-width:1400px){.ticket-benefits-banner .ticket-benefits-illustration{width:295px;height:240px}}
+@media(max-width:900px){.ticket-benefits-banner .ticket-benefits-illustration{width:235px;height:210px}}
+@media(max-width:640px){.ticket-benefits-banner .ticket-benefits-illustration{width:180px;height:190px}}
+
+/* Group the copy and illustration instead of pushing them to opposite edges. */
+.ticket-benefits-banner{justify-content:center;gap:36px}
+.ticket-benefits-copy{flex:0 1 620px}
+.ticket-benefits-art{flex:0 0 300px}
+.ticket-benefits-banner .ticket-benefits-illustration{right:0}
+@media(min-width:1400px){.ticket-benefits-art{flex-basis:310px}}
+@media(max-width:900px){.ticket-benefits-banner{gap:20px}.ticket-benefits-art{flex-basis:225px}}
+@media(max-width:640px){.ticket-benefits-banner{gap:12px}.ticket-benefits-art{flex-basis:165px}}
+
+.ticket-benefits-banner{justify-content:space-between;gap:24px}
+.ticket-benefits-copy{flex:1 1 0;max-width:none}
+.ticket-benefits-copy p{max-width:720px}
+.ticket-benefits-art{flex:0 0 32%}
+.ticket-benefits-banner .ticket-benefits-illustration{right:50%;transform:translateX(50%)}
+@media(min-width:1400px){.ticket-benefits-art{flex-basis:32%}}
+@media(max-width:900px){.ticket-benefits-art{flex-basis:225px}}
+@media(max-width:640px){.ticket-benefits-art{flex-basis:165px}}
+
+.ticket-benefits-banner{padding-left:48px}
+@media(max-width:900px){.ticket-benefits-banner{padding-left:30px}}
+@media(max-width:640px){.ticket-benefits-banner{padding-left:20px}}
+
+/* Keep the artwork beside the copy instead of at the far end of the banner. */
+.ticket-benefits-banner{justify-content:flex-start;gap:32px}
+.ticket-benefits-copy{flex:0 1 720px;max-width:720px}
+.ticket-benefits-art{flex:0 0 300px}
+.ticket-benefits-banner .ticket-benefits-illustration{right:0;transform:none}
+@media(min-width:1400px){.ticket-benefits-art{flex-basis:310px}}
+@media(max-width:900px){.ticket-benefits-banner{gap:20px}.ticket-benefits-copy{flex:1 1 0}.ticket-benefits-art{flex-basis:225px}}
+@media(max-width:640px){.ticket-benefits-banner{gap:12px}.ticket-benefits-art{flex-basis:165px}}
+
+.ticket-benefits-banner{gap:clamp(24px,4vw,64px);padding-right:clamp(30px,6vw,110px)}
+.ticket-benefits-copy{flex:1 1 0;max-width:none}
+.ticket-benefits-art{flex:0 0 300px}
+@media(min-width:1400px){.ticket-benefits-art{flex-basis:310px}}
+@media(max-width:900px){.ticket-benefits-banner{gap:20px;padding-right:30px}.ticket-benefits-art{flex-basis:225px}}
+@media(max-width:640px){.ticket-benefits-banner{gap:12px;padding-right:20px}.ticket-benefits-art{flex-basis:165px}}
+
+.ticket-benefits-banner{padding-left:80px;padding-right:clamp(62px,8vw,142px)}
+@media(max-width:900px){.ticket-benefits-banner{padding-left:48px;padding-right:48px}}
+@media(max-width:640px){.ticket-benefits-banner{padding-left:24px;padding-right:24px}}
+
+@media(max-width:1024px){
+  .ticket-benefits-banner .ticket-benefits-art{display:none}
+  .ticket-benefits-banner .ticket-benefits-copy{flex:1;max-width:none}
+  .ticket-benefits-banner{margin-top:16px}
+}

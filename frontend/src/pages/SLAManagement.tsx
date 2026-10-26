@@ -1,4 +1,11 @@
-import { Fragment, useEffect, useState } from 'react';
+import { showErrorToast } from '../utils/notifications';
+import AppTable from '../components/AppTable';
+import { Pencil, Trash2, Plus, Save, Download, Eye, FileText, X, SlidersHorizontal, ChevronDown, Clock, Siren, TriangleAlert, CircleCheck } from 'lucide-react';
+import '../styles/management-ui.css';
+
+import SummaryCards from '../components/dashboard/SummaryCards';
+
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -85,6 +92,14 @@ export default function SLAManagement() {
   const [deleting, setDeleting]       = useState(false);
   const [toast, setToast]             = useState({ msg: '', type: '' });
   const [filterPriority, setFilterPriority] = useState('');
+  const slaFiltersRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (event.target instanceof Node && slaFiltersRef.current && !slaFiltersRef.current.contains(event.target)) slaFiltersRef.current.open = false;
+    };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, []);
   const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
   const [serviceAreaFilter, setServiceAreaFilter] = useState('all');
 
@@ -131,13 +146,13 @@ export default function SLAManagement() {
 
   async function handleSave() {
     if (!form.service_area_id) {
-      alert('Select a service area.'); return;
+      showErrorToast('Select a service area.'); return;
     }
     if (Number(form.response_time_hours) <= 0) {
-      alert('Response time must be greater than 0.'); return;
+      showErrorToast('Response time must be greater than 0.'); return;
     }
     if (Number(form.resolution_time_hours) <= Number(form.response_time_hours)) {
-      alert('Resolution time must be greater than response time.'); return;
+      showErrorToast('Resolution time must be greater than response time.'); return;
     }
     setSaving(true);
     try {
@@ -151,7 +166,7 @@ export default function SLAManagement() {
       setShowModal(false);
       fetchRules();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to save SLA rule.');
+      showErrorToast(err.response?.data?.error || 'Failed to save SLA rule.');
     } finally {
       setSaving(false);
     }
@@ -176,7 +191,7 @@ export default function SLAManagement() {
       setDeleteTarget(null);
       fetchRules();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete.');
+      showErrorToast(err.response?.data?.error || 'Failed to delete.');
     } finally {
       setDeleting(false);
     }
@@ -203,7 +218,7 @@ export default function SLAManagement() {
   );
 
   return (
-    <div>
+    <div className="shared-management-page SLAManagement-page">
       {/* BREADCRUMB */}
       <div style={{
         fontSize: 'clamp(9px, 1.8vw, 11px)',
@@ -250,140 +265,26 @@ export default function SLAManagement() {
             whiteSpace: 'nowrap',
             flex: '0 0 auto',
           }}
-        >
-          + Add SLA Rule
-        </button>
+        ><Plus size={14} /> Add SLA Rule</button>
       </div>
 
-      {/* STAT CARDS */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: 'clamp(8px, 2vw, 12px)',
-        marginBottom: 18,
-      }}>
-        {[
-          {
-            label: 'Total SLA Rules',
-            value: rules.length,
-            sub: 'Configured rules',
-            color: 'var(--gov-navy)',
-          },
-          {
-            label: 'Critical SLA',
-            value: criticalRule
-              ? `${formatTime(criticalRule.response_time_hours)} / ${formatTime(criticalRule.resolution_time_hours)}`
-              : 'Not set',
-            sub: 'Response / Resolution',
-            color: 'var(--gov-red)',
-          },
-          {
-            label: 'High SLA',
-            value: highRule
-              ? `${formatTime(highRule.response_time_hours)} / ${formatTime(highRule.resolution_time_hours)}`
-              : 'Not set',
-            sub: 'Response / Resolution',
-            color: 'var(--gov-amber)',
-          },
-          {
-            label: 'Active Rules',
-            value: activeCount,
-            sub: `${rules.length - activeCount} inactive`,
-            color: 'var(--gov-green)',
-          },
-        ].map(c => (
-          <div key={c.label} style={{
-            background: '#fff',
-            border: '0.5px solid #D0D9E4',
-            borderRadius: 8,
-            padding: 'clamp(10px, 2.5vw, 14px)',
-            borderTop: `3px solid ${c.color}`,
-          }}>
-            <div style={{
-              fontSize: 'clamp(9px, 1.8vw, 11px)',
-              color: '#4A4A4A',
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 4,
-              fontWeight: 500,
-            }}>
-              {c.label}
-            </div>
-            <div style={{
-              fontSize: typeof c.value === 'string' && c.value.includes('/')
-                ? 'clamp(12px, 2vw, 14px)'
-                : 'clamp(18px, 5vw, 22px)',
-              fontWeight: 500,
-              color: c.color,
-              lineHeight: 1.2,
-            }}>
-              {c.value}
-            </div>
-            <div style={{
-              fontSize: 'clamp(8px, 1.5vw, 10px)',
-              color: '#888',
-              marginTop: 4,
-            }}>
-              {c.sub}
-            </div>
+      <SummaryCards cards={[
+        { label: 'Total SLA Rules', value: rules.length, description: 'Configured rules', color: '#0D3B6E', background: '#E8F1FA', icon: Clock },
+        { label: 'Critical SLA', value: criticalRule ? formatTime(criticalRule.response_time_hours) + ' / ' + formatTime(criticalRule.resolution_time_hours) : 'Not set', description: 'Response / Resolution', color: '#8B1A1A', background: '#FDE8E8', icon: Siren },
+        { label: 'High SLA', value: highRule ? formatTime(highRule.response_time_hours) + ' / ' + formatTime(highRule.resolution_time_hours) : 'Not set', description: 'Response / Resolution', color: '#CC7700', background: '#FEF3DC', icon: TriangleAlert },
+        { label: 'Active Rules', value: activeCount, description: (rules.length - activeCount) + ' inactive', color: '#1B6B3A', background: '#E8F5EE', icon: CircleCheck },
+      ]} />
+
+      <div className="sla-filter-toolbar">
+        <details className="sla-filter-dropdown" ref={slaFiltersRef} onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
+          <summary><SlidersHorizontal size={14} />SLA Filters{(filterPriority || serviceAreaFilter !== 'all') && <span>{Number(!!filterPriority) + Number(serviceAreaFilter !== 'all')}</span>}<ChevronDown size={14} /></summary>
+          <div className="sla-filter-menu">
+            <label>Priority<select value={filterPriority} onChange={event => setFilterPriority(event.target.value)}><option value="">All priorities</option>{PRIORITIES.map(priority => <option key={priority}>{priority}</option>)}</select></label>
+            <label>Service area<select value={serviceAreaFilter} onChange={event => setServiceAreaFilter(event.target.value)}>{!managedAreaIds && <option value="all">All service areas</option>}{serviceAreas.filter(area => area.is_active).map(area => <option key={area.id} value={area.id}>{area.code} ? {area.name}</option>)}</select></label>
+            <div className="sla-filter-actions"><button onClick={() => { setFilterPriority(''); setServiceAreaFilter('all'); }}>Clear filters</button><button onClick={() => { if (slaFiltersRef.current) slaFiltersRef.current.open = false; }}>Done</button></div>
           </div>
-        ))}
-      </div>
-
-      {/* FILTER BAR */}
-      <div style={{
-        background: '#fff',
-        border: '0.5px solid #D0D9E4',
-        borderRadius: 8,
-        padding: 'clamp(8px, 2vw, 12px)',
-        marginBottom: 10,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'clamp(6px, 1.5vw, 10px)',
-        flexWrap: 'wrap',
-      }}>
-        <span style={{
-          fontSize: 'clamp(9px, 1.8vw, 11px)',
-          color: '#4A4A4A',
-          whiteSpace: 'nowrap',
-          fontWeight: 500,
-        }}>
-          Filter by Priority:
-        </span>
-        {['', ...PRIORITIES].map(p => (
-          <button
-            key={p}
-            onClick={() => setFilterPriority(p)}
-            style={{
-              padding: 'clamp(3px, 1vw, 4px) clamp(8px, 1.5vw, 12px)',
-              fontSize: 'clamp(8px, 1.5vw, 10px)',
-              background: filterPriority === p
-                ? 'var(--gov-navy)' : '#F0F3F7',
-              color: filterPriority === p ? '#fff' : '#4A4A4A',
-              border: filterPriority === p
-                ? '1px solid var(--gov-navy)' : '1px solid #D0D9E4',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontWeight: filterPriority === p ? 500 : 400,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {p || 'All'}
-          </button>
-        ))}
-        <select value={serviceAreaFilter} onChange={e => setServiceAreaFilter(e.target.value)} style={{ ...inputStyle, width: 220 }}>
-          {!managedAreaIds && <option value="all">All service areas</option>}
-          {serviceAreas.filter(area => area.is_active).map(area => <option key={area.id} value={area.id}>{area.code} — {area.name}</option>)}
-        </select>
-        <span style={{
-          marginLeft: 'auto',
-          fontSize: 'clamp(8px, 1.5vw, 10px)',
-          color: '#888',
-          whiteSpace: 'nowrap',
-          flex: '0 1 auto',
-        }}>
-          {visibleRules.length} rule{visibleRules.length !== 1 ? 's' : ''}
-        </span>
+        </details>
+        <span>{visibleRules.length} {visibleRules.length === 1 ? 'rule' : 'rules'}</span>
       </div>
 
       {/* SLA TABLE */}
@@ -397,7 +298,7 @@ export default function SLAManagement() {
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
         }}>
-          <table style={{
+          <AppTable className="shared-management-table" style={{
             width: '100%',
             borderCollapse: 'collapse',
             minWidth: '920px',
@@ -566,9 +467,7 @@ export default function SLAManagement() {
                           background: 'var(--gov-navy)', color: '#fff',
                           border: 'none', borderRadius: 4, cursor: 'pointer',
                         }}
-                      >
-                        Edit
-                      </button>
+                      ><Pencil size={14} /> Edit</button>
                       <button
                         onClick={() => setDeleteTarget(rule)}
                         style={{
@@ -578,7 +477,7 @@ export default function SLAManagement() {
                           borderRadius: 4, cursor: 'pointer',
                         }}
                       >
-                        Del
+                        <Trash2 size={14} /> Delete
                       </button>
                     </div>
                   </td>
@@ -586,7 +485,7 @@ export default function SLAManagement() {
                 </Fragment>
               ))}
             </tbody>
-          </table>
+          </AppTable>
         </div>
       </div>
 
@@ -602,10 +501,10 @@ export default function SLAManagement() {
           }}
         >
           <div
-            onClick={e => e.stopPropagation()}
+            className="shared-management-dialog" onClick={e => e.stopPropagation()}
             style={{
               background: '#fff',
-              width: 'clamp(90vw, 95vw, 520px)',
+              width: 'min(720px, calc(100vw - 32px))',
               maxWidth: '95vw',
               borderRadius: 10,
               border: '0.5px solid #C0C8D4',
@@ -880,10 +779,10 @@ export default function SLAManagement() {
           }}
         >
           <div
-            onClick={e => e.stopPropagation()}
+            className="shared-management-dialog" onClick={e => e.stopPropagation()}
             style={{
               background: '#fff',
-              width: 'clamp(90vw, 95vw, 380px)',
+              width: 'min(400px, calc(100vw - 32px))',
               maxWidth: '95vw',
               borderRadius: 10,
               overflow: 'hidden',

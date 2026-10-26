@@ -1,278 +1,64 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentProps } from 'react';
+import { Link } from 'react-router-dom';
+import { Plus } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import TicketDetailModal from '../components/TicketDetailModal';
+import { RecentTickets, TicketTotals } from '../components/dashboard/DashboardPanels';
+import TicketCharts from '../components/dashboard/TicketCharts';
+import type { DashboardTicket } from '../hooks/useAdminDashboard';
+import './SuperAdminDashboard.css';
 
-
-interface Ticket {
-  id: number;
-  ticket_number: string;
-  subject: string;
-  status: 'Open' | 'Assigned' | 'In Progress' | 'On-Hold' | 'Resolved' | 'Cancelled' | 'Closed';
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
-  category: string;
-  assigned_to: string | null;
-  created_at: string;
-  description?: string;
-  requestor_name?: string;
-  division?: string;
-  unit?: string;
-  office_location?: string;
-  cancel_reason?: string;
-}
+interface StaffTicket extends DashboardTicket { priority?: string }
+interface Area { id: number; code: string; name: string; is_active: number }
 
 export default function IctmsDashboard() {
-  const { user } = useAuth();
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const { canAccess } = useAuth();
+  const [tickets, setTickets] = useState<StaffTicket[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-
+  const [failed, setFailed] = useState(false);
+  const [revision, setRevision] = useState(0);
+  const [opening, setOpening] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<ComponentProps<typeof TicketDetailModal>['ticket']>(null);
   useEffect(() => {
-    api.get('/tickets').then(res => {
-      setTickets(res.data);
+    let active = true;
+    Promise.allSettled([api.get('/tickets'), api.get('/service-areas')]).then(([ticketResult, areaResult]) => {
+      if (!active) return;
+      setFailed(ticketResult.status === 'rejected');
+      if (ticketResult.status === 'fulfilled') setTickets(ticketResult.value.data);
+      if (areaResult.status === 'fulfilled') setAreas(areaResult.value.data);
       setLoading(false);
     });
-  }, []);
-
-  const open     = tickets.filter(t =>
-    t.status === 'Open' || t.status === 'Assigned' || t.status === 'In Progress'
-  ).length;
-  const resolved = tickets.filter(t => t.status === 'Resolved').length;
-  const critical = tickets.filter(t => t.priority === 'Critical').length;
-
-  const assigned  = tickets.filter(t => t.status === 'Assigned').length;
-  const inProgress = tickets.filter(t => t.status === 'In Progress').length;
-  const onHold    = tickets.filter(t => t.status === 'On-Hold').length;
-  const cancelled = tickets.filter(t => t.status === 'Cancelled').length;
-  const closed    = tickets.filter(t => t.status === 'Closed').length;
-  const totalExcludingCancelled = tickets.length - cancelled;
-
-  const ticketStatCards = [
-    { label: 'Total Tickets', value: tickets.length, sub: 'All tickets recorded, including cancelled tickets', color: 'var(--gov-navy)' },
-    { label: 'Served Ticket', value: totalExcludingCancelled, sub: 'All valid tickets excluding cancelled request', color: '#1A5490' },
-    { label: 'Open', value: tickets.filter(t => t.status === 'Open').length, sub: 'New tickets waiting to be assigned', color: '#CC7700' },
-    { label: 'Assigned', value: assigned, sub: 'Tickets assigned to ICTMS personnel', color: '#087A5B' },
-    { label: 'In Progress', value: inProgress, sub: 'Tickets currently being worked on', color: '#5B21B6' },
-    { label: 'On-Hold', value: onHold, sub: 'Tickets temporarily paused or awaiting action', color: '#854F0B' },
-    { label: 'Resolved', value: resolved, sub: 'Tickets completed and awaiting closure', color: 'var(--gov-green)' },
-    { label: 'Cancelled', value: cancelled, sub: 'Requests cancelled by users or ICTMS', color: 'var(--gov-red)' },
-    { label: 'Closed', value: closed, sub: 'Resolved tickets formally closed', color: '#4A4A4A' },
-  ];
-
-
-  const handleTicketClick = async (ticketId: number) => {
-    try {
-      const res = await api.get(`/tickets/${ticketId}`);
-      setSelectedTicket(res.data);
-    } catch (err) {
-      console.error('Failed to load ticket:', err);
-    }
-  };
-
-  const handleCloseModal = () => {
-    setSelectedTicket(null);
-  };
-
-  const handleTicketResolved = () => {
-    // Refresh ticket list
-    api.get('/tickets').then(res => {
-      setTickets(res.data);
-    });
-  };
-
-  return (
-    <div>
-      {/* BREADCRUMB */}
-      <div style={{
-        fontSize: 'clamp(9px, 1.8vw, 11px)',
-        color: '#4A4A4A',
-        marginBottom: 14,
-      }}>
-        Home <span style={{ color: 'var(--gov-navy)', fontWeight: 500 }}>
-          / Dashboard
-        </span>
-      </div>
-
-      {/* INFO STRIP */}
-      <div style={{
-        background: '#E8F1FA',
-        borderLeft: '3px solid var(--gov-navy)',
-        borderRadius: '0 4px 4px 0',
-        padding: 'clamp(8px, 2vw, 12px)',
-        fontSize: 'clamp(9px, 1.8vw, 12px)',
-        color: 'var(--gov-navy)',
-        marginBottom: 14,
-        lineHeight: 1.5,
-      }}>
-        Welcome back, <strong>{user?.full_name}</strong>. You have{' '}
-        <strong>{open} open tickets</strong> in the system.
-      </div>
-
-      {/* STAT CARDS */}
-      {loading ? (
-        <div style={{
-          color: 'var(--gov-navy)',
-          padding: 'clamp(16px, 3vw, 20px)',
-          fontSize: 'clamp(11px, 2vw, 13px)',
-        }}>
-          Loading stats...
-        </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-          gap: 'clamp(8px, 2vw, 12px)',
-          marginBottom: 18,
-        }}>
-          {ticketStatCards.map(c => (
-            <div key={c.label} style={{
-              background: '#fff',
-              border: '0.5px solid #D0D9E4',
-              borderRadius: 8,
-              padding: 'clamp(10px, 2.5vw, 14px)',
-              borderTop: `3px solid ${c.color}`,
-            }}>
-              <div style={{
-                fontSize: 'clamp(9px, 1.8vw, 11px)',
-                color: '#4A4A4A',
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-                marginBottom: 6,
-                fontWeight: 500,
-              }}>
-                {c.label}
-              </div>
-              <div style={{
-                fontSize: 'clamp(20px, 6vw, 28px)',
-                fontWeight: 500,
-                color: c.color,
-              }}>
-                {c.value}
-              </div>
-              <div style={{
-                fontSize: 'clamp(8px, 1.5vw, 10px)',
-                color: '#4A4A4A',
-                marginTop: 4,
-              }}>
-                {c.sub}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* RECENT TICKETS */}
-      <div style={{
-        background: '#fff',
-        border: '0.5px solid #D0D9E4',
-        borderRadius: 8,
-        padding: 'clamp(12px, 2.5vw, 16px)',
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 14,
-          paddingBottom: 10,
-          borderBottom: '0.5px solid #E5EAF0',
-        }}>
-          <span style={{
-            fontSize: 'clamp(11px, 2vw, 13px)',
-            fontWeight: 500,
-            color: 'var(--gov-navy)',
-            textTransform: 'uppercase',
-            letterSpacing: 0.5,
-          }}>
-            Recent Tickets
-          </span>
-        </div>
-        {tickets.slice(0, 5).map(t => (
-          <div key={t.id} style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'clamp(6px, 1.5vw, 8px)',
-            padding: 'clamp(6px, 1.5vw, 8px) 0',
-            borderBottom: '0.5px solid #EEF1F5',
-            cursor: 'pointer',
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            {/* ← TICKET NUMBER — CLICKABLE */}
-            <button
-              onClick={() => handleTicketClick(t.id)}
-              style={{
-                fontSize: 'clamp(8px, 1.5vw, 10px)',
-                fontWeight: 600,
-                color: 'var(--gov-navy)',
-                minWidth: 'clamp(60px, 12vw, 80px)',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0,
-                textDecoration: 'underline',
-                textDecorationColor: 'transparent',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => {
-                (e.target as HTMLButtonElement).style.textDecorationColor = 'var(--gov-navy)';
-              }}
-              onMouseLeave={e => {
-                (e.target as HTMLButtonElement).style.textDecorationColor = 'transparent';
-              }}
-            >
-              {t.ticket_number}
-            </button>
-
-            <span style={{
-              fontSize: 'clamp(10px, 1.8vw, 12px)',
-              flex: 1,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>
-              {t.subject}
-            </span>
-            <span style={{
-              fontSize: 'clamp(7px, 1.2vw, 9px)',
-              padding: '2px clamp(4px, 1vw, 8px)',
-              borderRadius: 3,
-              fontWeight: 500,
-              whiteSpace: 'nowrap',
-              background:
-                t.status === 'Open'        ? '#E8F1FA' :
-                t.status === 'Assigned'    ? '#E1F5EE' :
-                t.status === 'In Progress' ? '#FEF3DC' :
-                t.status === 'On-Hold'     ? '#FDF5DC' :
-                t.status === 'Resolved'    ? '#E8F5EE' :
-                t.status === 'Cancelled'   ? '#FDE8E8' :
-                t.status === 'Closed'      ? '#F0F0F0' :
-                '#F0F0F0',
-              color:
-                t.status === 'Open'        ? '#0D3B6E' :
-                t.status === 'Assigned'    ? '#085041' :
-                t.status === 'In Progress' ? '#CC7700' :
-                t.status === 'On-Hold'     ? '#854F0B' :
-                t.status === 'Resolved'    ? '#1B6B3A' :
-                t.status === 'Cancelled'   ? '#8B1A1A' :
-                t.status === 'Closed'      ? '#4A4A4A' :
-                '#4A4A4A',
-            }}>
-              {t.status}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* TICKET DETAIL MODAL */}
-      {selectedTicket && (
-        <TicketDetailModal
-          ticket={selectedTicket}
-          onClose={handleCloseModal}
-          onResolved={handleTicketResolved}
-        />
-      )}
+    return () => { active = false; };
+  }, [revision]);
+  async function openTicket(ticket: DashboardTicket) {
+    if (opening) return;
+    setOpening(true);
+    const notification = toast.loading('Loading ticket...');
+    try { const response = await api.get(`/tickets/${ticket.id}`); setSelectedTicket(response.data); toast.dismiss(notification); }
+    catch { toast.error('Could not open this ticket. Please try again.', { id: notification }); }
+    finally { setOpening(false); }
+  }
+  const visibleAreas = areas.filter(area => area.is_active && tickets.some(ticket => Number(ticket.service_area_id) === area.id));
+  const displayed = tickets.filter(ticket => filter === 'all' || String(ticket.service_area_id) === filter);
+  const active = displayed.filter(ticket => !['Resolved', 'Closed', 'Cancelled'].includes(ticket.status));
+  if (loading) return <p role="status">Loading dashboard...</p>;
+  return <div className="desk-dashboard">
+    <header className="desk-dashboard-heading"><div><h1>Dashboard</h1><span>Technical staff ticket overview</span></div><div className="desk-dashboard-actions">
+      <select aria-label="Filter tickets by service area" value={filter} onChange={event => setFilter(event.target.value)}><option value="all">All available service areas</option>{visibleAreas.map(area => <option key={area.id} value={area.id}>{area.code} - {area.name}</option>)}</select>
+      {canAccess('submit') && <Link className="desk-primary" to="/submit"><Plus size={14} aria-hidden="true" />Submit a ticket</Link>}
+    </div></header>
+    {failed && <p className="desk-load-warning" role="alert">Tickets could not be loaded. <button type="button" onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
+    <div className="desk-dashboard-reference desk-dashboard-compact">
+      <TicketTotals tickets={displayed} unavailable={failed} serviceArea={filter} />
+      <div className="desk-dashboard-middle"><RecentTickets tickets={displayed} unavailable={failed} compact onTicketClick={openTicket} /><TicketCharts tickets={displayed} unavailable={failed} /></div>
+      <section className="desk-panel"><header><h2>Workload overview</h2></header><dl className="desk-health">
+        {[{ label: 'Active tickets', value: active.length }, { label: 'Unassigned tickets', value: active.filter(ticket => !ticket.assigned_to).length }, { label: 'High and critical priority', value: active.filter(ticket => ['High', 'Critical'].includes(ticket.priority || '')).length }, { label: 'Awaiting client feedback', value: displayed.filter(ticket => ticket.status === 'Resolved').length }].map(item => <div key={item.label}><dt>{item.label}</dt><dd>{failed ? 'Unavailable' : item.value}</dd></div>)}
+      </dl></section>
     </div>
-  );
+    <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} onResolved={() => setRevision(value => value + 1)} />
+  </div>;
 }

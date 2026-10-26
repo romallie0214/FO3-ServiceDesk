@@ -1,3 +1,10 @@
+import Pagination from '../components/Pagination';
+import { showErrorToast } from '../utils/notifications';
+import AppTable from '../components/AppTable';
+import SummaryCards from '../components/dashboard/SummaryCards';
+import { Pencil, Trash2, Plus, Save, Download, Eye, FileText, X, Search, SlidersHorizontal, ChevronDown, Files, FileCheck, FileQuestion } from 'lucide-react';
+import '../styles/management-ui.css';
+
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -81,7 +88,7 @@ function PDFViewerModal({ article, onClose }: { article: Article; onClose: () =>
       }}
     >
       <div
-        onClick={e => e.stopPropagation()}
+        className="shared-management-dialog" onClick={e => e.stopPropagation()}
         style={{
           background: '#fff', width: 'clamp(280px, 95vw, 90vw)', height: 'clamp(300px, 92vh, 92vh)',
           borderRadius: 10, border: '0.5px solid #C0C8D4',
@@ -136,6 +143,12 @@ export default function KnowledgeBaseManagement() {
 
   // Filters
   const [search, setSearch]       = useState('');
+  const articleFiltersRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => { if (event.target instanceof Node && articleFiltersRef.current && !articleFiltersRef.current.contains(event.target)) articleFiltersRef.current.open = false; };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, []);
   const [filterCat, setFilterCat] = useState('');
   const [filterPdf, setFilterPdf] = useState<'all' | 'with' | 'without'>('all');
   const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
@@ -251,7 +264,7 @@ export default function KnowledgeBaseManagement() {
       setDeleteTarget(null);
       fetchArticles();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete.');
+      showErrorToast(err.response?.data?.error || 'Failed to delete.');
     } finally {
       setDeleting(false);
     }
@@ -291,7 +304,7 @@ export default function KnowledgeBaseManagement() {
   );
 
   return (
-    <div style={{ padding: 'clamp(14px, 3vw, 24px)' }}>
+    <div className="shared-management-page KnowledgeBaseManagement-page">
       {/* BREADCRUMB */}
       <div style={{ fontSize: 'clamp(10px, 1.8vw, 13px)', color: '#4A4A4A', marginBottom: 'clamp(10px, 2vw, 14px)' }}>
         Home <span style={{ color: 'var(--gov-navy)', fontWeight: 500 }}>
@@ -320,92 +333,26 @@ export default function KnowledgeBaseManagement() {
             cursor: 'pointer', fontWeight: 500,
             whiteSpace: 'nowrap', flexShrink: 0,
           }}
-        >
-          + New Article
-        </button>
+        ><Plus size={14} /> New Article</button>
       </div>
 
-      {/* SUMMARY CARDS */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: 'clamp(8px, 2vw, 12px)', marginBottom: 'clamp(12px, 2vw, 18px)',
-      }}>
-        {[
-          { label: 'Total Articles', value: articles.length, color: 'var(--gov-navy)'  },
-          { label: 'With PDF',       value: withPdf,         color: 'var(--gov-green)' },
-          { label: 'No PDF Yet',     value: withoutPdf,      color: 'var(--gov-amber)' },
-        ].map(c => (
-          <div key={c.label} style={{
-            background: '#fff', border: '0.5px solid #D0D9E4',
-            borderRadius: 8, padding: 'clamp(10px, 2vw, 16px)',
-            borderTop: `3px solid ${c.color}`,
-          }}>
-            <div style={{
-              fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#4A4A4A',
-              textTransform: 'uppercase', letterSpacing: 0.5,
-              marginBottom: 'clamp(4px, 1vw, 8px)', fontWeight: 500,
-            }}>
-              {c.label}
-            </div>
-            <div style={{ fontSize: 'clamp(20px, 4vw, 26px)', fontWeight: 500, color: c.color }}>
-              {c.value}
-            </div>
+      <SummaryCards cards={[
+        { label: 'Total Articles', value: articles.length, color: '#0D3B6E', background: '#E8F1FA', icon: Files },
+        { label: 'With PDF', value: withPdf, color: '#1B6B3A', background: '#E8F5EE', icon: FileCheck },
+        { label: 'No PDF Yet', value: withoutPdf, color: '#CC7700', background: '#FEF3DC', icon: FileQuestion },
+      ]} />
+      <div className="sla-filter-toolbar kb-management-toolbar">
+        <label className="kb-management-search"><Search size={14} /><input aria-label="Search articles" placeholder="Search articles..." value={search} onChange={event => setSearch(event.target.value)} /></label>
+        <details ref={articleFiltersRef} className="sla-filter-dropdown" onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
+          <summary><SlidersHorizontal size={14} />Article Filters{(filterCat || filterPdf !== 'all' || filterServiceArea !== 'all') && <span>{Number(!!filterCat) + Number(filterPdf !== 'all') + Number(filterServiceArea !== 'all')}</span>}<ChevronDown size={14} /></summary>
+          <div className="sla-filter-menu">
+            <label>Category<select value={filterCat} onChange={event => setFilterCat(event.target.value)}><option value="">All categories</option>{categories.map(category => <option key={category}>{category}</option>)}</select></label>
+            <label>Service area<select value={filterServiceArea} onChange={event => setFilterServiceArea(event.target.value)}>{!managedAreaIds && <option value="all">All service areas</option>}{serviceAreas.filter(area => area.is_active).map(area => <option key={area.id} value={area.id}>{area.code} ? {area.name}</option>)}</select></label>
+            <label>PDF status<select value={filterPdf} onChange={event => setFilterPdf(event.target.value as 'all' | 'with' | 'without')}><option value="all">All articles</option><option value="with">Has PDF</option><option value="without">No PDF</option></select></label>
+            <div className="sla-filter-actions"><button onClick={() => { setFilterCat(''); setFilterPdf('all'); setFilterServiceArea(managedAreaIds?.[0] ? String(managedAreaIds[0]) : 'all'); }}>Clear filters</button><button onClick={() => { if (articleFiltersRef.current) articleFiltersRef.current.open = false; }}>Done</button></div>
           </div>
-        ))}
-      </div>
-
-      {/* FILTER BAR */}
-      <div style={{
-        background: '#fff', border: '0.5px solid #D0D9E4',
-        borderRadius: 8, padding: 'clamp(10px, 2vw, 14px)', marginBottom: 'clamp(10px, 2vw, 14px)',
-        display: 'flex', gap: 'clamp(6px, 1.5vw, 10px)', flexWrap: 'wrap', alignItems: 'center',
-      }}>
-        <input
-          type="text"
-          placeholder="Search by title, category, description..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{
-            flex: 1, minWidth: 'clamp(140px, 70vw, 280px)', padding: 'clamp(6px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)',
-            fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4, boxSizing: 'border-box',
-          }}
-        />
-        <select
-          value={filterCat}
-          onChange={e => setFilterCat(e.target.value)}
-          style={{ padding: 'clamp(6px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }}
-        >
-          <option value="">All Categories</option>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={filterServiceArea} onChange={e => setFilterServiceArea(e.target.value)} style={{ padding: 'clamp(6px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }}>
-          {!managedAreaIds && <option value="all">All service areas</option>}
-          {serviceAreas.filter(area => area.is_active).map(area => <option key={area.id} value={area.id}>{area.code} — {area.name}</option>)}
-        </select>
-        <select
-          value={filterPdf}
-          onChange={e => setFilterPdf(e.target.value as 'all' | 'with' | 'without')}
-          style={{ padding: 'clamp(6px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }}
-        >
-          <option value="all">All (PDF status)</option>
-          <option value="with">Has PDF</option>
-          <option value="without">No PDF</option>
-        </select>
-        {(search || filterCat || filterPdf !== 'all' || filterServiceArea !== 'all') && (
-          <button
-            onClick={() => { setSearch(''); setFilterCat(''); setFilterPdf('all'); setFilterServiceArea(managedAreaIds?.[0] ? String(managedAreaIds[0]) : 'all'); }}
-            style={{
-              padding: 'clamp(6px, 1.2vw, 8px) clamp(10px, 2vw, 14px)', fontSize: 'clamp(10px, 1.8vw, 13px)',
-              border: '1px solid #C8D0DC', borderRadius: 4,
-              background: '#F5F8FC', cursor: 'pointer', color: '#4A4A4A',
-            }}
-          >
-            ✕ Clear
-          </button>
-        )}
-        <span style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#6A7280', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-          {filtered.length} of {articles.length} articles
-        </span>
+        </details>
+        <span className="kb-management-count">{filtered.length} of {articles.length} articles</span>
       </div>
 
       {/* ARTICLES TABLE */}
@@ -417,7 +364,7 @@ export default function KnowledgeBaseManagement() {
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
         }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+          <AppTable className="shared-management-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
             <thead>
               <tr>
                 {['Service Area', 'Category', 'Title', 'Description', 'PDF', 'Last Updated', 'Actions'].map(h => (
@@ -523,9 +470,7 @@ export default function KnowledgeBaseManagement() {
                             background: 'var(--gov-navy)', color: '#fff',
                             border: 'none', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap',
                           }}
-                        >
-                          Edit
-                        </button>
+                        ><Pencil size={14} /> Edit</button>
                         <button
                           onClick={() => setDeleteTarget(a)}
                           style={{
@@ -534,9 +479,7 @@ export default function KnowledgeBaseManagement() {
                             border: '1px solid #F5C0C0',
                             borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap',
                           }}
-                        >
-                          Delete
-                        </button>
+                        ><Trash2 size={14} /> Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -544,23 +487,15 @@ export default function KnowledgeBaseManagement() {
                 );
               })}
             </tbody>
-          </table>
+          </AppTable>
         </div>
+{filtered.length > 0 && (
+        <Pagination attached page={currentPage} total={filtered.length} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
+      )}
+
       </div>
 
-      {filtered.length > 0 && (
-        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px' }}>
-          <div style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Showing <strong>{pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> articles</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-            <label style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Rows <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select></label>
-            <button onClick={() => setPage(1)} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === 1 ? 0.5 : 1 }}>First</button>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
-            <span style={{ color: '#334155', fontSize: 'var(--text-xs)' }}>Page {currentPage} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === totalPages ? 0.5 : 1 }}>Next</button>
-            <button onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === totalPages ? 0.5 : 1 }}>Last</button>
-          </div>
-        </div>
-      )}
+
 
       {/* ===== ADD / EDIT MODAL ===== */}
       {showModal && (
@@ -575,9 +510,9 @@ export default function KnowledgeBaseManagement() {
           }}
         >
           <div
-            onClick={e => e.stopPropagation()}
+            className="shared-management-dialog" onClick={e => e.stopPropagation()}
             style={{
-              background: '#fff', width: 'clamp(280px, 90vw, 560px)',
+              background: '#fff', width: 'min(560px, calc(100vw - 32px))',
               borderRadius: 10,
               border: '0.5px solid #C0C8D4', overflow: 'hidden',
               maxHeight: '90vh', display: 'flex', flexDirection: 'column',
@@ -848,9 +783,9 @@ export default function KnowledgeBaseManagement() {
           }}
         >
           <div
-            onClick={e => e.stopPropagation()}
+            className="shared-management-dialog" onClick={e => e.stopPropagation()}
             style={{
-              background: '#fff', width: 'clamp(280px, 90vw, 420px)',
+              background: '#fff', width: 'min(420px, calc(100vw - 32px))',
               borderRadius: 10, overflow: 'hidden',
               border: '0.5px solid #C0C8D4',
             }}

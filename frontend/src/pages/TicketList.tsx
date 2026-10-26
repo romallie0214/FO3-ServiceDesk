@@ -1,3 +1,10 @@
+import ticketBannerImage from '../assets/banner.png';
+import Pagination from '../components/Pagination';
+import AppTable from '../components/AppTable';
+import { Link, useSearchParams } from 'react-router-dom';
+import StatusBadge from '../components/StatusBadge';
+import './TicketList.css';
+import { Search, SlidersHorizontal, CalendarDays, Flag, CircleDot, ChevronDown, Layers, Ticket as TicketIcon, X, ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -11,7 +18,7 @@ interface Ticket {
   ticket_number: string;
   subject: string;
   description: string;
-  status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
+  status: string;
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
   category: string;
   requestor: string;
@@ -25,24 +32,6 @@ interface Ticket {
 }
 interface ServiceArea { id: number; code: string; name: string; is_active: number; }
 
-function StatusBadge({ status }: { status: Ticket['status'] }) {
-  const styles: Record<string, React.CSSProperties> = {
-    'Open':        { background: '#E8F1FA', color: '#0D3B6E' },
-    'In Progress': { background: '#FEF3DC', color: '#CC7700' },
-    'Resolved':    { background: '#E8F5EE', color: '#1B6B3A' },
-    'Closed':      { background: '#F0F0F0', color: '#666'    },
-  };
-  return (
-    <span style={{
-      ...styles[status],
-      fontSize: 'clamp(8px, 1.5vw, 11px)', padding: 'clamp(1px, 0.3vw, 2px) clamp(6px, 1.2vw, 10px)',
-      borderRadius: 3, fontWeight: 500, whiteSpace: 'nowrap',
-    }}>
-      {status}
-    </span>
-  );
-}
-
 function PriorityBadge({ priority }: { priority: Ticket['priority'] }) {
   const styles: Record<string, React.CSSProperties> = {
     'Critical': { background: '#FDE8E8', color: '#8B1A1A' },
@@ -51,7 +40,7 @@ function PriorityBadge({ priority }: { priority: Ticket['priority'] }) {
     'Low':      { background: '#F0F0F0', color: '#666'    },
   };
   return (
-    <span style={{
+    <span data-priority={priority} style={{
       ...styles[priority],
       fontSize: 'clamp(8px, 1.5vw, 11px)', padding: 'clamp(1px, 0.3vw, 2px) clamp(6px, 1.2vw, 10px)',
       borderRadius: 3, fontWeight: 500, whiteSpace: 'nowrap',
@@ -62,18 +51,21 @@ function PriorityBadge({ priority }: { priority: Ticket['priority'] }) {
 }
 
 export default function TicketList() {
-  const { user } = useAuth();
+  const { user, canAccess } = useAuth();
+  const [searchParams] = useSearchParams();
   const isServiceAdmin = user?.role !== 'super_admin' && (user?.area_admin_service_ids?.length ?? 0) > 0;
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
   const [priorityFilter, setPriorityFilter] = useState('');
-  const [serviceAreaFilter, setServiceAreaFilter] = useState('all');
+  const [serviceAreaFilter, setServiceAreaFilter] = useState(searchParams.get('service_area') || 'all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [showTicketBanner, setShowTicketBanner] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
@@ -83,7 +75,7 @@ export default function TicketList() {
   }, []);
 
   useEffect(() => {
-    if (isServiceAdmin && user?.area_admin_service_ids?.length) setServiceAreaFilter(String(user.area_admin_service_ids[0]));
+    if (isServiceAdmin && user?.area_admin_service_ids?.length && !searchParams.has('service_area')) setServiceAreaFilter(String(user.area_admin_service_ids[0]));
   }, [user?.id]);
 
   useEffect(() => {
@@ -138,7 +130,7 @@ export default function TicketList() {
   );
 
   return (
-    <div style={{ padding: 'clamp(14px, 3vw, 24px)' }}>
+    <div className="ticket-list-preview">
       {/* BREADCRUMB */}
       <div style={{ fontSize: 'clamp(10px, 1.8vw, 13px)', color: '#4A4A4A', marginBottom: 'clamp(10px, 2vw, 14px)' }}>
         Home <span style={{ color: 'var(--gov-navy)', fontWeight: 500 }}>
@@ -146,190 +138,63 @@ export default function TicketList() {
         </span>
       </div>
 
-      {/* Show info strip for DSWD Staff */}
-      {user?.role === 'dswd_staff' && !isServiceAdmin && (
-        <div style={{
-          background: '#E8F1FA', borderLeft: '3px solid var(--gov-navy)',
-          borderRadius: '0 4px 4px 0', padding: 'clamp(8px, 2vw, 12px) clamp(10px, 3vw, 16px)',
-          fontSize: 'clamp(10px, 1.8vw, 13px)', color: 'var(--gov-navy)', marginBottom: 'clamp(10px, 2vw, 14px)',
-        }}>
-          Showing only <strong>your submitted tickets</strong>.
-          To submit a new request, click <strong>Submit a Ticket</strong> in the nav.
+      {showTicketBanner && <aside className="ticket-benefits-banner" aria-label="Why submit a ticket">
+        <div className="ticket-benefits-copy">
+          <span className="ticket-benefits-eyebrow">WHY SUBMIT A TICKET?</span>
+          <h2>A ticket makes sure your concern is never lost.</h2>
+          <p>Every ticket is recorded, assigned to the right team, and tracked until it’s resolved. Emails and verbal requests get missed. A ticket gives you proof of your request, a reference number, and updates you can follow.</p>
+          {canAccess('submit') && <Link to="/submit" className="ticket-benefits-action">Submit a ticket <ArrowRight size={15} aria-hidden="true" /></Link>}
         </div>
+        <div className="ticket-benefits-art" aria-hidden="true">
+          <img className="ticket-benefits-illustration" src={ticketBannerImage} alt="" />
+        </div>
+        <button type="button" className="ticket-benefits-close" aria-label="Dismiss ticket information" onClick={() => setShowTicketBanner(false)}><X size={17} /></button>
+      </aside>}
+
+      <section className="ticket-grid" aria-label="Tickets">
+        <div className="ticket-grid-toolbar">
+          <label className="ticket-grid-search"><Search size={14} /><input aria-label="Search tickets" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} /></label>
+          <details className="ticket-filter-dropdown" open={showFilters} onToggle={event => setShowFilters(event.currentTarget.open)} onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
+            <summary><SlidersHorizontal size={15} />Ticket Filters{[!!statusFilter, !!priorityFilter, serviceAreaFilter !== 'all', !!dateFrom, !!dateTo].filter(Boolean).length > 0 && <span className="ticket-filter-count">{[!!statusFilter, !!priorityFilter, serviceAreaFilter !== 'all', !!dateFrom, !!dateTo].filter(Boolean).length}</span>}<ChevronDown size={14} /></summary>
+            <div className="ticket-filter-popover">
+              <div className="ticket-filter-popover-heading">Filter tickets</div>
+              <label><span><CircleDot size={14} />Status</span><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="">All statuses</option>{['Open', 'Assigned', 'On-Hold', 'Cancelled', 'In Progress', 'Resolved', 'Closed'].map(status => <option key={status}>{status}</option>)}</select></label>
+              <label><span><Flag size={14} />Priority</span><select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}><option value="">All priorities</option>{['Critical', 'High', 'Medium', 'Low'].map(priority => <option key={priority}>{priority}</option>)}</select></label>
+              {(user?.role === 'super_admin' || isServiceAdmin) && <label><span><Layers size={14} />Service Area</span><select value={serviceAreaFilter} onChange={e => setServiceAreaFilter(e.target.value)}>{!isServiceAdmin && <option value="all">All service areas</option>}{serviceAreas.filter(area => area.is_active).map(area => <option key={area.id} value={area.id}>{area.code}</option>)}</select></label>}
+              <div className="ticket-filter-date-heading"><CalendarDays size={14} />Date Added</div>
+              <div className="ticket-filter-dates"><label><span>From</span><input type="date" value={dateFrom} max={dateTo || undefined} onChange={e => setDateFrom(e.target.value)} /></label><label><span>To</span><input type="date" value={dateTo} min={dateFrom || undefined} onChange={e => setDateTo(e.target.value)} /></label></div>
+              <div className="ticket-filter-footer"><button onClick={() => { setStatusFilter(''); setPriorityFilter(''); setDateFrom(''); setDateTo(''); setServiceAreaFilter(isServiceAdmin && user?.area_admin_service_ids?.length ? String(user.area_admin_service_ids[0]) : 'all'); }}>Clear filters</button><button onClick={() => setShowFilters(false)}>Done</button></div>
+            </div>
+          </details>
+        </div>
+        <div className="ticket-grid-scroll">
+          <AppTable aria-label="Ticket List and Tracking">
+            <thead><tr>
+              <th>Ticket ID</th><th>Subject</th><th>Priority</th><th>Category</th><th>Requestor</th><th>Status</th><th>Request Date</th>
+            </tr></thead>
+            <tbody>{paginatedTickets.length === 0 ? <tr><td colSpan={7} className="ticket-grid-empty"><div className="ticket-empty-state">
+              <span className="ticket-empty-icon"><TicketIcon size={28} strokeWidth={1.5} aria-hidden="true" /></span>
+              <strong>{tickets.length === 0 ? 'No tickets yet' : 'No tickets found'}</strong>
+              <p>{tickets.length === 0 ? 'Submit a ticket to get help from the service team.' : 'Try adjusting your search or filters.'}</p>
+
+            </div></td></tr> : paginatedTickets.map(ticket => <tr key={ticket.id} className="ticket-grid-clickable" onClick={() => setSelectedTicket(ticket)}>
+              <td><button className="ticket-grid-id" aria-label={`View ticket ${ticket.ticket_number}`}>{ticket.ticket_number}</button></td>
+              <td className="ticket-grid-subject" title={ticket.subject}>{ticket.subject}</td>
+              <td><PriorityBadge priority={ticket.priority} /></td>
+              <td><span className="ticket-grid-category" title={ticket.category}><Layers size={12} />{ticket.category || 'Uncategorized'}</span></td>
+              <td><span className="ticket-grid-person"><span className="ticket-grid-avatar" aria-hidden="true">{(ticket.requestor || '?').split(/\s+/).map(part => part[0]).slice(0, 2).join('')}</span>{ticket.requestor || 'Unassigned'}</span></td>
+              <td><StatusBadge status={ticket.status} /></td>
+              <td className="ticket-grid-date">{new Date(ticket.created_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</td>
+            </tr>)}</tbody>
+          </AppTable>
+        </div>
+{filtered.length > 0 && (
+        <Pagination attached page={currentPage} total={filtered.length} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
       )}
 
-      {/* FILTER BAR */}
-      <div style={{
-        background: '#fff', border: '0.5px solid #D0D9E4',
-        borderRadius: 8, padding: 'clamp(10px, 2vw, 14px)',
-        marginBottom: 'clamp(8px, 2vw, 12px)', display: 'flex',
-        alignItems: 'center', gap: 'clamp(6px, 1.5vw, 10px)', flexWrap: 'wrap',
-      }}>
-        <input
-          type="text"
-          placeholder="Search ticket No., subject, requestor..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{
-            flex: 1, minWidth: 'clamp(140px, 60vw, 240px)', padding: 'clamp(5px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)',
-            fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4, boxSizing: 'border-box',
-          }}
-        />
-        <select
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-          style={{
-            padding: 'clamp(5px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 13px)',
-            border: '1px solid #C8D0DC', borderRadius: 4,
-          }}
-        >
-          <option value="">All Status</option>
-          <option>Open</option>
-          <option>In Progress</option>
-          <option>Resolved</option>
-          <option>Closed</option>
-        </select>
-        <select
-          value={priorityFilter}
-          onChange={e => setPriorityFilter(e.target.value)}
-          style={{
-            padding: 'clamp(5px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 13px)',
-            border: '1px solid #C8D0DC', borderRadius: 4,
-          }}
-        >
-          <option value="">All Priority</option>
-          <option>Critical</option>
-          <option>High</option>
-          <option>Medium</option>
-          <option>Low</option>
-        </select>
-        {(user?.role === 'super_admin' || isServiceAdmin) && <select value={serviceAreaFilter} onChange={e => setServiceAreaFilter(e.target.value)} style={{ padding: 'clamp(5px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }}>{!isServiceAdmin && <option value="all">All service areas</option>}{serviceAreas.filter(area => area.is_active).map(area => <option key={area.id} value={area.id}>{area.code} — {area.name}</option>)}</select>}
-        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>
-          From <input type="date" aria-label="Date filed from" value={dateFrom} max={dateTo || undefined} onChange={e => setDateFrom(e.target.value)} style={{ padding: 'clamp(5px, 1.2vw, 8px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>
-          To <input type="date" aria-label="Date filed to" value={dateTo} min={dateFrom || undefined} onChange={e => setDateTo(e.target.value)} style={{ padding: 'clamp(5px, 1.2vw, 8px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
-        </label>
-        {(search || statusFilter || priorityFilter || serviceAreaFilter !== 'all' || dateFrom || dateTo) && (
-          <button onClick={() => { setSearch(''); setStatusFilter(''); setPriorityFilter(''); setServiceAreaFilter(isServiceAdmin && user?.area_admin_service_ids?.length ? String(user.area_admin_service_ids[0]) : 'all'); setDateFrom(''); setDateTo(''); }} style={{ padding: 'clamp(5px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4, background: '#F5F8FC', cursor: 'pointer', color: '#4A4A4A' }}>Clear</button>
-        )}
-      </div>
-
-      {/* TICKET COUNT */}
-      <div style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#4A4A4A', marginBottom: 'clamp(6px, 1.5vw, 10px)' }}>
-        Showing <strong>{filtered.length}</strong> of{' '}
-        <strong>{tickets.length}</strong> tickets
-      </div>
-
-      {/* TABLE */}
-      <div style={{
-        background: '#fff', border: '0.5px solid #D0D9E4',
-        borderRadius: 8, overflow: 'hidden',
-      }}>
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '820px' }}>
-            <thead>
-              <tr>
-                {[
-                  'Ticket No.', 'Service Area', 'Subject', 'Category', 'Requestor',
-                  'Office Location', 'Priority', 'Status', 'Assigned To', 'Date', 'Action'
-                ].map(h => (
-                  <th key={h} style={{
-                    textAlign: 'left', padding: 'clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)',
-                    fontSize: 'clamp(9px, 1.6vw, 12px)', fontWeight: 500,
-                    color: '#fff', background: 'var(--gov-navy)',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={11} style={{
-                    textAlign: 'center', padding: 'clamp(20px, 5vw, 32px)', color: '#888', fontSize: 'clamp(11px, 1.9vw, 14px)',
-                  }}>
-                    No tickets found.
-                  </td>
-                </tr>
-              ) : (
-                paginatedTickets.map(ticket => (
-                  <tr
-                    key={ticket.id}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#F5F8FC')}
-                    onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
-                  >
-                    <td style={{
-                      padding: 'clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)', fontWeight: 500,
-                      color: 'var(--gov-navy)', fontSize: 'clamp(10px, 1.8vw, 13px)',
-                    }}>
-                      {ticket.ticket_number}
-                    </td>
-                    <td style={{ padding: 'clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)', fontSize: 'var(--text-xs)', fontWeight: 600, color: '#0D3B6E' }}>{ticket.service_area_code || 'Unassigned'}</td>
-                    <td style={{ padding: 'clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 13px)' }}>
-                      {ticket.subject}
-                    </td>
-                    <td style={{ padding: 'clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#5A6475' }}>
-                      {ticket.category}
-                    </td>
-                    <td style={{ padding: 'clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>
-                      {ticket.requestor}
-                    </td>
-                    <td style={{ padding: 'clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#5A6475', whiteSpace: 'nowrap' }}>
-                      {ticket.office_location || '—'}
-                    </td>
-                    <td style={{ padding: 'clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)' }}>
-                      <PriorityBadge priority={ticket.priority} />
-                    </td>
-                    <td style={{ padding: 'clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)' }}>
-                      <StatusBadge status={ticket.status} />
-                    </td>
-                    <td style={{ padding: 'clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#5A6475', whiteSpace: 'nowrap' }}>
-                      {ticket.assigned_to || '—'}
-                    </td>
-                    <td style={{ padding: 'clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#888', whiteSpace: 'nowrap' }}>
-                      {new Date(ticket.created_at).toLocaleDateString()}
-                    </td>
-                    <td style={{ padding: 'clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px)' }}>
-                      <button
-                        onClick={() => setSelectedTicket(ticket)}
-                        style={{
-                          padding: 'clamp(4px, 0.8vw, 6px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(9px, 1.6vw, 12px)',
-                          background: 'var(--gov-navy)', color: '#fff',
-                          border: 'none', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap',
-                        }}
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+      </section>
       {/* TICKET DETAIL MODAL */}
-      {filtered.length > 0 && (
-        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px' }}>
-          <div style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>
-            Showing <strong>{pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> tickets
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-            <label style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>Rows
-              <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select>
-            </label>
-            <button onClick={() => setPage(1)} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>First</button>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
-            <span style={{ color: '#334155', fontSize: 'clamp(9px, 1.6vw, 12px)', whiteSpace: 'nowrap' }}>Page {currentPage} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Next</button>
-            <button onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Last</button>
-          </div>
-        </div>
-      )}
+
       <TicketDetailModal
         ticket={selectedTicket}
         onClose={() => setSelectedTicket(null)}

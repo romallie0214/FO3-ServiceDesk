@@ -1,0 +1,57 @@
+/* Common table styling and theme coverage for every page. */
+.app-table{width:100%;border-collapse:collapse;color:var(--ui-text,#344456)}
+.app-table th{text-align:left;vertical-align:middle}
+.app-table td{vertical-align:middle}
+html[data-theme=dark] body .app-table{background:#192332!important;color:#c9d7e8!important;border-color:#34465e!important}
+html[data-theme=dark] body .app-table thead,html[data-theme=dark] body .app-table thead tr,html[data-theme=dark] body .app-table thead th{background:#1d3047!important;color:#d5e6f9!important;border-color:#34465e!important}
+html[data-theme=dark] body .app-table tbody,html[data-theme=dark] body .app-table tbody tr{background:#192332!important;color:#c9d7e8!important}
+html[data-theme=dark] body .app-table tbody td{background:inherit!important;color:#c9d7e8!important;border-color:#34465e!important}
+html[data-theme=dark] body .app-table tbody tr[data-sla=breached]{background:#2d222d!important}
+html[data-theme=dark] body .app-table tbody tr[data-sla=escalated],html[data-theme=dark] body .app-table tbody tr[data-sla=warning]{background:#302c22!important}
+html[data-theme=dark] body .app-table tbody tr:hover{background:#253a52!important;outline-color:#4b78a6!important}
+html[data-theme=dark] body .app-table tbody td[colspan]{background:#20334b!important}
+html[data-theme=dark] body .app-table :is(.ticket-grid-id,.category-drill-link){color:#afd3f7!important}
+
+/* Contain wide tables rather than stretching the page. All columns stay available. */
+.app-table-responsive{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+.app-table-viewport{width:100%;max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#b4c6db transparent}
+.app-table-viewport:focus-visible{outline:2px solid #70bdf0;outline-offset:-2px}
+.app-table-scroll-hint{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:7px 12px;background:var(--ui-surface,#fff);border-bottom:1px solid var(--ui-border,#e1e7ee);color:#8395ab;font-size:11px;line-height:1.4}
+.app-table th{overflow-wrap:normal}
+.app-table :is(input,select,textarea){max-width:100%;box-sizing:border-box}
+html[data-theme=dark] .app-table-viewport{scrollbar-color:#425b79 transparent}
+html[data-theme=dark] .app-table-scroll-hint{background:#192332;color:#9db4cf;border-color:#34465e}
+@media(max-width:900px){
+  body .app-table-responsive .app-table th{padding:10px!important;font-size:11px!important}
+  body .app-table-responsive .app-table td{padding:8px 10px!important;font-size:12px!important}
+  .app-table-scroll-hint{font-size:10px;justify-content:flex-start}
+}
+@media(max-width:600px){
+  body .app-table-responsive .app-table th{height:38px;padding:9px 8px!important}
+  body .app-table-responsive .app-table td{padding:8px!important}
+  body .app-table-responsive .app-table td button{min-height:32px}
+  .app-table-scroll-hint{padding:7px 9px}
+}
+
+/* Phone layout: each row becomes a card with labels from its table headers. */
+@media(max-width:640px){
+  .app-table-responsive .app-table-scroll-hint{display:none}
+  .app-table-responsive .app-table-viewport{overflow:visible}
+  html body .app-table-responsive table.app-table{display:block;width:100%!important;min-width:0!important;max-width:100%;table-layout:auto!important;border:0;border-collapse:separate}
+  .app-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  html body .app-table-responsive .app-table tbody{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding:10px;background:var(--background,#f0f3f7)!important}
+  html body .app-table-responsive .app-table tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;min-width:0;background:var(--ui-surface,#fff);border:1px solid var(--ui-border,#e1e7ee)!important;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px #17365005}
+  html body .app-table-responsive .app-table tbody td{display:block;position:static!important;width:auto!important;min-width:0!important;max-width:none!important;height:auto!important;padding:11px 12px!important;border:0!important;border-bottom:1px solid var(--ui-border,#e1e7ee)!important;white-space:normal!important;text-align:left;overflow-wrap:anywhere;box-shadow:none!important;font-size:13px!important}
+  .app-table tbody td::before{content:attr(data-column);display:block;font-size:10px;line-height:1.5;font-weight:500;color:#8394a9;margin-bottom:5px;letter-spacing:.02em}
+  html body .app-table-responsive .app-table td:first-child{grid-column:1 / -1;background:#7f9fbe08!important}
+  html body .app-table-responsive .app-table td:last-child{grid-column:1 / -1;border-bottom:0!important}
+  html body .app-table-responsive .app-table td[data-spanning=true]{grid-column:1 / -1;min-height:60px;text-align:center}
+  .app-table td[data-spanning=true]::before{display:none}
+  html body .app-table-responsive .app-table td :is(input,select){width:100%;max-width:100%!important;min-width:0!important;min-height:36px}
+  html body .app-table-responsive .app-table td button{min-height:34px;white-space:normal}
+  html body .app-table-responsive .app-table td>div{max-width:100%!important;white-space:normal!important}
+  html body .app-table-responsive .app-table :is(.ticket-grid-subject,.ticket-grid-person,.submitted-office-location){max-width:100%!important;white-space:normal!important;text-overflow:clip}
+  html[data-theme=dark] body .app-table-responsive .app-table td::before{color:#9eb3cd}
+  html[data-theme=dark] body .app-table-responsive .app-table tbody{background:#101722!important}
+  html[data-theme=dark] body .app-table-responsive .app-table tbody tr{border-color:#34465e!important}
+}

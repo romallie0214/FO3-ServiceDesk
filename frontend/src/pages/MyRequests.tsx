@@ -1,3 +1,10 @@
+import Pagination from '../components/Pagination';
+import AppTable from '../components/AppTable';
+import './TicketList.css';
+import './TicketMonitoring.css';
+import { Search, SlidersHorizontal, ChevronDown, CircleDot, Layers, CalendarDays } from 'lucide-react';
+import SummaryCards from '../components/dashboard/SummaryCards';
+import { Inbox, LoaderCircle, CircleCheck, Archive } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -17,9 +24,9 @@ interface Ticket {
   assigned_to: string | null;
   created_at: string;
   cancel_reason: string | null;
-  division:      string | null;   
-  unit:          string | null;   
-  office_location: string | null; 
+  division:      string | null;
+  unit:          string | null;
+  office_location: string | null;
   service_area_id: number | null;
   service_area_code: string | null;
   service_area_name: string | null;
@@ -62,7 +69,7 @@ export default function MyRequests() {
   const [sortBy, setSortBy] = useState<'service' | 'newest'>('service');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  
+
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
   useEffect(() => {
@@ -127,7 +134,7 @@ export default function MyRequests() {
   );
 
   return (
-    <div style={{ padding: 'clamp(14px, 3vw, 24px)' }}>
+    <div>
       {/* BREADCRUMB */}
       <div style={{ fontSize: 'clamp(10px, 1.8vw, 13px)', color: '#4A4A4A', marginBottom: 'clamp(10px, 2vw, 14px)' }}>
         Home <span style={{ color: 'var(--gov-navy)', fontWeight: 500 }}>/ My Requests</span>
@@ -158,131 +165,29 @@ export default function MyRequests() {
         </button>
       </div>
 
-      {/* SUMMARY CARDS */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: 'clamp(8px, 2vw, 12px)', marginBottom: 'clamp(12px, 2vw, 16px)',
-      }}>
-        {[
-          { label: 'Open',           value: open,     color: 'var(--gov-navy)'  },
-          { label: 'In Progress',    value: inProg,   color: '#5B21B6'          },
-          { label: 'Resolved',       value: resolved, color: 'var(--gov-green)' },
-          { label: 'Closed',         value: closed,   color: '#4A4A4A'          },
-        ].map(c => (
-          <div key={c.label} style={{
-            background: '#fff', border: '0.5px solid #D0D9E4',
-            borderRadius: 8, padding: 'clamp(10px, 2vw, 16px)',
-            borderTop: `3px solid ${c.color}`,
-          }}>
-            <div style={{
-              fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#4A4A4A',
-              textTransform: 'uppercase', letterSpacing: 0.5,
-              marginBottom: 'clamp(4px, 1vw, 8px)', fontWeight: 500,
-            }}>
-              {c.label}
-            </div>
-            <div style={{ fontSize: 'clamp(20px, 4vw, 26px)', fontWeight: 500, color: c.color }}>
-              {c.value}
-            </div>
-          </div>
-        ))}
-      </div>
+      <SummaryCards cards={[
+        { label: 'Open', value: open, color: '#0D3B6E', background: '#E8F1FA', icon: Inbox },
+        { label: 'In Progress', value: inProg, color: '#5B21B6', background: '#F3EFFF', icon: LoaderCircle },
+        { label: 'Resolved', value: resolved, color: '#1B6B3A', background: '#E8F5EE', icon: CircleCheck },
+        { label: 'Closed', value: closed, color: '#4A4A4A', background: '#F0F0F0', icon: Archive },
+      ]} />
 
-      {/* RESOLVED BANNER — needs CSMF */}
-      {resolved > 0 && (
-        <div style={{
-          background: '#FEF3DC', borderLeft: '3px solid var(--gov-amber)',
-          borderRadius: '0 4px 4px 0', padding: 'clamp(8px, 2vw, 12px) clamp(10px, 3vw, 16px)',
-          fontSize: 'clamp(10px, 1.8vw, 13px)', color: '#CC7700', marginBottom: 'clamp(10px, 2vw, 14px)',
-        }}>
-          ⚠ You have <strong>{resolved}</strong> resolved ticket{resolved > 1 ? 's' : ''} awaiting your feedback.
-          Please complete the <strong>CSMF</strong> to close {resolved > 1 ? 'them' : 'it'}.
+      <section className="ticket-monitor-grid submitted-tickets-grid">
+        <div className="ticket-grid-toolbar">
+          <label className="ticket-grid-search"><Search size={14} /><input aria-label="Search tickets" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} /></label>
+          <details className="ticket-filter-dropdown" onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
+            <summary><SlidersHorizontal size={15} />Ticket Filters{[!!filterService, !!filterStatus, !!dateFrom, !!dateTo].filter(Boolean).length > 0 && <span className="ticket-filter-count">{[!!filterService, !!filterStatus, !!dateFrom, !!dateTo].filter(Boolean).length}</span>}<ChevronDown size={14} /></summary>
+            <div className="ticket-filter-popover">
+              <div className="ticket-filter-popover-heading">Filter tickets</div>
+              <label><span><CircleDot size={14} />Status</span><select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="">All statuses</option>{['Open', 'Assigned', 'On-Hold', 'Cancelled', 'In Progress', 'Resolved', 'Closed'].map(status => <option key={status}>{status}</option>)}</select></label>
+              <label><span><Layers size={14} />Service</span><select value={filterService} onChange={e => setFilterService(e.target.value)}><option value="">All services</option>{serviceAreas.map(area => <option key={area.id} value={area.id}>{area.label}</option>)}</select></label>
+              <label><span>Sort by</span><select value={sortBy} onChange={e => setSortBy(e.target.value as 'service' | 'newest')}><option value="service">Service, newest first</option><option value="newest">Newest first</option></select></label>
+              <div className="ticket-filter-date-heading"><CalendarDays size={14} />Date Added</div>
+              <div className="ticket-filter-dates"><label><span>From</span><input type="date" value={dateFrom} max={dateTo || undefined} onChange={e => setDateFrom(e.target.value)} /></label><label><span>To</span><input type="date" value={dateTo} min={dateFrom || undefined} onChange={e => setDateTo(e.target.value)} /></label></div>
+              <div className="ticket-filter-footer"><button onClick={() => { setFilterStatus(''); setFilterService(''); setSortBy('service'); setDateFrom(''); setDateTo(''); }}>Clear filters</button><button onClick={event => { const details = event.currentTarget.closest('details'); if (details) details.open = false; }}>Done</button></div>
+            </div>
+          </details>
         </div>
-      )}
-
-      {/* FILTER BAR */}
-      <div style={{
-        background: '#fff', border: '0.5px solid #D0D9E4',
-        borderRadius: 8, padding: 'clamp(10px, 2vw, 14px)', marginBottom: 'clamp(10px, 2vw, 14px)',
-        display: 'flex', gap: 'clamp(6px, 1.5vw, 10px)', flexWrap: 'wrap', alignItems: 'center',
-      }}>
-        <input
-          type="text"
-          placeholder="Search by ticket no, subject, category..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{
-            flex: 1, minWidth: 'clamp(140px, 70vw, 300px)', padding: 'clamp(5px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)',
-            fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4,
-          }}
-        />
-        <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          style={{ padding: 'clamp(5px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }}
-        >
-          <option value="">All Statuses</option>
-          {['Open', 'Assigned', 'In Progress', 'On-Hold', 'Resolved', 'Closed', 'Cancelled'].map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-        <select
-          aria-label="Filter by service"
-          value={filterService}
-          onChange={e => setFilterService(e.target.value)}
-          style={{ padding: 'clamp(5px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }}
-        >
-          <option value="">All Services</option>
-          {serviceAreas.map(area => <option key={area.id} value={area.id}>{area.label}</option>)}
-        </select>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>
-          From
-          <input
-            aria-label="Date filed from"
-            type="date"
-            value={dateFrom}
-            max={dateTo || undefined}
-            onChange={e => setDateFrom(e.target.value)}
-            style={{ padding: 'clamp(5px, 1.2vw, 8px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }}
-          />
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>
-          To
-          <input
-            aria-label="Date filed to"
-            type="date"
-            value={dateTo}
-            min={dateFrom || undefined}
-            onChange={e => setDateTo(e.target.value)}
-            style={{ padding: 'clamp(5px, 1.2vw, 8px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }}
-          />
-        </label>
-        <select
-          aria-label="Sort requests"
-          value={sortBy}
-          onChange={e => setSortBy(e.target.value as 'service' | 'newest')}
-          style={{ padding: 'clamp(5px, 1.2vw, 8px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 13px)', border: '1px solid #C8D0DC', borderRadius: 4 }}
-        >
-          <option value="service">Service, newest first</option>
-          <option value="newest">Newest first</option>
-        </select>
-        {(search || filterStatus || filterService || dateFrom || dateTo) && (
-          <button
-            onClick={() => { setSearch(''); setFilterStatus(''); setFilterService(''); setDateFrom(''); setDateTo(''); }}
-            style={{
-              padding: 'clamp(5px, 1.2vw, 8px) clamp(10px, 2vw, 14px)', fontSize: 'clamp(10px, 1.8vw, 13px)',
-              border: '1px solid #C8D0DC', borderRadius: 4,
-              background: '#F5F8FC', cursor: 'pointer', color: '#4A4A4A',
-            }}
-          >
-            ✕ Clear
-          </button>
-        )}
-        <span style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#6A7280', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-          {filtered.length} of {tickets.length} requests
-        </span>
-      </div>
-
       {/* TICKETS TABLE WRAPPER */}
       <div style={{
         background: '#fff', border: '0.5px solid #D0D9E4',
@@ -292,10 +197,10 @@ export default function MyRequests() {
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
         }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+          <AppTable className="ticket-monitor-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
             <thead>
               <tr>
-                {['Ticket No.', 'Service', 'Subject', 'Category', 'Division / Unit', 'Office Location', 'Priority', 'Assigned To', 'Status', 'Date Filed', 'Action'].map(h => (
+                {['Ticket No.', 'Service', 'Subject', 'Category', 'Division / Unit', 'Office Location', 'Priority', 'Assigned To', 'Status', 'Date Filed'].map(h => (
                   <th key={h} style={{
                     textAlign: 'left', padding: 'clamp(7px, 1.5vw, 12px) clamp(10px, 2vw, 16px)',
                     fontSize: 'clamp(9px, 1.6vw, 12px)', fontWeight: 500,
@@ -310,7 +215,7 @@ export default function MyRequests() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={11} style={{ padding: 'clamp(30px, 8vw, 48px)', textAlign: 'center' }}>
+                  <td colSpan={10} style={{ padding: 'clamp(30px, 8vw, 48px)', textAlign: 'center' }}>
                     <div style={{ fontSize: 'clamp(24px, 6vw, 32px)', marginBottom: 'clamp(8px, 2vw, 12px)' }}>📭</div>
                     <div style={{ fontSize: 'clamp(14px, 2.5vw, 18px)', fontWeight: 600, color: '#333', marginBottom: 'clamp(4px, 1vw, 8px)' }}>
                       {tickets.length === 0
@@ -338,15 +243,16 @@ export default function MyRequests() {
                 return (
                   <tr
                     key={t.id}
+                    className="ticket-grid-clickable" onClick={() => setSelectedTicket(t)}
                     style={{ borderLeft: isResolved ? '3px solid var(--gov-amber)' : '3px solid transparent' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#F5F8FC')}
                     onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
                   >
                     {/* Ticket No */}
                     <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', fontWeight: 600, color: 'var(--gov-navy)' }}>
+                      <button className="ticket-grid-id" aria-label={`View ticket ${t.ticket_number}`} style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', fontWeight: 600, color: 'var(--gov-navy)' }}>
                         {t.ticket_number}
-                      </span>
+                      </button>
                     </td>
 
                     {/* Service Area */}
@@ -354,10 +260,9 @@ export default function MyRequests() {
                       <div style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#0D3B6E', fontWeight: 600 }}>
                         {t.service_area_code || 'Unassigned'}
                       </div>
+
                       {t.service_area_name && (
-                        <div style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#6A7280', marginTop: 2, maxWidth: 170, whiteSpace: 'normal' }}>
-                          {t.service_area_name}
-                        </div>
+                        <div style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#6A7280', marginTop: 2, maxWidth: 170, whiteSpace: 'normal' }}>{t.service_area_name}</div>
                       )}
                     </td>
 
@@ -385,45 +290,22 @@ export default function MyRequests() {
                     {/* Category */}
                     <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)' }}>
                       <div style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#2A2A2A' }}>{t.category || '—'}</div>
-                      {t.sub_category && (
-                        <div style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#888', marginTop: 'clamp(1px, 0.5vw, 3px)' }}>{t.sub_category}</div>
-                      )}
-                      {t.sub_item && (
-                        <div style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#aaa', marginTop: 'clamp(1px, 0.5vw, 2px)' }}>{t.sub_item}</div>
-                      )}
+                      {t.sub_category && <div style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#888', marginTop: 'clamp(1px, 0.5vw, 3px)' }}>{t.sub_category}</div>}
+                      {t.sub_item && <div style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#aaa', marginTop: 'clamp(1px, 0.5vw, 2px)' }}>{t.sub_item}</div>}
                     </td>
-                    
-                    {/* ✅ Division / Unit */}
+                    {/* Division / Unit */}
                     <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)' }}>
-                      <div style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#2A2A2A', fontWeight: 500 }}>
-                        {t.division || '—'}
-                      </div>
-                      {t.unit && (
-                        <div style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#888', marginTop: 'clamp(1px, 0.5vw, 3px)' }}>
-                          {t.unit}
-                        </div>
-                      )}
+                      <div style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#2A2A2A', fontWeight: 500 }}>{t.division || '—'}</div>
+                      {t.unit && <div style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#888', marginTop: 'clamp(1px, 0.5vw, 3px)' }}>{t.unit}</div>}
                     </td>
-
-                    {/* ✅ Office Location */}
+                    {/* Office Location */}
                     <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}>
-                      {t.office_location ? (
-                        <span style={{
-                          fontSize: 'clamp(8px, 1.5vw, 11px)', padding: 'clamp(1px, 0.5vw, 3px) clamp(6px, 1.5vw, 10px)',
-                          background: '#E8F1FA', color: '#0D3B6E',
-                          borderRadius: 3, fontWeight: 500,
-                        }}>
-                          {t.office_location}
-                        </span>
-                      ) : (
-                        <span style={{ color: '#bbb', fontStyle: 'italic', fontSize: 'clamp(8px, 1.5vw, 11px)' }}>—</span>
-                      )}
+                      {t.office_location ? <span className="submitted-office-location" title={t.office_location} style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', padding: 'clamp(1px, 0.5vw, 3px) clamp(6px, 1.5vw, 10px)', background: '#E8F1FA', color: '#0D3B6E', borderRadius: 3, fontWeight: 500 }}>{t.office_location}</span> : <span style={{ color: '#bbb', fontStyle: 'italic', fontSize: 'clamp(8px, 1.5vw, 11px)' }}>—</span>}
                     </td>
-
 
                     {/* Priority */}
                     <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}>
-                      <span style={{
+                      <span data-priority={t.priority} style={{
                         background: ps.bg, color: ps.color,
                         fontSize: 'clamp(8px, 1.5vw, 11px)', fontWeight: 600,
                         padding: 'clamp(1px, 0.5vw, 3px) clamp(6px, 1.5vw, 10px)', borderRadius: 3,
@@ -455,56 +337,20 @@ export default function MyRequests() {
                       {formatDate(t.created_at)}
                     </td>
 
-                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)' }}>
-                      <button
-                        onClick={() => setSelectedTicket(t)}
-                        style={{
-                          padding: 'clamp(4px, 0.8vw, 6px) clamp(10px, 1.8vw, 14px)',
-                          fontSize: 'clamp(8px, 1.5vw, 11px)',
-                          background: 'var(--gov-navy)',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          fontWeight: 500,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        View
-                      </button>
-                    </td>
+
                   </tr>
                 );
               })}
             </tbody>
-          </table>
+          </AppTable>
         </div>
-      </div>
-      {filtered.length > 0 && (
-        <div style={{
-          marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px',
-        }}>
-          <div style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>
-            Showing <strong>{pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> requests
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-            <label style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.6vw, 12px)' }}>
-              Rows
-              <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-            </label>
-            <button onClick={() => setPage(1)} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>First</button>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
-            <span style={{ color: '#334155', fontSize: 'clamp(9px, 1.6vw, 12px)', whiteSpace: 'nowrap' }}>Page {currentPage} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Next</button>
-            <button onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Last</button>
-          </div>
-        </div>
+{filtered.length > 0 && (
+        <Pagination attached page={currentPage} total={filtered.length} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
       )}
+
+      </div>
+      </section>
+
       <TicketDetailModal
         ticket={selectedTicket}
         forceRequestorView={true}
@@ -516,9 +362,3 @@ export default function MyRequests() {
     </div>
   );
 }
-
-
-
-
-
-

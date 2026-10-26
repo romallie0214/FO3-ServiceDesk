@@ -1,3 +1,6 @@
+import { Pencil, Trash2, Plus, Save, Download, Eye, FileText, X } from 'lucide-react';
+import '../styles/management-ui.css';
+
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -36,7 +39,7 @@ function PDFViewerModal({ article, onClose }: { article: Article; onClose: () =>
       }}
     >
       <div
-        onClick={e => e.stopPropagation()}
+        className="shared-management-dialog" onClick={e => e.stopPropagation()}
         style={{
           background: '#fff',
           width: 'clamp(90vw, 95vw, 90vw)',
@@ -199,7 +202,7 @@ export default function KnowledgeBase() {
   });
 
   return (
-    <div>
+    <div className="shared-management-page KnowledgeBase-page">
       {/* BREADCRUMB */}
       <div style={{
         fontSize: 'clamp(9px, 1.8vw, 11px)',
@@ -336,7 +339,7 @@ export default function KnowledgeBase() {
             const catStyle = categoryColors[article.category] ?? { bg: '#F0F0F0', color: '#666' };
             return (
               <div
-                key={article.id}
+                className="shared-resource-card" key={article.id}
                 style={{
                   background: '#fff',
                   border: '0.5px solid #D0D9E4',

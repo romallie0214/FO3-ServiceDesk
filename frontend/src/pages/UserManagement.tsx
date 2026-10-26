@@ -1,4 +1,12 @@
-import { useEffect, useState } from 'react';
+import Pagination from '../components/Pagination';
+import { showErrorToast } from '../utils/notifications';
+import AppTable from '../components/AppTable';
+import { Search, SlidersHorizontal, ChevronDown, Users, ShieldCheck, Plus, UserCheck, Wrench, Pencil, UserRoundX, RotateCcw, LockKeyhole, LockKeyholeOpen, ShieldOff } from 'lucide-react';
+import './UserManagement.css';
+
+import SummaryCards from '../components/dashboard/SummaryCards';
+
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -190,6 +198,22 @@ function OfficeLocationPicker({ all, selected, loading, search, onSearchChange, 
   );
 }
 export default function UserManagement() {
+  const filtersRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    function dismissFilters(event: PointerEvent) {
+      if (filtersRef.current?.open && event.target instanceof Node && !filtersRef.current.contains(event.target)) filtersRef.current.open = false;
+    }
+    function handleFilterEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape' && filtersRef.current?.open) {
+        filtersRef.current.open = false;
+        filtersRef.current.querySelector('summary')?.focus();
+      }
+    }
+    document.addEventListener('pointerdown', dismissFilters);
+    document.addEventListener('keydown', handleFilterEscape);
+    return () => { document.removeEventListener('pointerdown', dismissFilters); document.removeEventListener('keydown', handleFilterEscape); };
+  }, []);
+
   const { user: currentUser, token } = useAuth();
   const isFO3SuperAdmin = currentUser?.role === 'super_admin';
   const managedAreaIds = currentUser?.role === 'super_admin' ? null : (currentUser?.area_admin_service_ids || []);
@@ -436,7 +460,7 @@ export default function UserManagement() {
 
   async function handleSave() {
     if (editUser) {
-      if (!form.role) { alert('Role is required.'); return; }
+      if (!form.role) { showErrorToast('Role is required.'); return; }
       setSaving(true);
       try {
         await api.put(`/users/${editUser.id}`, form);
@@ -450,11 +474,11 @@ export default function UserManagement() {
         setShowModal(false);
         fetchUsers();
       } catch (err: any) {
-        alert(err.response?.data?.error || 'Failed to save user.');
+        showErrorToast(err.response?.data?.error || 'Failed to save user.');
       } finally { setSaving(false); }
 
     } else {
-      if (!selEmployee) { alert('Please select an employee.'); return; }
+      if (!selEmployee) { showErrorToast('Please select an employee.'); return; }
       setSaving(true);
       try {
         const createdUser = await api.post('/users', {
@@ -482,7 +506,7 @@ export default function UserManagement() {
         setShowModal(false);
         fetchUsers();
       } catch (err: any) {
-        alert(err.response?.data?.error || 'Failed to add user.');
+        showErrorToast(err.response?.data?.error || 'Failed to add user.');
       } finally { setSaving(false); }
     }
   }
@@ -528,7 +552,7 @@ export default function UserManagement() {
       setDeleteTarget(null);
       fetchUsers();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to deactivate user.');
+      showErrorToast(err.response?.data?.error || 'Failed to deactivate user.');
     } finally {
       setDeleting(false);
     }
@@ -656,7 +680,7 @@ export default function UserManagement() {
   );
 
   return (
-    <div>
+    <div className="user-management-page">
       {/* BREADCRUMB */}
       <div style={{
         fontSize: 'clamp(9px, 1.8vw, 11px)',
@@ -668,9 +692,9 @@ export default function UserManagement() {
         </span>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14, borderBottom: '1px solid #D0D9E4' }}>
-        <button onClick={() => setActiveTab('users')} style={{ padding: '8px 14px', border: 'none', borderBottom: activeTab === 'users' ? '3px solid var(--gov-navy)' : '3px solid transparent', background: 'none', color: 'var(--gov-navy)', fontWeight: activeTab === 'users' ? 700 : 400, cursor: 'pointer' }}>Users & Access</button>
-        <button onClick={() => setActiveTab('recovery')} style={{ padding: '8px 14px', border: 'none', borderBottom: activeTab === 'recovery' ? '3px solid var(--gov-navy)' : '3px solid transparent', background: 'none', color: 'var(--gov-navy)', fontWeight: activeTab === 'recovery' ? 700 : 400, cursor: 'pointer' }}>Account Recovery</button>
+      <div className="user-management-tabs" role="group" aria-label="User management sections">
+        <button aria-pressed={activeTab === 'users'} onClick={() => setActiveTab('users')}><Users size={15} />Users &amp; Access</button>
+        <button aria-pressed={activeTab === 'recovery'} onClick={() => setActiveTab('recovery')}><ShieldCheck size={15} />Account Recovery</button>
       </div>
 
       {activeTab === 'recovery' && (
@@ -688,7 +712,7 @@ export default function UserManagement() {
             <span style={{ color: '#62748A', fontSize: 'var(--text-xs)', whiteSpace: 'nowrap' }}>{filteredRecoveryAccounts.length} account{filteredRecoveryAccounts.length !== 1 ? 's' : ''}</span>
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+            <AppTable className="user-management-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
               <thead><tr>{['User', 'Employee No.', 'Account status', 'Profile status', 'Recovery actions'].map(h => <th key={h} style={{ textAlign: 'left', padding: '9px 10px', background: 'var(--gov-navy)', color: '#fff', fontSize: 'var(--text-xs)' }}>{h}</th>)}</tr></thead>
               <tbody>{recoveryLoading ? <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center' }}>Loading account recovery records...</td></tr> : filteredRecoveryAccounts.length === 0 ? <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#667' }}>No accounts match the selected filters.</td></tr> : filteredRecoveryAccounts.map(u => <tr key={u.empno} style={{ borderBottom: '1px solid #EEF1F5' }}>
                 <td style={{ padding: '10px' }}><strong>{u.full_name}</strong><br /><span style={{ fontSize: 'var(--text-xs)', color: '#667' }}>{u.email}</span></td>
@@ -697,12 +721,12 @@ export default function UserManagement() {
                 <td style={{ padding: '10px', fontSize: 'var(--text-sm)' }}>{u.harmonyAvailable ? 'Local profile linked' : 'Tracking record only'}</td>
                 <td style={{ padding: '10px', display: 'flex', gap: 8 }}>
                   {u.deactivated ? <span style={{ color: '#667', fontSize: 'var(--text-xs)' }}>Restore in Users & Access</span> : u.empno === currentUser?.empno ? <span style={{ color: '#667', fontSize: 'var(--text-xs)', fontStyle: 'italic' }}>Self-recovery actions are not allowed</span> : <>
-                    {u.locked ? <button onClick={() => setRecoveryTarget({ action: 'unlock', user: u })} disabled={unlockingEmpno === u.empno} style={{ padding: '5px 10px', border: '1px solid #9AC9AA', background: '#E8F5EE', color: '#1B6B3A', borderRadius: 4, cursor: 'pointer' }}>{unlockingEmpno === u.empno ? 'Unlocking…' : 'Unlock Account'}</button> : <button onClick={() => setRecoveryTarget({ action: 'lock', user: u })} disabled={lockingEmpno === u.empno} style={{ padding: '5px 10px', border: '1px solid #E8C887', background: '#FEF3DC', color: '#8A5200', borderRadius: 4, cursor: 'pointer' }}>{lockingEmpno === u.empno ? 'Locking…' : 'Lock Account'}</button>}
-                    <button onClick={() => setRecoveryTarget({ action: 'reset_mfa', user: u })} disabled={resettingEmpno === u.empno} style={{ padding: '5px 10px', border: '1px solid #E4B4B4', background: '#FDE8E8', color: '#8B1A1A', borderRadius: 4, cursor: 'pointer' }}>{resettingEmpno === u.empno ? 'Resetting…' : 'Reset MFA'}</button>
+                    {u.locked ? <button onClick={() => setRecoveryTarget({ action: 'unlock', user: u })} disabled={unlockingEmpno === u.empno} style={{ padding: '5px 10px', border: '1px solid #9AC9AA', background: '#E8F5EE', color: '#1B6B3A', borderRadius: 4, cursor: 'pointer' }}>{unlockingEmpno === u.empno ? 'Unlocking…' : <><LockKeyholeOpen size={13} />Unlock Account</>}</button> : <button onClick={() => setRecoveryTarget({ action: 'lock', user: u })} disabled={lockingEmpno === u.empno} style={{ padding: '5px 10px', border: '1px solid #E8C887', background: '#FEF3DC', color: '#8A5200', borderRadius: 4, cursor: 'pointer' }}>{lockingEmpno === u.empno ? 'Locking…' : <><LockKeyhole size={13} />Lock Account</>}</button>}
+                    <button onClick={() => setRecoveryTarget({ action: 'reset_mfa', user: u })} disabled={resettingEmpno === u.empno} style={{ padding: '5px 10px', border: '1px solid #E4B4B4', background: '#FDE8E8', color: '#8B1A1A', borderRadius: 4, cursor: 'pointer' }}>{resettingEmpno === u.empno ? 'Resetting…' : <><ShieldOff size={13} />Reset MFA</>}</button>
                   </>}
                 </td>
               </tr>)}</tbody>
-            </table>
+            </AppTable>
           </div>
         </div>
       )}
@@ -723,57 +747,18 @@ export default function UserManagement() {
         {!isServiceAdmin && <> Only <strong>Super Admins</strong> can create, edit, or remove users.</>}
       </div>
 
-      {/* ROLE SUMMARY CARDS */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: 'clamp(8px, 2vw, 12px)',
-        marginBottom: 18,
-      }}>
-        {roleCounts.map(r => {
-          const c = isServiceAdmin ? { bg: '#fff', color: r.color } : ROLE_COLORS[r.value];
-          return (
-            <div key={r.value} style={{
-              background: '#fff',
-              border: '0.5px solid #D0D9E4',
-              borderRadius: 8,
-              padding: 'clamp(10px, 2.5vw, 14px)',
-              borderTop: `3px solid ${c.color}`,
-              cursor: 'pointer',
-            }}
-              onClick={() => setRoleFilter(roleFilter === r.value ? '' : r.value)}
-            >
-              <div style={{
-                fontSize: 'clamp(9px, 1.8vw, 11px)',
-                color: '#4A4A4A',
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-                marginBottom: 6,
-                fontWeight: 500,
-              }}>
-                {r.label}
-              </div>
-              <div style={{
-                fontSize: 'clamp(20px, 6vw, 32px)',
-                fontWeight: 500,
-                color: c.color,
-              }}>
-                {r.count}
-              </div>
-              <div style={{
-                fontSize: 'clamp(8px, 1.5vw, 11px)',
-                color: '#888',
-                marginTop: 4,
-              }}>
-                {roleFilter === r.value ? '✓ Filtered' : 'Click to filter'}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <SummaryCards cards={roleCounts.map(role => {
+        const palette = isServiceAdmin ? { bg: role.color + '14', color: role.color } : ROLE_COLORS[role.value];
+        const icon = ['super_admin', 'admin'].includes(role.value) ? ShieldCheck : role.value === 'supervisor' ? UserCheck : ['ictms_staff', 'technical_staff'].includes(role.value) ? Wrench : Users;
+        return {
+          label: role.label, value: role.count, color: palette.color, background: palette.bg, icon,
+          active: roleFilter === role.value,
+          onClick: () => setRoleFilter(roleFilter === role.value ? '' : role.value),
+        };
+      })} />
 
       {/* FILTER + ADD */}
-      <div style={{
+      <div className="user-management-toolbar" style={{
         background: '#fff',
         border: '0.5px solid #D0D9E4',
         borderRadius: 8,
@@ -798,6 +783,7 @@ export default function UserManagement() {
             borderRadius: 4,
           }}
         />
+        <details ref={filtersRef} className="user-management-filters"><summary><SlidersHorizontal size={14} />User Filters<ChevronDown size={14} /></summary><div className="user-management-filter-menu">
         <select
           value={roleFilter}
           onChange={e => setRoleFilter(e.target.value)}
@@ -829,6 +815,7 @@ export default function UserManagement() {
             {serviceAreas.map(area => <option key={area.id} value={area.code}>{area.code} — {area.name}</option>)}
           </select>
         )}
+        </div></details>
         <span style={{
           fontSize: 'clamp(9px, 1.8vw, 11px)',
           color: '#888',
@@ -856,7 +843,7 @@ export default function UserManagement() {
             flex: '0 1 auto',
           }}
         >
-          + Add User
+          <Plus size={14} /> Add User
         </button>
       </div>
 
@@ -871,7 +858,7 @@ export default function UserManagement() {
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
         }}>
-          <table style={{
+          <AppTable className="user-management-table" style={{
             width: '100%',
             borderCollapse: 'collapse',
             minWidth: '940px',
@@ -1012,11 +999,11 @@ export default function UserManagement() {
                     <td style={{ padding: '10px 12px' }}>
                       <div style={{ display: 'flex', gap: 6 }}>
                         {u.deleted_at ? (
-                          <button onClick={() => handleRestore(u)} style={{ padding: '4px 10px', fontSize: 'var(--text-xs)', background: '#E8F5EE', color: '#1B6B3A', border: '1px solid #9AC9AA', borderRadius: 4, cursor: 'pointer' }}>Restore</button>
+                          <button onClick={() => handleRestore(u)} style={{ padding: '4px 10px', fontSize: 'var(--text-xs)', background: '#E8F5EE', color: '#1B6B3A', border: '1px solid #9AC9AA', borderRadius: 4, cursor: 'pointer' }}><RotateCcw size={13} />Restore</button>
                         ) : (
                           <>
-                            <button onClick={() => openEdit(u)} style={{ padding: '4px 10px', fontSize: 'var(--text-xs)', background: 'var(--gov-navy)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
-                            {!isSelf && <button onClick={() => setDeleteTarget(u)} style={{ padding: '4px 10px', fontSize: 'var(--text-xs)', background: '#FDE8E8', color: '#8B1A1A', border: '1px solid #F5C0C0', borderRadius: 4, cursor: 'pointer' }}>Deactivate</button>}
+                            <button onClick={() => openEdit(u)} style={{ padding: '4px 10px', fontSize: 'var(--text-xs)', background: 'var(--gov-navy)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}><Pencil size={13} />Edit</button>
+                            {!isSelf && <button onClick={() => setDeleteTarget(u)} style={{ padding: '4px 10px', fontSize: 'var(--text-xs)', background: '#FDE8E8', color: '#8B1A1A', border: '1px solid #F5C0C0', borderRadius: 4, cursor: 'pointer' }}><UserRoundX size={13} />Deactivate</button>}
                           </>
                         )}
                       </div>
@@ -1025,23 +1012,15 @@ export default function UserManagement() {
                 );
               })}
             </tbody>
-          </table>
+          </AppTable>
         </div>
+{filtered.length > 0 && (
+        <Pagination attached page={currentPage} total={filtered.length} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
+      )}
+
       </div>
 
-      {filtered.length > 0 && (
-        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px' }}>
-          <div style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Showing <strong>{pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> users</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-            <label style={{ color: '#5A6475', fontSize: 'var(--text-xs)' }}>Rows <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select></label>
-            <button onClick={() => setPage(1)} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === 1 ? 0.5 : 1 }}>First</button>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
-            <span style={{ color: '#334155', fontSize: 'var(--text-xs)' }}>Page {currentPage} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === totalPages ? 0.5 : 1 }}>Next</button>
-            <button onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', opacity: currentPage === totalPages ? 0.5 : 1 }}>Last</button>
-          </div>
-        </div>
-      )}
+
 
       {/* ===== ADD / EDIT USER MODAL ===== */}
       {showModal && (
@@ -1052,11 +1031,11 @@ export default function UserManagement() {
             zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <div
+          <div className="user-management-dialog" role="dialog" aria-modal="true" aria-label={editUser ? "Edit user" : "Add user"}
             onClick={e => e.stopPropagation()}
             style={{
               background: '#fff',
-              width: 'clamp(90vw, 95vw, 720px)',
+              width: 'min(760px, calc(100vw - 32px))',
               maxWidth: '96vw',
               borderRadius: 10,
               border: '0.5px solid #C0C8D4',
@@ -1067,7 +1046,7 @@ export default function UserManagement() {
             }}
           >
             {/* Header */}
-            <div style={{
+            <div className="user-management-dialog-header" style={{
               background: 'var(--gov-navy)',
               padding: 'clamp(10px, 2vw, 14px) clamp(14px, 3vw, 20px)',
               flexShrink: 0,
@@ -1650,7 +1629,7 @@ export default function UserManagement() {
             </div>
             <div style={{ padding: '12px 20px', borderTop: '0.5px solid #E5EAF0', display: 'flex', justifyContent: 'flex-end', gap: 8, background: '#F8FAFC' }}>
               <button onClick={() => setRecoveryTarget(null)} style={{ padding: '6px 14px', fontSize: 'var(--text-sm)', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={confirmRecoveryAction} style={{ padding: '6px 16px', fontSize: 'var(--text-sm)', background: recoveryTarget.action === 'unlock' ? '#1B6B3A' : recoveryTarget.action === 'lock' ? '#CC7700' : '#8B1A1A', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>{recoveryTarget.action === 'lock' ? 'Lock Account' : recoveryTarget.action === 'unlock' ? 'Unlock Account' : 'Reset MFA'}</button>
+              <button onClick={confirmRecoveryAction} style={{ padding: '6px 16px', fontSize: 'var(--text-sm)', background: recoveryTarget.action === 'unlock' ? '#1B6B3A' : recoveryTarget.action === 'lock' ? '#CC7700' : '#8B1A1A', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>{recoveryTarget.action === 'lock' ? 'Lock Account' : recoveryTarget.action === 'unlock' ? 'Unlock Account' : <><ShieldOff size={13} />Reset MFA</>}</button>
             </div>
           </div>
         </div>
