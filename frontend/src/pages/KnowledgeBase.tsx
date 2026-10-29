@@ -229,9 +229,9 @@ export default function KnowledgeBase() {
       </div>
 
       {/* FILTER BAR */}
-      <div style={{
-        background: '#fff',
-        border: '0.5px solid #D0D9E4',
+      <div className="kb-article-filter-bar" style={{
+        background: 'var(--ui-surface, #fff)',
+        border: 'none',
         borderRadius: 8,
         padding: 'clamp(8px, 2vw, 12px)',
         marginBottom: 16,

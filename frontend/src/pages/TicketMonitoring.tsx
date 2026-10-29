@@ -263,6 +263,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
 
   // ── Fetch live monitoring data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
       setAccessDenied(false);
       const res = await api.get(
@@ -392,11 +393,6 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
   const onTrack   = serviceScopedSLA.filter(t => t.sla?.status === 'ok').length;
   const noSLA     = serviceScopedSLA.filter(t => !t.sla).length;
 
-  if (loading) return (
-    <div style={{ color: 'var(--gov-navy)', padding: 40, textAlign: 'center', minHeight: publicMode ? '100vh' : undefined }}>
-      Loading monitoring data...
-    </div>
-  );
 
   if (accessDenied) return (
     <div style={{ minHeight: '100vh', background: '#F3F6FA', display: 'grid', placeItems: 'center', padding: 24 }}>
@@ -465,6 +461,8 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
             <button type="button" aria-label="Dismiss SLA monitoring note" onClick={() => setShowMonitoringNote(false)}><X size={16} /></button>
           </div>}
 
+          <div inert={loading} aria-busy={loading}>
+          <div>
           <SummaryCards cards={[
             { label: 'SLA Breached', value: breached, color: '#8B1A1A', background: '#FDE8E8', icon: TriangleAlert, key: 'breached' },
             { label: 'Escalated', value: escalated, color: '#CC7700', background: '#FEF3DC', icon: TrendingUp, key: 'escalated' },
@@ -473,8 +471,9 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
             { label: 'No SLA Mapped', value: noSLA, color: '#4A4A4A', background: '#F0F0F0', icon: CircleHelp, key: 'no-sla' },
           ].map(card => ({ ...card, active: filterSLA === card.key, onClick: () => setFilterSLA(filterSLA === card.key ? '' : card.key as SLAStatus) }))} />
 
-          <section className="ticket-monitor-grid">
-        <div className="ticket-grid-toolbar">
+          </div></div>
+          <section className="ticket-monitor-grid" aria-busy={loading}>
+        <div className="ticket-grid-toolbar" data-shimmer-ignore>
           <label className="ticket-grid-search"><Search size={14} /><input aria-label="Search tickets" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} /></label>
           <details className="ticket-filter-dropdown" onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
             <summary><SlidersHorizontal size={15} />Ticket Filters{[!!filterSLA, !!filterStatus, !!filterPriority, liveServiceAreaFilter !== 'all', !!liveDateFrom, !!liveDateTo].filter(Boolean).length > 0 && <span className="ticket-filter-count">{[!!filterSLA, !!filterStatus, !!filterPriority, liveServiceAreaFilter !== 'all', !!liveDateFrom, !!liveDateTo].filter(Boolean).length}</span>}<ChevronDown size={14} /></summary>
@@ -504,8 +503,8 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
               border: '0.5px solid #D0D9E4',
             }}>
               <AppTable className="ticket-monitor-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1450 }}>
-                <thead><tr>{['SLA','Ticket #','Service Area','Subject','Category','Status','Priority','Assigned To','Response','Escalation','Resolution'].map(label => <th key={label} style={{ textAlign: 'left' }}>{label}</th>)}</tr></thead>
-                <tbody>{sorted.length === 0 ? <tr><td colSpan={11} style={{ textAlign: 'center', padding: 32 }}>No tickets found.</td></tr> : paginatedMonitoringTickets.map(ticket => {
+                <thead className={loading ? "monitor-header-loading" : undefined}><tr>{['SLA','Ticket #','Service Area','Subject','Category','Status','Priority','Assigned To','Response','Escalation','Resolution'].map(label => <th key={label} style={{ textAlign: 'left' }}>{label}{loading && label === "Resolution" && <div className="ticket-progress-track monitor-progress-track" role="progressbar" aria-label="Loading monitoring tickets"><span /></div>}</th>)}</tr></thead>
+                <tbody>{loading ? <tr><td colSpan={11} style={{ height: 180 }}><span className="ticket-loading-status" role="status">Loading monitoring tickets...</span></td></tr> : sorted.length === 0 ? <tr><td colSpan={11} style={{ textAlign: 'center', padding: 32 }}>No tickets found.</td></tr> : paginatedMonitoringTickets.map(ticket => {
                   const sla = ticket.sla;
                   const slaStatus: SLAStatus = sla?.status ?? 'no-sla';
                   const slaStyle = SLA_STYLE[slaStatus];
@@ -513,27 +512,28 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                   const priorityStyle = PRIORITY_STYLE[ticket.priority] ?? PRIORITY_STYLE.Medium;
                   const rowBg = slaStatus === 'breached' ? '#FFF8F8' : slaStatus === 'escalated' ? '#FFFBF0' : slaStatus === 'warning' ? '#FFFDF0' : '#fff';
                   return <tr key={ticket.id} data-sla={slaStatus} style={{ background: rowBg }}>
-                    <td><span style={{ background: slaStyle.bg, color: slaStyle.color, padding: '2px 6px' }}>{slaStyle.label}</span>{sla && <div style={{ color: slaStyle.color, marginTop: 3 }}>{formatHours(sla.hoursRemaining)}</div>}</td>
-                    <td style={{ color: 'var(--gov-navy)', fontWeight: 500 }}>{ticket.ticket_number}</td>
-                    <td style={{ fontWeight: 600 }}>{ticket.service_area_code || 'Unassigned'}</td>
-                    <td><div>{ticket.subject}</div>{ticket.sub_item && <div style={{ color: '#888', marginTop: 2 }}>{ticket.sub_item}</div>}</td>
-                    <td><div>{ticket.category}</div>{ticket.sub_category && <div style={{ color: '#999' }}>{ticket.sub_category}</div>}</td>
-                    <td><span style={{ background: statusStyle.bg, color: statusStyle.color, padding: '2px 6px' }}>{ticket.status}</span></td>
-                    <td><span data-priority={ticket.priority} style={{ background: priorityStyle.bg, color: priorityStyle.color }}>{ticket.priority}</span></td>
-                    <td>{ticket.assigned_to || <span style={{ color: '#CC7700' }}>Unassigned</span>}</td>
-                    <td>{sla ? <><div style={{ color: sla.responseBreached ? '#8B1A1A' : '#1B6B3A' }}>{sla.responseBreached ? '⚠ Breached' : '✓ On Time'}</div><div style={{ color: '#888', marginTop: 2 }}>{fmt(sla.responseDeadline)}</div></> : '—'}</td>
-                    <td>{sla ? <><div style={{ color: sla.escalationBreached ? '#CC7700' : '#1B6B3A' }}>{sla.escalationBreached ? '⚠ Escalated' : '✓ Not Yet'}</div><div style={{ color: '#888', marginTop: 2 }}>{fmt(sla.escalationDeadline)}</div></> : '—'}</td>
-                    <td>{sla ? <><div style={{ color: sla.resolutionBreached ? '#8B1A1A' : '#1B6B3A' }}>{sla.resolutionBreached ? '⚠ Breached' : '✓ On Time'}</div><div style={{ color: '#888', marginTop: 2 }}>{fmt(sla.resolutionDeadline)}</div></> : '—'}</td>
+                    <td><div className="ticket-skeleton-cell" data-shimmer-no-children><span style={{ background: slaStyle.bg, color: slaStyle.color, padding: '2px 6px' }}>{slaStyle.label}</span>{sla && <div style={{ color: slaStyle.color, marginTop: 3 }}>{formatHours(sla.hoursRemaining)}</div>}</div></td>
+                    <td style={{ color: 'var(--gov-navy)', fontWeight: 500 }}><div className="ticket-skeleton-cell" data-shimmer-no-children>{ticket.ticket_number}</div></td>
+                    <td style={{ fontWeight: 600 }}><div className="ticket-skeleton-cell" data-shimmer-no-children>{ticket.service_area_code || 'Unassigned'}</div></td>
+                    <td><div className="ticket-skeleton-cell" data-shimmer-no-children><div>{ticket.subject}</div>{ticket.sub_item && <div style={{ color: '#888', marginTop: 2 }}>{ticket.sub_item}</div>}</div></td>
+                    <td><div className="ticket-skeleton-cell" data-shimmer-no-children><div>{ticket.category}</div>{ticket.sub_category && <div style={{ color: '#999' }}>{ticket.sub_category}</div>}</div></td>
+                    <td><div className="ticket-skeleton-cell" data-shimmer-no-children><span style={{ background: statusStyle.bg, color: statusStyle.color, padding: '2px 6px' }}>{ticket.status}</span></div></td>
+                    <td><div className="ticket-skeleton-cell" data-shimmer-no-children><span data-priority={ticket.priority} style={{ background: priorityStyle.bg, color: priorityStyle.color }}>{ticket.priority}</span></div></td>
+                    <td><div className="ticket-skeleton-cell" data-shimmer-no-children>{ticket.assigned_to || <span style={{ color: '#CC7700' }}>Unassigned</span>}</div></td>
+                    <td><div className="ticket-skeleton-cell" data-shimmer-no-children>{sla ? <><div style={{ color: sla.responseBreached ? '#8B1A1A' : '#1B6B3A' }}>{sla.responseBreached ? '⚠ Breached' : '✓ On Time'}</div><div style={{ color: '#888', marginTop: 2 }}>{fmt(sla.responseDeadline)}</div></> : '—'}</div></td>
+                    <td><div className="ticket-skeleton-cell" data-shimmer-no-children>{sla ? <><div style={{ color: sla.escalationBreached ? '#CC7700' : '#1B6B3A' }}>{sla.escalationBreached ? '⚠ Escalated' : '✓ Not Yet'}</div><div style={{ color: '#888', marginTop: 2 }}>{fmt(sla.escalationDeadline)}</div></> : '—'}</div></td>
+                    <td><div className="ticket-skeleton-cell" data-shimmer-no-children>{sla ? <><div style={{ color: sla.resolutionBreached ? '#8B1A1A' : '#1B6B3A' }}>{sla.resolutionBreached ? '⚠ Breached' : '✓ On Time'}</div><div style={{ color: '#888', marginTop: 2 }}>{fmt(sla.resolutionDeadline)}</div></> : '—'}</div></td>
                   </tr>;
                 })}</tbody>
               </AppTable>
             </div>
-            {sorted.length > 0 && (
-              <Pagination attached page={currentMonitoringPage} total={sorted.length} pageSize={pageSize} onPageChange={setMonitoringPage} onPageSizeChange={setPageSize} />
+            {!loading && sorted.length > 0 && (
+              <div data-shimmer-ignore><Pagination attached page={currentMonitoringPage} total={sorted.length} pageSize={pageSize} onPageChange={setMonitoringPage} onPageSizeChange={setPageSize} /></div>
             )}
           </div>
 
           </section>
+
 
           {/* LEGEND */}
           <div style={{
@@ -821,7 +821,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
           {/* REPORT RESULTS */}
           {reportGenerated && (
             <>
-              <SummaryCards cards={[
+                        <SummaryCards cards={[
                 { label: 'Served Ticket', value: reportData.length, color: '#123e70', background: '#E8F1FA', icon: Tickets },
                 { label: 'SLA Breached', value: reportData.filter(t => getSLAStatusLabel(t) === 'SLA Breached').length, color: '#8B1A1A', background: '#FDE8E8', icon: TriangleAlert },
                 { label: 'Resolved', value: reportData.filter(t => t.status === 'Resolved').length, color: '#1B6B3A', background: '#E8F5EE', icon: CircleCheck },

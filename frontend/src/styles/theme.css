@@ -16,7 +16,8 @@ html[data-theme=dark] :is(.ticket-grid td,.ticket-monitor-table td,.admin-ticket
 html[data-theme=dark] :is(.ticket-grid,.ticket-monitor-table,.admin-ticket-table,.user-management-table,.status-management-table,.category-level-table,.service-area-table,.shared-management-table) tbody tr:hover{background:#23354b!important;outline-color:#4b78a6!important}
 html[data-theme=dark] :is(.desk-chart-caption,.desk-stat span,.desk-health dt,.desk-recent-person>div>span,.desk-recent-meta,.desk-radial-metrics dt){color:#94a7bf}
 html[data-theme=dark] :is(.desk-stat strong,.desk-panel h2,.desk-recent-person strong,.desk-recent-ticket p,.desk-radial-metrics dd){color:#d5dfed!important}
-html[data-theme=dark] :is(.desk-dashboard-reference .desk-totals,.desk-status-track,.admin-workload-track){background:#141e2b!important}
+html[data-theme=dark] :is(.desk-status-track,.admin-workload-track){background:#141e2b!important}
+html[data-theme=dark] .desk-dashboard-reference .desk-totals{background:transparent!important}
 html[data-theme=dark] :is(.desk-health-ring>div,.desk-recent-panel>header){background:#192332!important}
 html[data-theme=dark] :is(.desk-health-ring strong,.desk-recent-ticket-top strong){color:#d5dfed}
 html[data-theme=dark] :is(.desk-health>div,.desk-recent-ticket,.desk-radial-metrics>div){border-color:#2a3648!important}
@@ -239,3 +240,14 @@ html[data-theme=dark] .service-area-page .service-area-table small{color:#9eb2cb
 html[data-theme=dark] .desk-dashboard-reference .desk-stat-icon,
 html[data-theme=dark] .desk-dashboard-reference .desk-stat-icon svg{color:#fff!important}
 html[data-theme=dark] .desk-dashboard-reference .desk-stat-icon svg{stroke:currentColor;opacity:1}
+
+/* Knowledge-base categories need a matching dark surface and text. */
+html[data-theme=dark] .shared-management-table .kb-management-category-badge{background:#293c54!important;color:#c5ddf7!important;border-color:#456181!important}
+
+html[data-theme=dark] .kb-article-filter-bar{background:#192332!important;border:0!important;color:#c7d4e5}
+html[data-theme=dark] .kb-article-filter-bar :is(input,select){background:#152030!important;border-color:#34465e!important;color:#d5dfed!important}
+
+/* Recent tickets header action in both dashboard layouts. */
+html[data-theme=dark] .desk-dashboard .desk-panel>header>a{background:#233b55!important;color:#c4dfff!important;border-color:#405e7e!important}
+html[data-theme=dark] .desk-dashboard .desk-panel>header>a:hover{background:#304e6d!important;border-color:#688db4!important}
+html[data-theme=dark] .desk-dashboard .desk-panel>header>a:focus-visible{outline:2px solid #91c5fa;outline-offset:3px}

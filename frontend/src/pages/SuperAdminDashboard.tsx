@@ -1,3 +1,4 @@
+import DashboardLoading, { dashboardTemplateTickets } from '../components/dashboard/DashboardLoading';
 import TicketDetailModal from '../components/TicketDetailModal';
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
@@ -34,15 +35,14 @@ export default function SuperAdminDashboard() {
   const managedIds = user?.area_admin_service_ids || [];
   const areas = serviceAreas.filter(a => a.is_active && (!isAreaAdmin || managedIds.includes(a.id)));
   const scoped = tickets.filter(t => !isAreaAdmin || managedIds.includes(Number(t.service_area_id)));
-  const displayed = scoped.filter(t => filter === 'all' || String(t.service_area_id) === filter);
+  const displayed = loading ? dashboardTemplateTickets : scoped.filter(t => filter === 'all' || String(t.service_area_id) === filter);
   const ticketsUnavailable = failed.includes('/tickets');
   const usersUnavailable = failed.includes('/users');
   const unassigned = displayed.filter(t => !t.assigned_to && !['Closed', 'Resolved', 'Cancelled'].includes(t.status)).length;
-  if (loading) return <p role="status">Loading dashboard?</p>;
-  return <div className="desk-dashboard">
+  return <DashboardLoading loading={loading}><div className="desk-dashboard">
     <header className="desk-dashboard-heading"><div><h1>Dashboard</h1><span>{filter !== 'all' ? 'Selected service-area ticket totals' : isAreaAdmin ? 'Your service-area ticket totals' : 'FO3-wide ticket totals'}</span></div>
       <div className="desk-dashboard-actions"><select aria-label="Filter tickets by service area" value={filter} onChange={e => setFilter(e.target.value)}>
-        <option value="all">{isAreaAdmin ? 'All assigned areas' : 'All service areas'}</option>{areas.map(a => <option key={a.id} value={a.id}>{a.code} ? {a.name}</option>)}</select>
+        <option value="all">{isAreaAdmin ? 'All assigned areas' : 'All service areas'}</option>{areas.map(a => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}</select>
         {canAccess('submit') && <Link className="desk-primary" to="/submit"><Plus size={14} aria-hidden="true" /> Submit a ticket</Link>}
       </div></header>
     {failed.length > 0 && <p className="desk-load-warning" role="alert">Some dashboard data could not be loaded. Unavailable totals are shown as ?. Reload to try again.</p>}
@@ -58,5 +58,5 @@ export default function SuperAdminDashboard() {
       ]} /></div>
     </div>
     <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} onResolved={refresh} />
-  </div>;
+  </div></DashboardLoading>;
 }

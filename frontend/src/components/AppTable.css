@@ -55,3 +55,13 @@ html[data-theme=dark] .app-table-scroll-hint{background:#192332;color:#9db4cf;bo
   html[data-theme=dark] body .app-table-responsive .app-table tbody{background:#101722!important}
   html[data-theme=dark] body .app-table-responsive .app-table tbody tr{border-color:#34465e!important}
 }
+
+/* Shared table request states preserve headers and keep cards outside loading. */
+.app-table-loading thead{position:relative}
+.app-table-loading thead::after{content:'';position:absolute;bottom:0;left:0;width:100%;height:3px;z-index:4;background:linear-gradient(90deg,transparent 0%,#438bc5 35%,#86c5f6 50%,transparent 65%) #dce8f5;background-size:220% 100%;animation:app-table-progress 1.3s linear infinite}
+html body .app-table .app-table-state-cell{height:180px!important;padding:24px!important;text-align:center!important;vertical-align:middle;border-right:0;white-space:normal!important;font-size:13px;color:var(--ui-text,#63758a)}
+.app-table-state-cell>span{display:block;opacity:.75}
+html[data-theme=dark] .app-table-loading thead::after{background-color:#243b53}
+@keyframes app-table-progress{from{background-position:180% 0}to{background-position:-40% 0}}
+@media(prefers-reduced-motion:reduce){.app-table-loading thead::after{animation:none}}
+@media(max-width:640px){html body .app-table-loading thead{position:relative;display:block;width:100%;height:3px;overflow:visible;clip-path:none;white-space:normal}html body .app-table-loading thead th{visibility:hidden;height:0!important;padding:0!important;border:0!important;font-size:0!important}.app-table .app-table-state-cell::before{display:none}}

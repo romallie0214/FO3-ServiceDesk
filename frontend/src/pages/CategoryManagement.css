@@ -5,3 +5,17 @@
 .category-table-panel{overflow:visible}.category-table-scroll{border-radius:0 0 7px 7px}.category-parent-filters .sla-filter-menu label{display:flex;align-items:stretch;flex-direction:column}.category-parent-filters .sla-filter-menu select{min-width:0;max-width:none}
 
 .category-sla-note{display:flex;align-items:center;justify-content:space-between;gap:12px}.category-sla-note>button{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:26px;height:26px;padding:0;border:0;border-radius:4px;background:transparent;color:inherit;cursor:pointer}.category-sla-note>button:hover{background:#7898bb20}
+
+/* Category deletion controls use the dark theme surface and danger palette. */
+html[data-theme=dark] .category-table-actions button:last-child{background:#452b34;color:#ffb4bf;border-color:#784452}
+html[data-theme=dark] .category-table-actions button:last-child:hover{background:#59323e;border-color:#a46374}
+html[data-theme=dark] .category-delete-dialog>div:first-child{background:#392732!important;border-color:#68404d!important}
+html[data-theme=dark] .category-delete-dialog>div:first-child p{color:#ffb4bf!important}
+html[data-theme=dark] .category-delete-dialog>div:nth-child(2)>p{color:#d5dfed!important}
+html[data-theme=dark] .category-delete-dialog>div:nth-child(2)>div{background:#392732!important;color:#ffb4bf!important;border:1px solid #68404d}
+html[data-theme=dark] .category-delete-dialog>div:last-child{background:#152030!important;border-color:#34465e!important}
+html[data-theme=dark] .category-delete-dialog>div:last-child>button:first-child{background:#22334a!important;color:#d5dfed!important;border-color:#435a76!important}
+html[data-theme=dark] .category-delete-dialog>div:last-child>button:first-child:hover{background:#2c4260!important}
+html[data-theme=dark] .category-delete-dialog>div:last-child>button:last-child{background:#a52f45!important;color:#fff!important}
+html[data-theme=dark] .category-delete-dialog>div:last-child>button:last-child:hover:not(:disabled){background:#bd3b53!important}
+html[data-theme=dark] .category-delete-dialog button:disabled{opacity:.55}

@@ -134,11 +134,6 @@ export default function StatusManagement() {
   const inProgress = statuses.filter(s => s.type === 'in_progress');
   const completed  = statuses.filter(s => s.type === 'completed');
 
-  if (loading) return (
-    <div style={{ color: 'var(--gov-navy)', padding: 40, textAlign: 'center' }}>
-      Loading statuses...
-    </div>
-  );
 
   return (
     <div className="status-management-page">
@@ -209,7 +204,7 @@ export default function StatusManagement() {
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
         }}>
-        <AppTable className="status-management-table" style={{
+        <AppTable loading={loading} loadingColumns={6} empty={statuses.length === 0} emptyMessage="No statuses configured." className="status-management-table" style={{
           width: '100%',
           borderCollapse: 'collapse',
           minWidth: '600px',

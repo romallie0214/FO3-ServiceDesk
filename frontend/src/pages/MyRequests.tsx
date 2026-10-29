@@ -74,6 +74,7 @@ export default function MyRequests() {
 
   useEffect(() => {
     if (!user?.empno) { setLoading(false); return; }
+    setLoading(true);
     api.get('/tickets', {
       params: {
         empno: user.empno,
@@ -82,7 +83,9 @@ export default function MyRequests() {
       })
       .then(res => setTickets(res.data))
       .catch(() => setTickets([]))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+      });
   }, [user?.empno]);
 
   // A changed filter should always return the user to the first result page.
@@ -127,11 +130,6 @@ export default function MyRequests() {
   const resolved  = tickets.filter(t => t.status === 'Resolved').length;
   const closed    = tickets.filter(t => t.status === 'Closed').length;
 
-  if (loading) return (
-    <div style={{ color: 'var(--gov-navy)', padding: 'clamp(24px, 4vw, 40px)', textAlign: 'center' }}>
-      Loading your requests...
-    </div>
-  );
 
   return (
     <div>
@@ -165,6 +163,7 @@ export default function MyRequests() {
         </button>
       </div>
 
+      <div>
       <SummaryCards cards={[
         { label: 'Open', value: open, color: '#0D3B6E', background: '#E8F1FA', icon: Inbox },
         { label: 'In Progress', value: inProg, color: '#5B21B6', background: '#F3EFFF', icon: LoaderCircle },
@@ -172,8 +171,8 @@ export default function MyRequests() {
         { label: 'Closed', value: closed, color: '#4A4A4A', background: '#F0F0F0', icon: Archive },
       ]} />
 
-      <section className="ticket-monitor-grid submitted-tickets-grid">
-        <div className="ticket-grid-toolbar">
+      <section className="ticket-monitor-grid submitted-tickets-grid" aria-busy={loading}>
+        <div className="ticket-grid-toolbar" data-shimmer-ignore>
           <label className="ticket-grid-search"><Search size={14} /><input aria-label="Search tickets" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} /></label>
           <details className="ticket-filter-dropdown" onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
             <summary><SlidersHorizontal size={15} />Ticket Filters{[!!filterService, !!filterStatus, !!dateFrom, !!dateTo].filter(Boolean).length > 0 && <span className="ticket-filter-count">{[!!filterService, !!filterStatus, !!dateFrom, !!dateTo].filter(Boolean).length}</span>}<ChevronDown size={14} /></summary>
@@ -198,7 +197,7 @@ export default function MyRequests() {
           WebkitOverflowScrolling: 'touch',
         }}>
           <AppTable className="ticket-monitor-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-            <thead>
+            <thead className={loading ? "monitor-header-loading" : undefined}>
               <tr>
                 {['Ticket No.', 'Service', 'Subject', 'Category', 'Division / Unit', 'Office Location', 'Priority', 'Assigned To', 'Status', 'Date Filed'].map(h => (
                   <th key={h} style={{
@@ -207,13 +206,13 @@ export default function MyRequests() {
                     color: '#fff', background: 'var(--gov-navy)',
                     whiteSpace: 'nowrap',
                   }}>
-                    {h}
+                    {h}{loading && h === "Date Filed" && <div className="ticket-progress-track monitor-progress-track" role="progressbar" aria-label="Loading submitted tickets"><span /></div>}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {loading ? <tr><td colSpan={10} style={{ height: 180 }}><span className="ticket-loading-status" role="status">Loading submitted tickets...</span></td></tr> : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={10} style={{ padding: 'clamp(30px, 8vw, 48px)', textAlign: 'center' }}>
                     <div style={{ fontSize: 'clamp(24px, 6vw, 32px)', marginBottom: 'clamp(8px, 2vw, 12px)' }}>📭</div>
@@ -249,14 +248,14 @@ export default function MyRequests() {
                     onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
                   >
                     {/* Ticket No */}
-                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                       <button className="ticket-grid-id" aria-label={`View ticket ${t.ticket_number}`} style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', fontWeight: 600, color: 'var(--gov-navy)' }}>
                         {t.ticket_number}
                       </button>
-                    </td>
+                    </div></td>
 
                     {/* Service Area */}
-                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                       <div style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#0D3B6E', fontWeight: 600 }}>
                         {t.service_area_code || 'Unassigned'}
                       </div>
@@ -264,10 +263,10 @@ export default function MyRequests() {
                       {t.service_area_name && (
                         <div style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#6A7280', marginTop: 2, maxWidth: 170, whiteSpace: 'normal' }}>{t.service_area_name}</div>
                       )}
-                    </td>
+                    </div></td>
 
                     {/* Subject */}
-                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', maxWidth: 'clamp(180px, 20vw, 300px)' }}>
+                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', maxWidth: 'clamp(180px, 20vw, 300px)' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                       <div style={{
                         fontSize: 'clamp(10px, 1.8vw, 13px)', fontWeight: 500, color: '#1A2A3A',
                         overflow: 'hidden', display: '-webkit-box',
@@ -285,26 +284,26 @@ export default function MyRequests() {
                           Reason: {t.cancel_reason}
                         </div>
                       )}
-                    </td>
+                    </div></td>
 
                     {/* Category */}
-                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)' }}>
+                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                       <div style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#2A2A2A' }}>{t.category || '—'}</div>
                       {t.sub_category && <div style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#888', marginTop: 'clamp(1px, 0.5vw, 3px)' }}>{t.sub_category}</div>}
                       {t.sub_item && <div style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#aaa', marginTop: 'clamp(1px, 0.5vw, 2px)' }}>{t.sub_item}</div>}
-                    </td>
+                    </div></td>
                     {/* Division / Unit */}
-                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)' }}>
+                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                       <div style={{ fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#2A2A2A', fontWeight: 500 }}>{t.division || '—'}</div>
                       {t.unit && <div style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#888', marginTop: 'clamp(1px, 0.5vw, 3px)' }}>{t.unit}</div>}
-                    </td>
+                    </div></td>
                     {/* Office Location */}
-                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                       {t.office_location ? <span className="submitted-office-location" title={t.office_location} style={{ fontSize: 'clamp(8px, 1.5vw, 11px)', padding: 'clamp(1px, 0.5vw, 3px) clamp(6px, 1.5vw, 10px)', background: '#E8F1FA', color: '#0D3B6E', borderRadius: 3, fontWeight: 500 }}>{t.office_location}</span> : <span style={{ color: '#bbb', fontStyle: 'italic', fontSize: 'clamp(8px, 1.5vw, 11px)' }}>—</span>}
-                    </td>
+                    </div></td>
 
                     {/* Priority */}
-                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                       <span data-priority={t.priority} style={{
                         background: ps.bg, color: ps.color,
                         fontSize: 'clamp(8px, 1.5vw, 11px)', fontWeight: 600,
@@ -312,17 +311,17 @@ export default function MyRequests() {
                       }}>
                         {t.priority}
                       </span>
-                    </td>
+                    </div></td>
 
                     {/* Assigned To */}
-                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#5A6475', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', fontSize: 'clamp(9px, 1.6vw, 12px)', color: '#5A6475', whiteSpace: 'nowrap' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                       {t.assigned_to || (
                         <span style={{ color: '#bbb', fontStyle: 'italic' }}>Unassigned</span>
                       )}
-                    </td>
+                    </div></td>
 
                     {/* Status */}
-                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                       <span style={{
                         background: ss.bg, color: ss.color,
                         fontSize: 'clamp(8px, 1.5vw, 11px)', fontWeight: 500,
@@ -330,12 +329,12 @@ export default function MyRequests() {
                       }}>
                         {t.status}
                       </span>
-                    </td>
+                    </div></td>
 
                     {/* Date */}
-                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#6A7280', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', fontSize: 'clamp(8px, 1.5vw, 11px)', color: '#6A7280', whiteSpace: 'nowrap' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                       {formatDate(t.created_at)}
-                    </td>
+                    </div></td>
 
 
                   </tr>
@@ -344,12 +343,12 @@ export default function MyRequests() {
             </tbody>
           </AppTable>
         </div>
-{filtered.length > 0 && (
-        <Pagination attached page={currentPage} total={filtered.length} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
+{!loading && filtered.length > 0 && (
+        <div data-shimmer-ignore><Pagination attached page={currentPage} total={filtered.length} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} /></div>
       )}
 
       </div>
-      </section>
+      </section></div>
 
       <TicketDetailModal
         ticket={selectedTicket}

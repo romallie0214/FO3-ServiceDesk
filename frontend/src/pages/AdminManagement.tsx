@@ -1,3 +1,4 @@
+import './TicketList.css';
 import toast from 'react-hot-toast';
 import Pagination from '../components/Pagination';
 import { showErrorToast } from '../utils/notifications';
@@ -226,9 +227,6 @@ export default function AdminManagement() {
 
 
 
-  if (loading) return (
-    <div style={{ color: 'var(--gov-navy)', padding: 20 }}>Loading...</div>
-  );
 
   if (loadError) return (
     <div style={{ padding: 20 }}>
@@ -249,13 +247,6 @@ export default function AdminManagement() {
   function TicketTable({
     data, isReassign,
   }: { data: Ticket[]; isReassign: boolean }) {
-    if (data.length === 0) return (
-      <div className="admin-queue-empty" role="status">
-        <CircleCheck size={28} strokeWidth={1.5} aria-hidden="true" />
-        <strong>{isReassign ? 'No active assigned tickets' : 'All tickets are assigned'}</strong>
-        <span>{isReassign ? 'Assigned tickets will appear here when available.' : 'There are no tickets waiting for assignment in this view.'}</span>
-      </div>
-    );
     const totalPages = Math.max(1, Math.ceil(data.length / TICKETS_PER_PAGE));
     const currentPage = Math.min(ticketPage, totalPages);
     const startIndex = (currentPage - 1) * TICKETS_PER_PAGE;
@@ -271,7 +262,7 @@ export default function AdminManagement() {
         borderCollapse: 'collapse',
         minWidth: '600px',
       }}>
-        <thead>
+        <thead className={loading ? "admin-header-loading" : undefined}>
           <tr>
             {['Ticket #', 'Service Area', 'Subject', 'Priority', 'Status',
               isReassign ? 'Assigned To' : '',
@@ -284,34 +275,38 @@ export default function AdminManagement() {
                 borderBottom: '0.5px solid #E5EAF0',
                 background: '#F8FAFC',
               }}>
-                {h}
+                {h}{loading && h === "Action" && <div className="ticket-progress-track admin-progress-track" role="progressbar" aria-label="Loading ticket administration"><span /></div>}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {pageTickets.map(t => (
+          {loading ? <tr><td colSpan={isReassign ? 8 : 7} style={{ height: 180 }}><span className="ticket-loading-status" role="status">Loading tickets...</span></td></tr> : data.length === 0 ? <tr><td colSpan={isReassign ? 8 : 7}>      <div className="admin-queue-empty" role="status">
+        <CircleCheck size={28} strokeWidth={1.5} aria-hidden="true" />
+        <strong>{isReassign ? 'No active assigned tickets' : 'All tickets are assigned'}</strong>
+        <span>{isReassign ? 'Assigned tickets will appear here when available.' : 'There are no tickets waiting for assignment in this view.'}</span>
+      </div></td></tr> : pageTickets.map(t => (
             <tr key={t.id}
               onMouseEnter={e => (e.currentTarget.style.background = '#F5F8FC')}
               onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
             >
-              <td style={{ padding: '7px 10px', fontWeight: 500, color: 'var(--gov-navy)', fontSize: 'var(--text-sm)' }}>
+              <td style={{ padding: '7px 10px', fontWeight: 500, color: 'var(--gov-navy)', fontSize: 'var(--text-sm)' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                 {t.ticket_number}
-              </td>
-              <td style={{ padding: '7px 10px', fontSize: 'var(--text-xs)', color: '#52657A', fontWeight: 600 }}>
+              </div></td>
+              <td style={{ padding: '7px 10px', fontSize: 'var(--text-xs)', color: '#52657A', fontWeight: 600 }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                 {t.service_area_code || 'Unassigned'}
-              </td>
-              <td style={{ padding: '7px 10px', fontSize: 'var(--text-sm)' }}>
+              </div></td>
+              <td style={{ padding: '7px 10px', fontSize: 'var(--text-sm)' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                 {t.subject}
-              </td>
-              <td style={{ padding: '7px 10px' }}>
+              </div></td>
+              <td style={{ padding: '7px 10px' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                 <PriorityBadge priority={t.priority} />
-              </td>
-              <td style={{ padding: '7px 10px' }}>
+              </div></td>
+              <td style={{ padding: '7px 10px' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                 <StatusBadge status={t.status} />
-              </td>
+              </div></td>
               {isReassign && (
-                <td style={{ padding: '7px 10px', fontSize: 'var(--text-xs)', color: '#5A6475' }}>
+                <td style={{ padding: '7px 10px', fontSize: 'var(--text-xs)', color: '#5A6475' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{
                       width: 22, height: 22, borderRadius: '50%',
@@ -323,9 +318,9 @@ export default function AdminManagement() {
                     </div>
                     {t.assigned_to}
                   </div>
-                </td>
+                </div></td>
               )}
-              <td style={{ padding: '7px 10px' }}>
+              <td style={{ padding: '7px 10px' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                 <select
                   value={assignments[t.id] ?? ''}
                   onChange={e => setAssignments(prev => ({
@@ -347,8 +342,8 @@ export default function AdminManagement() {
                     ))
                   }
                 </select>
-              </td>
-              <td style={{ padding: '7px 10px' }}>
+              </div></td>
+              <td style={{ padding: '7px 10px' }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                 <button
                   onClick={() => isReassign
                     ? handleReassign(t.id, t.ticket_number)
@@ -364,13 +359,13 @@ export default function AdminManagement() {
                 >
                   {isReassign ? '↩ Re-assign' : 'Assign'}
                 </button>
-              </td>
+              </div></td>
             </tr>
           ))}
         </tbody>
       </AppTable>
-      {data.length > 0 && (
-        <Pagination attached page={currentPage} total={data.length} pageSize={TICKETS_PER_PAGE} onPageChange={setTicketPage} onPageSizeChange={setTicketPageSize} />
+      {!loading && data.length > 0 && (
+        <div data-shimmer-ignore><Pagination attached page={currentPage} total={data.length} pageSize={TICKETS_PER_PAGE} onPageChange={setTicketPage} onPageSizeChange={setTicketPageSize} /></div>
       )}
       </div>
     );
@@ -389,6 +384,7 @@ export default function AdminManagement() {
         </span>
       </div>
 
+      <div>
       <SummaryCards cards={[
         { label: 'Total Tickets', value: visibleTickets.length, color: '#0D3B6E', background: '#E8F1FA', icon: Tickets },
         { label: 'Unassigned', value: unassigned.length, color: '#CC7700', background: '#FEF3DC', icon: UserRoundSearch },
@@ -407,7 +403,7 @@ export default function AdminManagement() {
           background: '#fff', border: '0.5px solid #D0D9E4',
           borderRadius: 8, overflow: 'hidden',
         }}>
-          <div className="admin-queue-tabs" role="group" aria-label="Ticket assignment queue">
+          <div className="admin-queue-tabs" data-shimmer-ignore role="group" aria-label="Ticket assignment queue">
             <button aria-pressed={activeTab === 'unassigned'} onClick={() => setActiveTab('unassigned')}><UserRoundSearch size={15} />Unassigned<span>{unassigned.length}</span></button>
             <button aria-pressed={activeTab === 'assigned'} onClick={() => setActiveTab('assigned')}><Undo2 size={15} />Reassign<span>{assigned.length}</span></button>
             <button aria-pressed={activeTab === 'workload'} onClick={() => setActiveTab('workload')}><Users size={15} />Staff Workload<span>{assignableStaff.length}</span></button>
@@ -418,9 +414,9 @@ export default function AdminManagement() {
           </div>
 
           {/* Table */}
-          {activeTab === 'workload' ? <section className="admin-workload-panel" aria-label="Staff workload">
+          {activeTab === 'workload' ? <section className="admin-workload-panel" aria-label="Staff workload" aria-busy={loading}>
             <div className="admin-workload-heading"><span>Active tickets in the selected service area</span></div>
-            {assignableStaff.length === 0 ? <p className="admin-workload-empty">No assignable technical staff found.</p> : <div className="admin-workload-list">{assignableStaff.map(staff => {
+            {loading ? <div className="admin-workload-loading"><div className="ticket-progress-track admin-workload-progress" role="progressbar" aria-label="Loading staff workload"><span /></div><span className="ticket-loading-status" role="status">Loading staff workload...</span></div> : assignableStaff.length === 0 ? <div className="admin-queue-empty" role="status"><Users size={28} strokeWidth={1.5} aria-hidden="true" /><strong>No assignable technical staff</strong><span>Staff workload will appear here when technical staff are available in this service area.</span></div> : <div className="admin-workload-list">{assignableStaff.map(staff => {
               const active = visibleTickets.filter(ticket => ticket.assigned_to === staff.full_name && !['Closed','Resolved','Cancelled'].includes(ticket.status)).length;
               const percent = Math.min(100, active / 6 * 100);
               const color = active >= 5 ? '#b94b4b' : active >= 3 ? '#d18b23' : '#36865c';
@@ -437,6 +433,7 @@ export default function AdminManagement() {
       </div>
 
 
+      </div>
     </div>
   );
 }

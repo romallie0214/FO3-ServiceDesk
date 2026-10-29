@@ -152,3 +152,15 @@ html[data-theme=dark] .ticket-benefits-banner .ticket-benefits-action:hover{back
   .ticket-benefits-banner .ticket-benefits-copy{flex:1;max-width:none}
   .ticket-benefits-banner{margin-top:16px}
 }
+
+/* The header itself anchors the progress bar; no extra table row is needed. */
+.ticket-grid thead.ticket-header-loading{position:relative}
+html body .ticket-grid thead .ticket-progress-track{position:absolute;bottom:0;left:0;right:0;height:3px;overflow:hidden;background:#dce8f5;z-index:3;padding:0;margin:0}
+.ticket-progress-track>span{position:absolute;inset:0 auto 0 0;width:35%;background:#397db8;animation:ticket-progress 1.3s ease-in-out infinite}
+html[data-theme=dark] .ticket-progress-track{background:#243b53!important}
+html[data-theme=dark] .ticket-progress-track>span{background:#79b9f4}
+html body .ticket-grid .ticket-loading-space>td{height:180px!important;border:0!important}
+.ticket-loading-status{display:flex;align-items:center;justify-content:center;min-height:180px;width:100%;box-sizing:border-box;padding:20px;color:var(--ui-text,#63758a);font-size:13px;font-weight:400;text-align:center;white-space:normal;opacity:.75}
+@keyframes ticket-progress{from{transform:translateX(-100%)}to{transform:translateX(390%)}}
+@media(prefers-reduced-motion:reduce){.ticket-progress-track>span{animation:none;width:100%;opacity:.6}}
+@media(max-width:640px){html body .ticket-grid thead.ticket-header-loading{display:block;position:relative;width:100%;height:3px;overflow:visible;clip-path:none;white-space:normal}html body .ticket-grid thead.ticket-header-loading th{visibility:hidden;height:0!important;padding:0!important;border:0!important;font-size:0!important}html body .ticket-grid thead .ticket-progress-track{visibility:visible}}

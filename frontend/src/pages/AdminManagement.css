@@ -81,3 +81,13 @@ html[data-theme=dark] body .admin-management-page .admin-queue-empty{background:
 html[data-theme=dark] body .admin-management-page .admin-queue-empty strong{color:#d5dfed!important}
 html[data-theme=dark] body .admin-management-page .admin-queue-empty span{color:#a4b5c9!important;opacity:1}
 html[data-theme=dark] body .admin-management-page .admin-queue-empty>svg{color:#7fc7ac!important}
+
+.admin-ticket-table thead.admin-header-loading{position:relative}
+html body .admin-ticket-table .admin-progress-track{position:absolute;bottom:0;left:0;right:0;height:3px;overflow:hidden;background:#dce8f5;z-index:3;margin:0;padding:0}
+html[data-theme=dark] .admin-ticket-table .admin-progress-track{background:#243b53}
+@media(max-width:640px){html body .admin-ticket-table thead.admin-header-loading{display:block;position:relative;width:100%;height:3px;overflow:visible;clip-path:none;white-space:normal}html body .admin-ticket-table thead.admin-header-loading th{visibility:hidden;height:0!important;padding:0!important;border:0!important;font-size:0!important}html body .admin-ticket-table .admin-progress-track{visibility:visible}}
+/* Keep all administration tabs at the same minimum height when empty/loading. */
+.admin-management-page .admin-queue-empty{min-height:180px;box-sizing:border-box;border-radius:0}
+.admin-workload-loading{position:relative;min-height:180px}
+.admin-workload-progress{position:absolute;top:0;left:0;right:0;height:3px;overflow:hidden;background:#dce8f5}
+html[data-theme=dark] .admin-workload-progress{background:#243b53}

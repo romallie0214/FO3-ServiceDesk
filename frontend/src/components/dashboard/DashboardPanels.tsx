@@ -14,7 +14,7 @@ export function TicketTotals({ tickets, unavailable, serviceArea = 'all' }: { ti
   const counts = tickets.reduce<Record<string, number>>((acc, t) => { acc[t.status] = (acc[t.status] || 0) + 1; return acc; }, {});
   const stats = [{ label: 'Total', icon: Tickets, color: '#123e70', value: tickets.length }, ...TICKET_STATUSES.map(s => ({ ...s, value: counts[s.label] || 0 }))];
   return <section className="desk-totals" aria-label="Ticket totals">{stats.map(s => <Link className="desk-stat" key={s.label} to={'/tickets?' + new URLSearchParams({ ...(s.label !== 'Total' ? { status: s.label } : {}), ...(serviceArea !== 'all' ? { service_area: serviceArea } : {}) }).toString()} aria-label={'View ' + (s.label === 'Total' ? 'all' : s.label) + ' tickets'}>
-    <div className="desk-stat-icon" style={{ color: s.color, backgroundColor: s.color + '14' }}><s.icon size={22} strokeWidth={1.7} aria-hidden="true" /></div><div className="desk-stat-content"><span>{s.label === 'On-Hold' ? 'On hold' : s.label}</span>
+    <div className="desk-stat-icon" data-shimmer-no-children style={{ color: s.color, backgroundColor: s.color + '14' }}><s.icon size={22} strokeWidth={1.7} aria-hidden="true" /></div><div className="desk-stat-content"><span>{s.label === 'On-Hold' ? 'On hold' : s.label}</span>
     <strong>{unavailable ? 'Unavailable' : s.value}</strong></div>
   </Link>)}</section>;
 }

@@ -297,11 +297,6 @@ export default function KnowledgeBaseManagement() {
   const pageStart = (currentPage - 1) * pageSize;
   const paginatedArticles = filtered.slice(pageStart, pageStart + pageSize);
 
-  if (loading) return (
-    <div style={{ color: 'var(--gov-navy)', padding: 'clamp(24px, 4vw, 40px)', textAlign: 'center' }}>
-      Loading articles...
-    </div>
-  );
 
   return (
     <div className="shared-management-page KnowledgeBaseManagement-page">
@@ -364,7 +359,7 @@ export default function KnowledgeBaseManagement() {
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
         }}>
-          <AppTable className="shared-management-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+          <AppTable loading={loading} loadingColumns={7} className="shared-management-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
             <thead>
               <tr>
                 {['Service Area', 'Category', 'Title', 'Description', 'PDF', 'Last Updated', 'Actions'].map(h => (
@@ -400,7 +395,7 @@ export default function KnowledgeBaseManagement() {
                     <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', fontSize: 'var(--text-xs)', color: '#0D3B6E', fontWeight: 600 }}>{a.service_area_code || '—'}</td>
                     {/* Category */}
                     <td style={{ padding: 'clamp(8px, 1.5vw, 12px) clamp(10px, 2vw, 16px)', whiteSpace: 'nowrap' }}>
-                      <span style={{
+                      <span className="kb-management-category-badge" style={{
                         display: 'inline-block',
                         background: cs.bg, color: cs.color,
                         fontSize: 'clamp(8px, 1.5vw, 11px)', fontWeight: 500,

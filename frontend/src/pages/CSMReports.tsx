@@ -205,11 +205,6 @@ export default function CSMReports() {
   const overallOfficer = avg(filtered, 'officer_rating');
   const overallService = avgServiceQuality(filtered);
 
-  if (loading) return (
-    <div style={{ color: 'var(--gov-navy)', padding: 40, textAlign: 'center' }}>
-      Loading CSM reports...
-    </div>
-  );
 
   return (
     <div className="shared-management-page CSMReports-page">
@@ -287,7 +282,7 @@ export default function CSMReports() {
               flex: '0 0 auto',
             }}
           >
-            📄 Export PDF
+            <FileText size={16} aria-hidden="true" /> Export PDF
           </button>
         )}
       </div>
@@ -423,22 +418,13 @@ export default function CSMReports() {
       </div>
 
       {/* CSM TABLE */}
-      {responses.length === 0 ? (
-        <div style={{
-          background: '#fff', border: '0.5px solid #D0D9E4',
-          borderRadius: 8, padding: 40,
-          textAlign: 'center', color: '#888', fontSize: 'var(--text-sm)',
-        }}>
-          No CSM responses yet. They appear here once staff submit the
-          CSM form after a ticket is resolved.
-        </div>
-      ) : (
+      {(
         <div style={{
           background: '#fff', border: '0.5px solid #D0D9E4',
           borderRadius: 8, overflow: 'hidden',
         }}>
           <div style={{ overflowX: 'auto' }}>
-            <AppTable className="shared-management-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <AppTable loading={loading} loadingColumns={9} empty={filtered.length === 0} emptyMessage="No CSM responses match this view." className="shared-management-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   {[

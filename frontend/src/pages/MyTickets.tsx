@@ -73,7 +73,6 @@ export default function MyTickets() {
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setError('');
     api.get('/tickets', {
@@ -85,7 +84,9 @@ export default function MyTickets() {
         setTickets([]);
         setError(err.response?.data?.error || 'Unable to load your assigned tickets. Please try again.');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -124,16 +125,6 @@ export default function MyTickets() {
   const onHold     = tickets.filter(t => t.status === 'On-Hold').length;
   const resolved   = tickets.filter(t => t.status === 'Resolved').length;
 
-  if (loading) return (
-    <div style={{
-      color: 'var(--gov-navy)',
-      padding: 'clamp(24px, 5vw, 40px)',
-      textAlign: 'center',
-      fontSize: 'clamp(11px, 2vw, 13px)',
-    }}>
-      Loading your tickets...
-    </div>
-  );
 
   return (
     <div>
@@ -162,6 +153,7 @@ export default function MyTickets() {
         <button type="button" aria-label="Dismiss assignment note" onClick={() => setShowAssignmentNote(false)}><X size={16} /></button>
       </div>}
 
+      <div>
       <SummaryCards cards={[
         { label: 'Assigned', value: assigned, color: '#CC7700', background: '#FEF3DC', icon: UserCheck },
         { label: 'In Progress', value: inProgress, color: '#5B21B6', background: '#F3EFFF', icon: LoaderCircle },
@@ -169,8 +161,8 @@ export default function MyTickets() {
         { label: 'Resolved', value: resolved, color: '#1B6B3A', background: '#E8F5EE', icon: CircleCheck },
       ]} />
 
-      <section className="ticket-monitor-grid assigned-tickets-grid">
-        <div className="ticket-grid-toolbar">
+      <section className="ticket-monitor-grid assigned-tickets-grid" aria-busy={loading}>
+        <div className="ticket-grid-toolbar" data-shimmer-ignore>
           <label className="ticket-grid-search"><Search size={14} /><input aria-label="Search tickets" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} /></label>
           <details className="ticket-filter-dropdown" onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
             <summary><SlidersHorizontal size={15} />Ticket Filters{[!!filterStatus, !!filterPriority, !!dateFrom, !!dateTo].filter(Boolean).length > 0 && <span className="ticket-filter-count">{[!!filterStatus, !!filterPriority, !!dateFrom, !!dateTo].filter(Boolean).length}</span>}<ChevronDown size={14} /></summary>
@@ -200,7 +192,7 @@ export default function MyTickets() {
           borderCollapse: 'collapse',
           minWidth: '1000px',
         }}>
-          <thead>
+          <thead className={loading ? "monitor-header-loading" : undefined}>
             <tr>
               {['Ticket No.', 'Subject', 'Requestor', 'Division / Unit', 'Office Location', 'Category', 'Priority', 'Status', 'Date Filed'].map(h => (
                 <th key={h} style={{
@@ -212,13 +204,13 @@ export default function MyTickets() {
                   background: 'var(--gov-navy)',
                   whiteSpace: 'nowrap',
                 }}>
-                  {h}
+                  {h}{loading && h === "Date Filed" && <div className="ticket-progress-track monitor-progress-track" role="progressbar" aria-label="Loading assigned tickets"><span /></div>}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {loading ? <tr><td colSpan={9} style={{ height: 180 }}><span className="ticket-loading-status" role="status">Loading assigned tickets...</span></td></tr> : filtered.length === 0 ? (
               <tr>
                 <td colSpan={9} style={{
                   padding: 'clamp(24px, 5vw, 48px)',
@@ -281,7 +273,7 @@ export default function MyTickets() {
                   <td style={{
                     padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px)',
                     whiteSpace: 'nowrap',
-                  }}>
+                  }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                     <button className="ticket-grid-id" aria-label={`View ticket ${t.ticket_number}`} style={{
                       fontSize: 'clamp(8px, 1.5vw, 10px)',
                       fontWeight: 600,
@@ -289,13 +281,13 @@ export default function MyTickets() {
                     }}>
                       {t.ticket_number}
                     </button>
-                  </td>
+                  </div></td>
 
                   {/* Subject */}
                   <td style={{
                     padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px)',
                     maxWidth: 240,
-                  }}>
+                  }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                     <div style={{
                       fontSize: 'clamp(10px, 1.8vw, 12px)',
                       fontWeight: 500,
@@ -307,12 +299,12 @@ export default function MyTickets() {
                     }}>
                       {t.subject}
                     </div>
-                  </td>
+                  </div></td>
 
                   {/* Requestor */}
                   <td style={{
                     padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px)',
-                  }}>
+                  }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                     <div style={{
                       fontSize: 'clamp(8px, 1.5vw, 10px)',
                       color: '#2A2A2A',
@@ -320,12 +312,12 @@ export default function MyTickets() {
                     }}>
                       {t.requestor || '—'}
                     </div>
-                  </td>
+                  </div></td>
 
                   {/* Division / Unit */}
                   <td style={{
                     padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px)',
-                  }}>
+                  }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                     <div style={{
                       fontSize: 'clamp(8px, 1.5vw, 10px)',
                       color: '#2A2A2A',
@@ -341,25 +333,25 @@ export default function MyTickets() {
                         {t.unit}
                       </div>
                     )}
-                  </td>
+                  </div></td>
 
                   {/* Office Location */}
                   <td style={{
                     padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px)',
                     whiteSpace: 'nowrap',
-                  }}>
+                  }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                     <div style={{
                       fontSize: 'clamp(8px, 1.5vw, 10px)',
                       color: '#5A6475',
                     }}>
                       {t.office_location || '—'}
                     </div>
-                  </td>
+                  </div></td>
 
                   {/* Category */}
                   <td style={{
                     padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px)',
-                  }}>
+                  }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                     <div style={{
                       fontSize: 'clamp(8px, 1.5vw, 10px)',
                       color: '#2A2A2A',
@@ -375,13 +367,13 @@ export default function MyTickets() {
                         {t.sub_category}
                       </div>
                     )}
-                  </td>
+                  </div></td>
 
                   {/* Priority */}
                   <td style={{
                     padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px)',
                     whiteSpace: 'nowrap',
-                  }}>
+                  }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                     <span data-priority={t.priority} style={{
                       background: ps.bg,
                       color: ps.color,
@@ -392,13 +384,13 @@ export default function MyTickets() {
                     }}>
                       {t.priority}
                     </span>
-                  </td>
+                  </div></td>
 
                   {/* Status */}
                   <td style={{
                     padding: 'clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px)',
                     whiteSpace: 'nowrap',
-                  }}>
+                  }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                     <span style={{
                       background: ss.bg,
                       color: ss.color,
@@ -409,7 +401,7 @@ export default function MyTickets() {
                     }}>
                       {t.status}
                     </span>
-                  </td>
+                  </div></td>
 
                   {/* Date */}
                   <td style={{
@@ -417,9 +409,9 @@ export default function MyTickets() {
                     fontSize: 'clamp(8px, 1.5vw, 10px)',
                     color: '#6A7280',
                     whiteSpace: 'nowrap',
-                  }}>
+                  }}><div className="ticket-skeleton-cell" data-shimmer-no-children>
                     {formatDate(t.created_at)}
-                  </td>
+                  </div></td>
 
 
                 </tr>
@@ -428,12 +420,12 @@ export default function MyTickets() {
           </tbody>
         </AppTable>
         </div>
-{filtered.length > 0 && (
-        <Pagination attached page={currentPage} total={filtered.length} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
+{!loading && filtered.length > 0 && (
+        <div data-shimmer-ignore><Pagination attached page={currentPage} total={filtered.length} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} /></div>
       )}
 
       </div>
-      </section>
+      </section></div>
 
         <TicketDetailModal
           ticket={selectedTicket}

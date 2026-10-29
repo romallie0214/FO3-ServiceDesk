@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@shimmer-from-structure/react": "^2.4.6",
     "@tailwindcss/vite": "^4.2.4",
     "axios": "^1.15.2",
     "chart.js": "^4.5.1",

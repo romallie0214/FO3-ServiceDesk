@@ -1,10 +1,16 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { Children, cloneElement, isValidElement, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import type { TableHTMLAttributes } from 'react';
 import { MoveHorizontal } from 'lucide-react';
 import './AppTable.css';
 
 /** Every table shares a contained, keyboard-accessible scroll region. */
-export default function AppTable({ className = '', ...props }: TableHTMLAttributes<HTMLTableElement>) {
+interface AppTableProps extends TableHTMLAttributes<HTMLTableElement> { loading?: boolean; loadingColumns?: number; empty?: boolean; emptyMessage?: ReactNode; }
+export default function AppTable({ className = '', children, loading: requestLoading = false, loadingColumns = 1, empty = false, emptyMessage = 'No records found.', ...props }: AppTableProps) {
+  const loading = requestLoading;
+  const content = Children.map(children, child => {
+    if (!isValidElement(child) || child.type !== 'tbody' || (!loading && !empty)) return child;
+    return cloneElement(child as ReactElement<{ children: ReactNode }>, { children: <tr><td colSpan={loadingColumns} className="app-table-state-cell"><span role="status">{loading ? 'Loading records...' : emptyMessage}</span></td></tr> });
+  });
   const viewportRef = useRef<HTMLDivElement>(null);
   const hintId = useId();
   const [overflowing, setOverflowing] = useState(false);
@@ -40,7 +46,7 @@ export default function AppTable({ className = '', ...props }: TableHTMLAttribut
   return <div className="app-table-responsive">
     {overflowing && <div id={hintId} className="app-table-scroll-hint"><MoveHorizontal size={13} aria-hidden="true" /><span>Scroll horizontally to see all columns</span></div>}
     <div ref={viewportRef} className="app-table-viewport" role={overflowing ? 'region' : undefined} aria-label={overflowing ? props['aria-label'] || 'Scrollable data table' : undefined} aria-describedby={overflowing ? hintId : undefined} tabIndex={overflowing ? 0 : undefined}>
-      <table {...props} className={`app-table ${className}`.trim()} />
+      <table {...props} aria-busy={loading || undefined} className={`app-table ${loading ? "app-table-loading" : ""} ${className}`.trim()}>{content}</table>
     </div>
   </div>;
 }

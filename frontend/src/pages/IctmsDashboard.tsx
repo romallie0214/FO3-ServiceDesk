@@ -1,3 +1,4 @@
+import DashboardLoading, { dashboardTemplateTickets } from '../components/dashboard/DashboardLoading';
 import { useEffect, useState, type ComponentProps } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
@@ -43,10 +44,9 @@ export default function IctmsDashboard() {
     finally { setOpening(false); }
   }
   const visibleAreas = areas.filter(area => area.is_active && tickets.some(ticket => Number(ticket.service_area_id) === area.id));
-  const displayed = tickets.filter(ticket => filter === 'all' || String(ticket.service_area_id) === filter);
+  const displayed: StaffTicket[] = loading ? dashboardTemplateTickets : tickets.filter(ticket => filter === 'all' || String(ticket.service_area_id) === filter);
   const active = displayed.filter(ticket => !['Resolved', 'Closed', 'Cancelled'].includes(ticket.status));
-  if (loading) return <p role="status">Loading dashboard...</p>;
-  return <div className="desk-dashboard">
+  return <DashboardLoading loading={loading}><div className="desk-dashboard">
     <header className="desk-dashboard-heading"><div><h1>Dashboard</h1><span>Technical staff ticket overview</span></div><div className="desk-dashboard-actions">
       <select aria-label="Filter tickets by service area" value={filter} onChange={event => setFilter(event.target.value)}><option value="all">All available service areas</option>{visibleAreas.map(area => <option key={area.id} value={area.id}>{area.code} - {area.name}</option>)}</select>
       {canAccess('submit') && <Link className="desk-primary" to="/submit"><Plus size={14} aria-hidden="true" />Submit a ticket</Link>}
@@ -60,5 +60,5 @@ export default function IctmsDashboard() {
       </dl></section>
     </div>
     <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} onResolved={() => setRevision(value => value + 1)} />
-  </div>;
+  </div></DashboardLoading>;
 }

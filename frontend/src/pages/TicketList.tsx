@@ -123,11 +123,6 @@ export default function TicketList() {
   const pageStart = (currentPage - 1) * pageSize;
   const paginatedTickets = filtered.slice(pageStart, pageStart + pageSize);
 
-  if (loading) return (
-    <div style={{ textAlign: 'center', padding: 'clamp(30px, 8vw, 48px)', color: 'var(--gov-navy)', fontSize: 'clamp(11px, 1.9vw, 14px)' }}>
-      Loading tickets...
-    </div>
-  );
 
   return (
     <div className="ticket-list-preview">
@@ -151,8 +146,8 @@ export default function TicketList() {
         <button type="button" className="ticket-benefits-close" aria-label="Dismiss ticket information" onClick={() => setShowTicketBanner(false)}><X size={17} /></button>
       </aside>}
 
-      <section className="ticket-grid" aria-label="Tickets">
-        <div className="ticket-grid-toolbar">
+      <section className="ticket-grid" aria-label="Tickets" aria-busy={loading}>
+        <div className="ticket-grid-toolbar" data-shimmer-ignore>
           <label className="ticket-grid-search"><Search size={14} /><input aria-label="Search tickets" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} /></label>
           <details className="ticket-filter-dropdown" open={showFilters} onToggle={event => setShowFilters(event.currentTarget.open)} onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
             <summary><SlidersHorizontal size={15} />Ticket Filters{[!!statusFilter, !!priorityFilter, serviceAreaFilter !== 'all', !!dateFrom, !!dateTo].filter(Boolean).length > 0 && <span className="ticket-filter-count">{[!!statusFilter, !!priorityFilter, serviceAreaFilter !== 'all', !!dateFrom, !!dateTo].filter(Boolean).length}</span>}<ChevronDown size={14} /></summary>
@@ -169,10 +164,10 @@ export default function TicketList() {
         </div>
         <div className="ticket-grid-scroll">
           <AppTable aria-label="Ticket List and Tracking">
-            <thead><tr>
-              <th>Ticket ID</th><th>Subject</th><th>Priority</th><th>Category</th><th>Requestor</th><th>Status</th><th>Request Date</th>
+            <thead data-shimmer-ignore className={loading ? "ticket-header-loading" : undefined}><tr>
+              <th>Ticket ID</th><th>Subject</th><th>Priority</th><th>Category</th><th>Requestor</th><th>Status</th><th>Request Date{loading && <div className="ticket-progress-track" role="progressbar" aria-label="Loading tickets"><span /></div>}</th>
             </tr></thead>
-            <tbody>{paginatedTickets.length === 0 ? <tr><td colSpan={7} className="ticket-grid-empty"><div className="ticket-empty-state">
+            <tbody>{loading ? <tr className="ticket-loading-space"><td colSpan={7}><span className="ticket-loading-status" role="status">Loading tickets...</span></td></tr> : paginatedTickets.length === 0 ? <tr><td colSpan={7} className="ticket-grid-empty"><div className="ticket-empty-state">
               <span className="ticket-empty-icon"><TicketIcon size={28} strokeWidth={1.5} aria-hidden="true" /></span>
               <strong>{tickets.length === 0 ? 'No tickets yet' : 'No tickets found'}</strong>
               <p>{tickets.length === 0 ? 'Submit a ticket to get help from the service team.' : 'Try adjusting your search or filters.'}</p>
@@ -188,8 +183,8 @@ export default function TicketList() {
             </tr>)}</tbody>
           </AppTable>
         </div>
-{filtered.length > 0 && (
-        <Pagination attached page={currentPage} total={filtered.length} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
+{!loading && filtered.length > 0 && (
+        <div data-shimmer-ignore><Pagination attached page={currentPage} total={filtered.length} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} /></div>
       )}
 
       </section>

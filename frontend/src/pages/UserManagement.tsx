@@ -673,11 +673,6 @@ export default function UserManagement() {
       count: users.filter(u => u.role === role.value && !u.deleted_at).length,
     }));
 
-  if (loading) return (
-    <div style={{ color: 'var(--gov-navy)', padding: 40, textAlign: 'center' }}>
-      Loading users...
-    </div>
-  );
 
   return (
     <div className="user-management-page">
@@ -712,7 +707,7 @@ export default function UserManagement() {
             <span style={{ color: '#62748A', fontSize: 'var(--text-xs)', whiteSpace: 'nowrap' }}>{filteredRecoveryAccounts.length} account{filteredRecoveryAccounts.length !== 1 ? 's' : ''}</span>
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <AppTable className="user-management-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+            <AppTable loading={recoveryLoading} loadingColumns={5} className="user-management-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
               <thead><tr>{['User', 'Employee No.', 'Account status', 'Profile status', 'Recovery actions'].map(h => <th key={h} style={{ textAlign: 'left', padding: '9px 10px', background: 'var(--gov-navy)', color: '#fff', fontSize: 'var(--text-xs)' }}>{h}</th>)}</tr></thead>
               <tbody>{recoveryLoading ? <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center' }}>Loading account recovery records...</td></tr> : filteredRecoveryAccounts.length === 0 ? <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#667' }}>No accounts match the selected filters.</td></tr> : filteredRecoveryAccounts.map(u => <tr key={u.empno} style={{ borderBottom: '1px solid #EEF1F5' }}>
                 <td style={{ padding: '10px' }}><strong>{u.full_name}</strong><br /><span style={{ fontSize: 'var(--text-xs)', color: '#667' }}>{u.email}</span></td>
@@ -732,21 +727,6 @@ export default function UserManagement() {
       )}
 
       {activeTab === 'users' && <>
-      {/* INFO STRIP */}
-      <div style={{
-        background: '#E8F1FA',
-        borderLeft: '3px solid var(--gov-navy)',
-        borderRadius: '0 4px 4px 0',
-        padding: 'clamp(8px, 2vw, 12px)',
-        fontSize: 'clamp(9px, 1.8vw, 12px)',
-        color: 'var(--gov-navy)',
-        marginBottom: 14,
-        lineHeight: 1.5,
-      }}>
-        {isServiceAdmin ? 'Manage users and service roles assigned to your service area.' : 'Manage system users, roles, and access levels.'}
-        {!isServiceAdmin && <> Only <strong>Super Admins</strong> can create, edit, or remove users.</>}
-      </div>
-
       <SummaryCards cards={roleCounts.map(role => {
         const palette = isServiceAdmin ? { bg: role.color + '14', color: role.color } : ROLE_COLORS[role.value];
         const icon = ['super_admin', 'admin'].includes(role.value) ? ShieldCheck : role.value === 'supervisor' ? UserCheck : ['ictms_staff', 'technical_staff'].includes(role.value) ? Wrench : Users;
@@ -858,7 +838,7 @@ export default function UserManagement() {
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
         }}>
-          <AppTable className="user-management-table" style={{
+          <AppTable loading={loading} loadingColumns={9} className="user-management-table" style={{
             width: '100%',
             borderCollapse: 'collapse',
             minWidth: '940px',
@@ -906,7 +886,7 @@ export default function UserManagement() {
                     {/* User avatar + name */}
                     <td style={{ padding: '10px 12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
+                        <div className="user-management-avatar" data-role={u.role} style={{
                           width: 32, height: 32, borderRadius: '50%',
                           background: rc.bg, color: rc.color,
                           display: 'flex', alignItems: 'center',
@@ -920,7 +900,7 @@ export default function UserManagement() {
                             {u.full_name}
                             {u.deleted_at && <span style={{ marginLeft: 6, fontSize: 'var(--text-xs)', color: '#8B1A1A' }}>Deactivated</span>}
                             {isSelf && (
-                              <span style={{
+                              <span className="user-management-self-badge" style={{
                                 fontSize: 'var(--text-xs)', marginLeft: 6,
                                 background: '#E8F1FA', color: '#0D3B6E',
                                 padding: '1px 5px', borderRadius: 3,
@@ -945,7 +925,7 @@ export default function UserManagement() {
 
                     {/* Role badge */}
                     <td style={{ padding: '10px 12px' }}>
-                      <span style={{
+                      <span className="user-management-role-badge" data-role={u.role} style={{
                         background: rc.bg, color: rc.color,
                         fontSize: 'var(--text-xs)', padding: '2px 8px',
                         borderRadius: 3, fontWeight: 500,

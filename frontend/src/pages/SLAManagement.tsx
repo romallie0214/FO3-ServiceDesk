@@ -211,11 +211,6 @@ export default function SLAManagement() {
     r.priority === 'High' && r.impact_level === 'Enterprise-wide'
   );
 
-  if (loading) return (
-    <div style={{ color: 'var(--gov-navy)', padding: 40, textAlign: 'center' }}>
-      Loading SLA rules...
-    </div>
-  );
 
   return (
     <div className="shared-management-page SLAManagement-page">
@@ -298,7 +293,7 @@ export default function SLAManagement() {
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
         }}>
-          <AppTable className="shared-management-table" style={{
+          <AppTable loading={loading} loadingColumns={9} className="shared-management-table" style={{
             width: '100%',
             borderCollapse: 'collapse',
             minWidth: '920px',

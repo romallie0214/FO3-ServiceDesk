@@ -299,9 +299,9 @@ export default function CategoryManagement() {
     const payload = {
       name: form.name,
       description: form.description,
-      sla_rule_id: form.sla_rule_id || null,
+      sla_rule_id: form.sla_rule_id ? Number(form.sla_rule_id) : null,
       default_priority: form.default_priority,
-      ...(modalType === 'category' ? { service_area_id: form.service_area_id || null } : {}),
+      ...(modalType === 'category' ? { service_area_id: form.service_area_id ? Number(form.service_area_id) : null } : {}),
     };
     try {
       if (modalMode === 'create') {
@@ -433,11 +433,6 @@ export default function CategoryManagement() {
     );
   }
 
-  if (loading) return (
-    <div style={{ color: 'var(--gov-navy)', padding: 40, textAlign: 'center' }}>
-      Loading categories...
-    </div>
-  );
 
   return (
     <div className="category-management-page">
@@ -486,7 +481,7 @@ export default function CategoryManagement() {
           </div>
           <button className="category-table-add" disabled={categoryTab === 'subcategory' ? !selectedCat : categoryTab === 'subitem' ? !selectedSub : false} onClick={() => openCreate(categoryTab)}><Plus size={14} />{categoryTab === 'category' ? 'New Category' : categoryTab === 'subcategory' ? 'New Subcategory' : 'New Sub-item'}</button>
         </div>
-        <div className="category-table-scroll"><AppTable className="category-level-table"><thead><tr><th>Name</th>{categoryTab === 'category' && <th>Service Area</th>}<th>Description</th>{categoryTab !== 'subitem' && <th>{categoryTab === 'category' ? 'Subcategories' : 'Sub-items'}</th>}<th>Priority / SLA</th><th>Actions</th></tr></thead>
+        <div className="category-table-scroll"><AppTable empty={(categoryTab === 'category' ? visibleCategories.length === 0 : categoryTab === 'subcategory' ? !selectedCat || subCategories.length === 0 : !selectedSub || subItems.length === 0)} emptyMessage={categoryTab === 'subcategory' && !selectedCat ? 'Select a category to view its subcategories.' : categoryTab === 'subitem' && !selectedSub ? 'Select a category and subcategory to view sub-items.' : 'No records yet. Use the New button to add one.'} loading={loading} loadingColumns={categoryTab === "category" ? 6 : categoryTab === "subcategory" ? 5 : 4} className="category-level-table"><thead><tr><th>Name</th>{categoryTab === 'category' && <th>Service Area</th>}<th>Description</th>{categoryTab !== 'subitem' && <th>{categoryTab === 'category' ? 'Subcategories' : 'Sub-items'}</th>}<th>Priority / SLA</th><th>Actions</th></tr></thead>
           <tbody>{(categoryTab === 'category' ? visibleCategories : categoryTab === 'subcategory' ? (selectedCat ? subCategories : []) : (selectedSub ? subItems : [])).map(item => <tr key={item.id}>
             <td>{categoryTab === 'category' ? <button className="category-drill-link" onClick={() => { setSelectedCat(item as Category); setSelectedSub(null); setCategoryTab('subcategory'); }}>{item.name}</button> : categoryTab === 'subcategory' ? <button className="category-drill-link" onClick={() => { setSelectedSub(item as SubCategory); setCategoryTab('subitem'); }}>{item.name}</button> : item.name}</td>
             {categoryTab === 'category' && <td>{'service_area_code' in item ? item.service_area_code || 'Unassigned' : 'Unassigned'}</td>}
@@ -495,7 +490,7 @@ export default function CategoryManagement() {
             <td><SLABadges item={item} /></td>
             <td><div className="category-table-actions"><button onClick={() => openEdit(categoryTab, item)}><Pencil size={13} />Edit</button><button onClick={() => setDeleteTarget({ type: categoryTab, item })}><Trash2 size={13} />Delete</button></div></td>
           </tr>)}</tbody></AppTable>
-          {(categoryTab === 'category' ? visibleCategories.length === 0 : categoryTab === 'subcategory' ? !selectedCat || subCategories.length === 0 : !selectedSub || subItems.length === 0) && <p className="category-table-empty">{categoryTab === 'subcategory' && !selectedCat ? 'Select a category to view its subcategories.' : categoryTab === 'subitem' && !selectedSub ? 'Select a category and subcategory to view sub-items.' : 'No records yet. Use the New button to add one.'}</p>}
+
         </div>
       </section>
 
@@ -749,7 +744,7 @@ export default function CategoryManagement() {
             alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <div className="category-management-dialog"
+          <div className="category-management-dialog category-delete-dialog"
             onClick={e => e.stopPropagation()}
             style={{
               background: '#fff', width: 380,

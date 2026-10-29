@@ -89,3 +89,10 @@ html[data-theme=dark] .submit-priority,html[data-theme=dark] .submit-dropzone{ba
 html[data-theme=dark] .submit-gate-overlay{background:#101b2720}
 html[data-theme=dark] .submit-gate-icon,html[data-theme=dark] .submit-gate-reference{background:#293f56;color:#c0d7ed}
 @media(max-width:640px){.submit-gate-overlay{padding:40px 12px 20px}.submit-gate-card{padding:24px 20px}}
+
+/* Let the searchable service menu extend below the step heading. */
+.submit-services-selector{overflow:visible}
+.submit-services-selector>.service-area-select{margin-top:12px}
+
+/* Keep requestor information and its guide below the measured top navigation. */
+@media(min-width:761px){.submit-requestor-column{position:sticky;top:calc(var(--desk-header-height,68px) + 12px);align-self:start;max-height:calc(100dvh - var(--desk-header-height,68px) - 24px);overflow-y:auto;overscroll-behavior:contain}}
