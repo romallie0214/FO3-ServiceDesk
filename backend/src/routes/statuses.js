@@ -1,6 +1,13 @@
+const auth = require('../middleware/auth');
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+
+router.use(auth);
+function requireStatusAdmin(req, res, next) {
+  if (req.user.role !== 'super_admin') return res.status(403).json({ error: 'Super Admin access is required.' });
+  next();
+}
 
 // GET all statuses
 router.get('/', async (req, res) => {
@@ -10,12 +17,12 @@ router.get('/', async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // POST create new status
-router.post('/', async (req, res) => {
+router.post('/', requireStatusAdmin, async (req, res) => {
   try {
     const { name, type, color, description } = req.body;
     if (!name?.trim()) {
@@ -38,12 +45,12 @@ router.post('/', async (req, res) => {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'A status with this name already exists.' });
     }
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // PUT update status
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireStatusAdmin, async (req, res) => {
   try {
     const { name, type, color, description } = req.body;
     if (!name?.trim()) {
@@ -58,12 +65,12 @@ router.put('/:id', async (req, res) => {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'A status with this name already exists.' });
     }
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // DELETE status (only non-default)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireStatusAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(
       'SELECT is_default FROM ticket_statuses WHERE id = ?',
@@ -78,7 +85,7 @@ router.delete('/:id', async (req, res) => {
     await db.query('DELETE FROM ticket_statuses WHERE id = ?', [req.params.id]);
     res.json({ message: 'Status deleted.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 

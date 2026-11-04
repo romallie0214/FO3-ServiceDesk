@@ -1,9 +1,12 @@
+const { ticketEmailAttachments } = require('./ticketEmailTemplate');
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
-  secure: false,
+  secure: Number(process.env.SMTP_PORT) === 465,
+  requireTLS: process.env.NODE_ENV === 'production',
+  tls: { minVersion: 'TLSv1.2' },
 
   auth: {
     user: process.env.SMTP_USER,
@@ -24,6 +27,7 @@ async function sendEmail({
     to,
     subject,
     html,
+    attachments: ticketEmailAttachments(html),
   };
 
   // Email threading
@@ -66,6 +70,7 @@ async function sendThreadedTicketEmail({
     subject,
 
     html,
+    attachments: ticketEmailAttachments(html),
 
     inReplyTo: thread.email_message_id,
 

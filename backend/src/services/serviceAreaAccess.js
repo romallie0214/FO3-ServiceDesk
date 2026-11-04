@@ -4,8 +4,9 @@ async function adminAreaIds(user) {
   if (user?.role === 'super_admin') return null;
   if (!user?.id) return [];
   const [rows] = await db.query(
-    `SELECT service_area_id FROM user_service_roles
-     WHERE user_id = ? AND service_role = 'admin' AND is_active = 1`,
+    `SELECT usr.service_area_id FROM user_service_roles usr
+     JOIN service_areas sa ON sa.id = usr.service_area_id
+     WHERE usr.user_id = ? AND usr.service_role = 'admin' AND usr.is_active = 1 AND sa.is_active = 1`,
     [user.id]
   );
   return rows.map(row => Number(row.service_area_id));

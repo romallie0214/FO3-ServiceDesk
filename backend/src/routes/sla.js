@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
     `);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -32,7 +32,7 @@ router.get('/:id', async (req, res) => {
     }
     res.json(rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -78,7 +78,7 @@ router.post('/', auth, requireAreaAdmin, async (req, res) => {
         error: `An SLA rule for ${req.body.priority} / ${req.body.impact_level} already exists.`
       });
     }
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -121,7 +121,7 @@ router.put('/:id', auth, requireAreaAdmin, async (req, res) => {
         error: `An SLA rule for this Priority / Impact combination already exists.`
       });
     }
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -137,7 +137,7 @@ router.patch('/:id/toggle', auth, requireAreaAdmin, async (req, res) => {
     );
     res.json({ message: 'SLA rule status toggled.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -150,7 +150,7 @@ router.delete('/:id', auth, requireAreaAdmin, async (req, res) => {
     await db.query('DELETE FROM sla_rules WHERE id = ?', [req.params.id]);
     res.json({ message: 'SLA rule deleted.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 

@@ -134,7 +134,7 @@ export default function SubmitTicket() {
     setCheckingResolved(true);
     setPendingCheckError(false);
     try {
-      const { data } = await api.get('/tickets/my-pending-csm');
+      const { data } = await api.get('/tickets/my-pending-csm', { params: { empno: user?.empno } });
       setResolvedTicket(data.pending ? data.ticket : null);
     } catch { setPendingCheckError(true); }
     finally { setCheckingResolved(false); }
@@ -310,7 +310,7 @@ async function handleSubmit() {
     return;
   }
   try {
-    const { data } = await api.get('/tickets/my-pending-csm');
+    const { data } = await api.get('/tickets/my-pending-csm', { params: { empno: user?.empno } });
     if (data.pending) { setResolvedTicket(data.ticket); return; }
   } catch {
     setPendingCheckError(true);

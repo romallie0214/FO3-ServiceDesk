@@ -29,7 +29,19 @@ const categoryColors: Record<string, { bg: string; color: string }> = {
 
 // ─── PDF Viewer Modal ─────────────────────────────────────────────────────────
 function PDFViewerModal({ article, onClose }: { article: Article; onClose: () => void }) {
-  const pdfUrl = `/api/knowledge-base/${article.id}/pdf`;
+  const [pdfUrl, setPdfUrl] = useState('');
+  const [pdfError, setPdfError] = useState(false);
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+    setPdfUrl(''); setPdfError(false);
+    api.get(`/knowledge-base/${article.id}/pdf`, { responseType: 'blob' }).then(response => {
+      if (!active) return;
+      objectUrl = URL.createObjectURL(response.data);
+      setPdfUrl(objectUrl);
+    }).catch(() => { if (active) setPdfError(true); });
+    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [article.id]);
   return (
     <div
       onClick={onClose}
@@ -87,7 +99,7 @@ function PDFViewerModal({ article, onClose }: { article: Article; onClose: () =>
             flexShrink: 0,
           }}>
             <a
-              href={pdfUrl}
+              href={pdfUrl || undefined} aria-disabled={!pdfUrl}
               target="_blank"
               rel="noreferrer"
               style={{
@@ -123,11 +135,11 @@ function PDFViewerModal({ article, onClose }: { article: Article; onClose: () =>
           </div>
         </div>
         {/* PDF iframe */}
-        <iframe
+        {pdfError ? <p role="alert" style={{ padding: 24 }}>Unable to load this PDF. Please close the viewer and try again.</p> : !pdfUrl ? <p role="status" style={{ padding: 24 }}>Loading document...</p> : <iframe
           src={pdfUrl}
           style={{ flex: 1, border: 'none', width: '100%' }}
           title={article.title}
-        />
+        />}
       </div>
     </div>
   );

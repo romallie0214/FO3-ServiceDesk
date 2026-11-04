@@ -26,7 +26,7 @@ router.get('/', async (req, res) => {
     `);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -55,7 +55,7 @@ router.get('/:id/tree', async (req, res) => {
     cats[0].sub_categories = subs;
     res.json(cats[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -81,7 +81,7 @@ router.post('/', auth, requireAreaAdmin, async (req, res) => {
     );
     res.status(201).json({ message: 'Category created.', id: result.insertId });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 // PUT update category
@@ -109,7 +109,7 @@ router.put('/:id', auth, requireAreaAdmin, async (req, res) => {
     );
     res.json({ message: 'Category updated.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -122,7 +122,7 @@ router.delete('/:id', auth, requireAreaAdmin, async (req, res) => {
     await db.query('DELETE FROM categories WHERE id=?', [req.params.id]);
     res.json({ message: 'Category deleted.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -149,7 +149,7 @@ router.get('/:categoryId/subs', async (req, res) => {
     `, [req.params.categoryId]);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -177,7 +177,7 @@ router.post('/:categoryId/subs', auth, requireAreaAdmin, async (req, res) => {
     );
     res.status(201).json({ message: 'Sub-category created.', id: result.insertId });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -197,7 +197,7 @@ router.put('/subs/:id', auth, requireAreaAdmin, async (req, res) => {
     );
     res.json({ message: 'Sub-category updated.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -210,7 +210,7 @@ router.delete('/subs/:id', auth, requireAreaAdmin, async (req, res) => {
     await db.query('DELETE FROM sub_categories WHERE id=?', [req.params.id]);
     res.json({ message: 'Sub-category deleted.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -234,7 +234,7 @@ router.get('/subs/:subCategoryId/items', async (req, res) => {
     `, [req.params.subCategoryId]);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -262,7 +262,7 @@ router.post('/subs/:subCategoryId/items', auth, requireAreaAdmin, async (req, re
     );
     res.status(201).json({ message: 'Sub-item created.', id: result.insertId });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -282,7 +282,7 @@ router.put('/items/:id', auth, requireAreaAdmin, async (req, res) => {
     );
     res.json({ message: 'Sub-item updated.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -295,7 +295,7 @@ router.delete('/items/:id', auth, requireAreaAdmin, async (req, res) => {
     await db.query('DELETE FROM sub_items WHERE id=?', [req.params.id]);
     res.json({ message: 'Sub-item deleted.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 

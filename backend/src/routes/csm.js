@@ -1,3 +1,5 @@
+const { ticketScope } = require('../services/ticketAccess');
+const { ticketEmailTemplate, escapeHtml } = require('../services/ticketEmailTemplate');
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
@@ -13,7 +15,8 @@ router.get('/', auth, async (req, res) => {
   try {
     const areaIds = await adminAreaIds(req.user);
     const isServiceAdmin = req.user?.role !== 'super_admin' && areaIds.length > 0;
-    const serviceScope = isServiceAdmin ? `WHERE t.service_area_id IN (${areaIds.map(() => '?').join(',')})` : '';
+    const scope = ticketScope(req.user);
+    const serviceScope = `WHERE ${scope.sql}` + (isServiceAdmin ? ` AND t.service_area_id IN (${areaIds.map(() => '?').join(',')})` : '');
     const [rows] = await db.query(`
       SELECT 
         cr.*,
@@ -34,7 +37,7 @@ router.get('/', auth, async (req, res) => {
       LEFT JOIN service_areas sa ON sa.id = t.service_area_id
       ${serviceScope}
       ORDER BY cr.submitted_at DESC
-    `, isServiceAdmin ? areaIds : []);
+    `, [...scope.params, ...(isServiceAdmin ? areaIds : [])]);
 
     const result = rows.map(r => {
       const officerStr     = r.attending_officer || '';
@@ -51,7 +54,7 @@ router.get('/', auth, async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('CSM GET error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 // ─────────────────────────────────────────────────────────────────────────────
@@ -60,7 +63,7 @@ router.get('/', auth, async (req, res) => {
 router.post('/', auth, async (req, res) => {
   try {
     const {
-      ticket_id, empno, client_name, age, sex,
+      ticket_id, client_name, age, sex,
       contact, office_location, unit_name, division_name,
       sector, client_type, service_mode, attending_officer,
       officer_rating,
@@ -71,6 +74,7 @@ router.post('/', auth, async (req, res) => {
       commendation, suggestion,
     } = req.body;
 
+    const empno = req.user.empno;
     const requiredRatings = [officer_rating, rating_promptness, rating_reliability, rating_access, rating_courtesy, rating_integrity, rating_assurance, rating_outcome];
     if (requiredRatings.some(value => !Number.isInteger(value) || value < 1 || value > 5)) {
       return res.status(400).json({ error: 'Complete all required ratings using a value from 1 to 5.' });
@@ -207,22 +211,8 @@ router.post('/', auth, async (req, res) => {
             </tr>
           `).join('');
 
-        const html = `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-
-            <!-- Header -->
-            <div style="background:#1B6B3A;padding:16px 20px;
-                        border-radius:6px 6px 0 0;">
-              <h2 style="color:#fff;margin:0;font-size:16px;">
-                🎉 Ticket Closed — Thank You for Your Feedback!
-              </h2>
-            </div>
-
-            <!-- Body -->
-            <div style="background:#f9f9f9;padding:20px;border:1px solid #ddd;
-                        border-top:none;border-radius:0 0 6px 6px;">
-
-              <p>Dear <strong>${client_name || 'Requestor'}</strong>,</p>
+        const html = ticketEmailTemplate('Closed', 'Ticket Closed - ' + ticket.ticket_number, '#1B6B3A', `
+<p>Dear <strong>${client_name || 'Requestor'}</strong>,</p>
 
               <p>
                 Thank you for completing the
@@ -237,14 +227,14 @@ router.post('/', auth, async (req, res) => {
                   <td style="padding:6px 10px;background:#eee;font-weight:bold;
                              width:40%;border:1px solid #ddd;">Ticket Number</td>
                   <td style="padding:6px 10px;border:1px solid #ddd;">
-                    ${ticket.ticket_number}
+                    ${escapeHtml(ticket.ticket_number)}
                   </td>
                 </tr>
                 <tr>
                   <td style="padding:6px 10px;background:#eee;font-weight:bold;
                              border:1px solid #ddd;">Subject</td>
                   <td style="padding:6px 10px;border:1px solid #ddd;">
-                    ${ticket.subject}
+                    ${escapeHtml(ticket.subject)}
                   </td>
                 </tr>
                 <tr>
@@ -278,13 +268,13 @@ router.post('/', auth, async (req, res) => {
               ${commendation ? `
                 <p>
                   <strong>Commendation:</strong><br>
-                  <em style="color:#555;">${commendation}</em>
+                  <em style="color:#555;">${escapeHtml(commendation)}</em>
                 </p>
               ` : ''}
               ${suggestion ? `
                 <p>
                   <strong>Suggestion:</strong><br>
-                  <em style="color:#555;">${suggestion}</em>
+                  <em style="color:#555;">${escapeHtml(suggestion)}</em>
                 </p>
               ` : ''}
 
@@ -306,20 +296,11 @@ router.post('/', auth, async (req, res) => {
               <p>Mabuhay at maraming salamat!</p>
               <p><strong>ICTMS — IT Help Desk & Ticketing System</strong><br>
                  Department of Social Welfare and Development</p>
-
-              <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
-              <p style="color:red;font-size:11px;margin:0;">
-                *** This is a system generated message.
-                DO NOT REPLY TO THIS EMAIL. ***
-              </p>
-
-            </div>
-          </div>
-        `;
+        `);
 
         await sendEmail({
           to:      requesterEmail,
-          subject: `[${ticket.ticket_number}] Ticket Closed — Thank You for Your Feedback`,
+          subject: `[${escapeHtml(ticket.ticket_number)}] Ticket Closed — Thank You for Your Feedback`,
           html,
           ...(thread && {
             inReplyTo:  thread.email_message_id,
@@ -334,7 +315,7 @@ router.post('/', auth, async (req, res) => {
 
   } catch (err) {
     console.error('CSM POST error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 

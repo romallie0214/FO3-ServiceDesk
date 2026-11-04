@@ -13,7 +13,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import * as XLSX from 'xlsx';
+import { downloadExcelReport } from '../utils/exportExcel';
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -150,7 +150,7 @@ function firstDayOfMonth() {
 // ─────────────────────────────────────────────────────────────────────────────
 // EXCEL EXPORT
 // ─────────────────────────────────────────────────────────────────────────────
-function exportToExcel(
+async function exportToExcel(
   tickets: ReportTicket[],
   dateFrom: string,
   dateTo: string,
@@ -192,26 +192,9 @@ function exportToExcel(
     };
   });
 
-  const ws = XLSX.utils.json_to_sheet(rows);
-
-  // Column widths
-  ws['!cols'] = [
-    { wch: 5  }, { wch: 16 }, { wch: 35 }, { wch: 18 },
-    { wch: 18 }, { wch: 18 }, { wch: 25 }, { wch: 25 },
-    { wch: 20 }, { wch: 20 }, { wch: 10 }, { wch: 12 },
-    { wch: 25 }, { wch: 20 }, { wch: 12 }, { wch: 16 },
-    { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 20 },
-    { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 16 },
-    { wch: 14 }, { wch: 16 }, { wch: 14 },
-  ];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Ticket Report');
-
+  const widths = [5,16,35,18,18,18,25,25,20,20,10,12,25,20,12,16,16,18,18,20,20,20,14,16,14,16,14];
   const staffSuffix = staffFilter ? `_${staffFilter.replace(/\s+/g, '_')}` : '';
-  const fileName    = `ICTMS_Ticket_Report_${dateFrom}_to_${dateTo}${staffSuffix}.xlsx`;
-
-  XLSX.writeFile(wb, fileName);
+  await downloadExcelReport(rows, widths, `ICTMS_Ticket_Report_${dateFrom}_to_${dateTo}${staffSuffix}.xlsx`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -259,6 +242,14 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
   const [staffList, setStaffList]       = useState<string[]>([]);
   const [reportData, setReportData]     = useState<ReportTicket[]>([]);
   const [reportLoading, setReportLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  async function exportReport() {
+    if (exporting) return;
+    setExporting(true);
+    try { await exportToExcel(reportData, dateFrom, dateTo, staffFilter); }
+    catch { showErrorToast('Unable to export the report. Please try again.'); }
+    finally { setExporting(false); }
+  }
   const [reportGenerated, setReportGenerated] = useState(false);
 
   // ── Fetch live monitoring data ─────────────────────────────────────────────
@@ -803,7 +794,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
 
               {reportGenerated && reportData.length > 0 && (
                 <button
-                  onClick={() => exportToExcel(reportData, dateFrom, dateTo, staffFilter)}
+                  disabled={exporting} onClick={() => void exportReport()}
                   style={{
                     padding: '8px 20px', fontSize: 'var(--text-sm)',
                     background: '#1B6B3A', color: '#fff',
@@ -845,7 +836,7 @@ export default function TicketMonitoring({ publicMode = false }: { publicMode?: 
                   )}
                 </div>
                 <button
-                  onClick={() => exportToExcel(reportData, dateFrom, dateTo, staffFilter)}
+                  disabled={exporting} onClick={() => void exportReport()}
                   style={{
                     padding: '5px 14px', fontSize: 'var(--text-xs)',
                     background: '#1B6B3A', color: '#fff',
