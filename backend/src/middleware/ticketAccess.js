@@ -14,6 +14,7 @@ module.exports = function requireTicket(action = 'read', source = 'params', fiel
       if (!allowed) return res.status(403).json({ error: 'You do not have access to this ticket.' });
       if (action !== 'read' && ['Closed','Cancelled'].includes(rows[0].status)) return res.status(409).json({ error: 'Closed or cancelled tickets cannot be modified.' });
       req.ticket = rows[0];
+      req.ticketPermissions = permissions;
       req.body ||= {};
       // Acting identities are server-derived. Co-assignee target identity is handled by its route.
       if (['work','cancel','comment'].includes(action)) req.body.empno = req.user.empno;

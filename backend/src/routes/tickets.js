@@ -394,7 +394,7 @@ router.get('/:id', authMiddleware, requireTicket('read'), async (req, res) => {
       WHERE t.id = ?
     `, [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Ticket not found' });
-    res.json(rows[0]);
+    res.json({ ...rows[0], permissions: req.ticketPermissions });
   } catch (err) {
     console.error('GET ticket error:', err.message);
     res.status(500).json({ error: 'Internal server error.' });

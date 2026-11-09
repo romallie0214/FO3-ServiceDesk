@@ -1,3 +1,4 @@
+import type { Ticket } from '../components/TicketDetailModal';
 import Pagination from '../components/Pagination';
 import AppTable from '../components/AppTable';
 import './TicketList.css';
@@ -12,25 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import TicketDetailModal from '../components/TicketDetailModal';
 
 
-interface Ticket {
-  id: number;
-  ticket_number: string;
-  subject: string;
-  status: string;
-  priority: string;
-  category: string;
-  sub_category: string | null;
-  sub_item: string | null;
-  assigned_to: string | null;
-  created_at: string;
-  cancel_reason: string | null;
-  division:      string | null;
-  unit:          string | null;
-  office_location: string | null;
-  service_area_id: number | null;
-  service_area_code: string | null;
-  service_area_name: string | null;
-}
+
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   'Open':        { bg: '#E8F1FA', color: '#0D3B6E' },

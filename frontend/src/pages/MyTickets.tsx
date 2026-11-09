@@ -1,3 +1,4 @@
+import type { Ticket } from '../components/TicketDetailModal';
 import Pagination from '../components/Pagination';
 import AppTable from '../components/AppTable';
 import './TicketList.css';
@@ -11,20 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import TicketDetailModal from '../components/TicketDetailModal';
 
 
-interface Ticket {
-  id: number;
-  ticket_number: string;
-  subject: string;
-  status: string;
-  priority: string;
-  category: string;
-  sub_category: string | null;
-  requestor: string;
-  division: string;
-  unit: string | null;
-  office_location: string | null;
-  created_at: string;
-}
+
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
