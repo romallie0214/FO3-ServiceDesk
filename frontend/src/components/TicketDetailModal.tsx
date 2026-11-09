@@ -8,7 +8,8 @@ import { useAuth } from '../context/AuthContext';
 import CSMModal from './CSMModal';
 
 
-interface Ticket {
+export interface Ticket {
+  permissions?: { read: boolean; work: boolean; manage: boolean; owner: boolean };
   id: number;
   ticket_number: string;
   subject: string;
@@ -239,7 +240,19 @@ function OnHoldReasonBox({
   const { user } = useAuth();
   const [assignedName, setAssignedName] = useState<string | null>(null);
   const assignmentChanged = useRef(false);
-  const ticket = ticketProp && assignedName !== null ? { ...ticketProp, assigned_to: assignedName } : ticketProp;
+  const [loadedTicket, setLoadedTicket] = useState<Ticket | null>(null);
+  const currentTicket = loadedTicket?.id === ticketProp?.id ? loadedTicket : ticketProp;
+  const ticket = currentTicket && assignedName !== null ? { ...currentTicket, assigned_to: assignedName } : currentTicket;
+  useEffect(() => {
+    let active = true;
+    setLoadedTicket(null);
+    if (ticketProp?.id) api.get(`/tickets/${ticketProp.id}`).then(response => {
+      if (active) setLoadedTicket(response.data);
+    }).catch(() => {
+      if (active) showErrorToast('Unable to load current ticket details. Close and reopen this ticket to retry.');
+    });
+    return () => { active = false; };
+  }, [ticketProp?.id]);
   useEffect(() => { setAssignedName(null); assignmentChanged.current = false; }, [ticketProp?.id]);
   function onClose() {
     if (assignmentChanged.current) { assignmentChanged.current = false; onResolved(); }
@@ -281,18 +294,15 @@ function OnHoldReasonBox({
 
   // Role checks
   const isRequestorView =
-    forceRequestorView || user?.role === 'dswd_staff';
+    forceRequestorView || (user?.role === 'dswd_staff' && !ticket?.permissions?.work);
 
   const isDswdStaff = isRequestorView;
   const isTicketRequestor = Boolean(
     ticket?.empno && user?.empno && String(ticket.empno) === String(user.empno)
   );
 
-  const isIctmsOrAdmin =
-    !isRequestorView &&
-    (user?.role === 'ictms_staff' || user?.role === 'super_admin');
-  const isServiceAdmin = user?.role !== 'super_admin' && (user?.area_admin_service_ids?.length ?? 0) > 0;
-  const canAssignTickets = isIctmsOrAdmin || isServiceAdmin;
+  const canWorkTicket = !forceRequestorView && Boolean(ticket?.permissions?.work);
+  const canAssignTickets = !forceRequestorView && Boolean(ticket?.permissions?.manage);
 
   const isTerminal =
     ticket?.status === 'Closed' || ticket?.status === 'Cancelled';
@@ -340,11 +350,11 @@ function OnHoldReasonBox({
       if (canAssignTickets) {
         fetchIctmsStaff();
       }
-      if (isIctmsOrAdmin) {
+      if (canWorkTicket) {
         fetchCategories();
       }
     }
-  }, [ticket?.id, ticket?.service_area_id, canAssignTickets, isIctmsOrAdmin]);
+  }, [ticket?.id, ticket?.service_area_id, canAssignTickets, canWorkTicket]);
 
   // Show the current assignee when the staff options finish loading.
   useEffect(() => {
@@ -1270,7 +1280,7 @@ function OnHoldReasonBox({
             )}
 
             {/* ── ICTMS STATUS UPDATE ── */}
-            {isIctmsOrAdmin && !isTerminal && !showCancelReason &&
+            {canWorkTicket && !isTerminal && !showCancelReason &&
               getAvailableStatuses().length > 0 && (
               <div className="ticket-sheet-status-control">
                 <div className="ticket-sheet-status-heading"><label htmlFor="ticket-status-change"><CircleDot size={14} />Change Status</label><StatusBadge status={ticket.status} /></div>
@@ -1398,7 +1408,7 @@ function OnHoldReasonBox({
           )}
 
             {/* ── ICTMS RECLASSIFY ── */}
-            {isIctmsOrAdmin && !isTerminal && ticket.status !== 'Resolved' && (
+            {canWorkTicket && !isTerminal && ticket.status !== 'Resolved' && (
               <div style={{ marginBottom: 12 }}>
                 <button className="ticket-sheet-reclassify-trigger" aria-expanded={showReclassify} aria-controls="ticket-reclassify-pane" onClick={() => setShowReclassify(value => !value)}><Shuffle size={14} /> Reclassify Ticket</button>
               </div>

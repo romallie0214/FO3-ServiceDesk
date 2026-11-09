@@ -1,3 +1,4 @@
+import type { Ticket } from '../components/TicketDetailModal';
 import ticketBannerImage from '../assets/banner.png';
 import Pagination from '../components/Pagination';
 import AppTable from '../components/AppTable';
@@ -13,23 +14,7 @@ import TicketDetailModal from '../components/TicketDetailModal';
 
 
 
-interface Ticket {
-  id: number;
-  ticket_number: string;
-  subject: string;
-  description: string;
-  status: string;
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
-  category: string;
-  requestor: string;
-  division: string;
-  assigned_to: string | null;
-  office_location: string | null;
-  created_at: string;
-  service_area_id?: number | null;
-  service_area_code?: string | null;
-  service_area_name?: string | null;
-}
+
 interface ServiceArea { id: number; code: string; name: string; is_active: number; }
 
 function PriorityBadge({ priority }: { priority: Ticket['priority'] }) {
