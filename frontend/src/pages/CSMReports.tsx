@@ -1,7 +1,10 @@
+import CSMQualityChart from '../components/CSMQualityChart';
+import CSMReportDetails from '../components/CSMReportDetails';
+import '../styles/csm-report-tabs.css';
 import Pagination from '../components/Pagination';
 import AppTable from '../components/AppTable';
 import SummaryCards from '../components/dashboard/SummaryCards';
-import { Pencil, Trash2, Plus, Save, Download, Eye, FileText, X, Search, SlidersHorizontal, ChevronDown, ClipboardList, Star, BadgeCheck, Smile, UserRound } from 'lucide-react';
+import { Pencil, Trash2, Plus, Save, Download, Eye, FileText, X, Search, SlidersHorizontal, ChevronDown, ClipboardList, Star, BadgeCheck, Smile, UserRound, Users, ShieldCheck } from 'lucide-react';
 import '../styles/management-ui.css';
 
 import { useEffect, useRef, useState } from 'react';
@@ -136,6 +139,7 @@ export function staffInAttending(attendingOfficer: string, fullName: string): bo
 export default function CSMReports() {
   const { user } = useAuth();                        // ✅ add this
   const isServiceAdmin = user?.role !== 'super_admin' && (user?.area_admin_service_ids?.length ?? 0) > 0;
+  const [reportTab, setReportTab] = useState('summary');
   const [responses, setResponses] = useState<CSMResponse[]>([]);
   const [loading, setLoading]     = useState(true);
   const [selected, setSelected]   = useState<CSMResponse | null>(null);
@@ -287,6 +291,17 @@ export default function CSMReports() {
         )}
       </div>
 
+      <div className="csm-report-tabs" role="tablist" aria-label="CSM report sections">
+        {[["summary", "CSM Summary"], ["quality", "A. Service Quality"], ["demographics", "B. Demographic Profile"], ["charter", "C. Citizen's Charter Results"]].map(([id, label]) => (
+          <button key={id} id={`csm-tab-${id}`} role="tab" aria-selected={reportTab === id} aria-controls="csm-report-panel" tabIndex={reportTab === id ? 0 : -1} onClick={() => setReportTab(id)} onKeyDown={event => {
+            const ids = ['summary', 'quality', 'demographics', 'charter'];
+            const next = event.key === 'ArrowRight' ? (ids.indexOf(id) + 1) % 4 : event.key === 'ArrowLeft' ? (ids.indexOf(id) + 3) % 4 : event.key === 'Home' ? 0 : event.key === 'End' ? 3 : -1;
+            if (next >= 0) { event.preventDefault(); setReportTab(ids[next]); document.getElementById(`csm-tab-${ids[next]}`)?.focus(); }
+          }}>{id === 'summary' ? <ClipboardList size={15} aria-hidden="true" /> : id === 'quality' ? <BadgeCheck size={15} aria-hidden="true" /> : id === 'demographics' ? <Users size={15} aria-hidden="true" /> : <ShieldCheck size={15} aria-hidden="true" />}{label}{id === 'summary' && <span>{filtered.length}</span>}</button>
+        ))}
+      </div>
+      <div id="csm-report-panel" role="tabpanel" aria-labelledby={`csm-tab-${reportTab}`} tabIndex={0}>
+      {reportTab === 'summary' && <>
       <SummaryCards cards={[
         { label: user?.role === 'ictms_staff' ? 'My CSM Responses' : 'Total CSM Responses', value: filtered.length, description: user?.role === 'ictms_staff' ? 'From your resolved tickets' : 'Submitted forms', color: '#0D3B6E', background: '#E8F1FA', icon: ClipboardList },
         { label: 'Avg Officer Rating', value: overallOfficer, description: 'Out of 5.00', color: '#CC7700', background: '#FEF3DC', icon: Star },
@@ -294,113 +309,12 @@ export default function CSMReports() {
         { label: 'Highly Satisfied', value: filtered.filter(response => response.officer_rating >= 4).length, description: 'Rating 4 or 5', color: '#6D4BB2', background: '#F0EAFC', icon: Smile },
       ]} />
 
-      {/* DIMENSION AVERAGES BAR */}
-      <div style={{
-        background: '#fff',
-        border: '0.5px solid #D0D9E4',
-        borderRadius: 8,
-        padding: 'clamp(12px, 3vw, 16px)',
-        marginBottom: 14,
-      }}>
-        <div style={{
-          fontSize: 'clamp(9px, 1.8vw, 11px)',
-          fontWeight: 500,
-          color: 'var(--gov-navy)',
-          textTransform: 'uppercase',
-          letterSpacing: 0.5,
-          marginBottom: 14,
-        }}>
-          8 Service Quality Dimensions — Average Scores
-        </div>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: 'clamp(10px, 2vw, 14px)',
-        }}>
-        {DIMENSIONS.map(d => {
-          if (d.disabled) {
-            return (
-              <div key={d.key} style={{ opacity: 0.5 }}>
-                <p style={{
-                  fontSize: 'clamp(8px, 1.5vw, 11px)',
-                  color: '#888',
-                  marginBottom: 4,
-                }}>
-                  {d.label}
-                  <span style={{
-                    marginLeft: 6,
-                    fontSize: 'clamp(7px, 1.2vw, 10px)',
-                    background: '#F0F0F0',
-                    color: '#666',
-                    padding: '2px 6px',
-                    borderRadius: 3,
-                    fontWeight: 500,
-                  }}>
-                    N/A
-                  </span>
-                </p>
-                <div style={{
-                  padding: '6px 8px',
-                  background: '#F5F5F5',
-                  borderRadius: 4,
-                  textAlign: 'center',
-                  fontSize: 'clamp(8px, 1.5vw, 11px)',
-                  color: '#999',
-                }}>
-                  Not applicable
-                </div>
-              </div>
-            );
-          }
+      <CSMQualityChart officerRatings={filtered.map(response => Number(response.officer_rating))} loading={loading} scores={DIMENSIONS.map(dimension => {
+        const values = filtered.map(response => Number(response[dimension.key as keyof CSMResponse])).filter(value => Number.isInteger(value) && value >= 1 && value <= 5);
+        return { label: dimension.label, score: dimension.disabled || !values.length ? null : values.reduce((sum, value) => sum + value, 0) / values.length, count: dimension.disabled ? 0 : values.length };
+      })} />
 
-          const score = Number(avg(filtered, d.key as keyof CSMResponse));
-          const pct = (score / 5) * 100;
-          const color = score >= 4 ? 'var(--gov-green)'
-            : score >= 3 ? 'var(--gov-amber)'
-            : '#CC7700';
-
-          return (
-            <div key={d.key}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: 4,
-                gap: '8px',
-              }}>
-                <span style={{
-                  fontSize: 'clamp(8px, 1.5vw, 11px)',
-                  color: '#3A3A3A',
-                }}>
-                  {d.label}
-                </span>
-                <span style={{
-                  fontSize: 'clamp(8px, 1.5vw, 11px)',
-                  fontWeight: 500,
-                  color,
-                  whiteSpace: 'nowrap',
-                }}>
-                  {score.toFixed(2)}
-                </span>
-              </div>
-              <div style={{
-                height: 6,
-                borderRadius: 3,
-                background: '#E8ECF0',
-                overflow: 'hidden',
-              }}>
-                <div style={{
-                  height: '100%',
-                  borderRadius: 3,
-                  width: `${pct}%`,
-                  background: color,
-                  transition: 'width 0.4s',
-                }} />
-              </div>
-            </div>
-          );
-        })}
-        </div>
-      </div>
+      </>}
 
       <div className="sla-filter-toolbar kb-management-toolbar">
         <label className="kb-management-search"><Search size={14} /><input aria-label="Search CSM reports" placeholder="Search ticket, officer, division..." value={search} onChange={event => setSearch(event.target.value)} /></label>
@@ -418,7 +332,7 @@ export default function CSMReports() {
       </div>
 
       {/* CSM TABLE */}
-      {(
+      {reportTab === 'summary' && (
         <div style={{
           background: '#fff', border: '0.5px solid #D0D9E4',
           borderRadius: 8, overflow: 'hidden',
@@ -558,6 +472,8 @@ export default function CSMReports() {
         </div>
       )}
 
+      {reportTab !== 'summary' && <CSMReportDetails tab={reportTab} responses={filtered} loading={loading} />}
+      </div>
       {/* DETAIL MODAL */}
 
       {selected && (

@@ -94,7 +94,7 @@ export default function CSMModal({
     unit_name:       '',
     division_name:   '',
     // Service
-    sector:          'Government',
+    sector:          '',
     client_type:     'Internal (DSWD Employee)',
     service_mode:    'Ticket System',
     attending_officer: assignedTo ?? '',
@@ -380,11 +380,14 @@ export default function CSMModal({
                 </div>
               </div>
 
-              {/* Sector + Client Type — fixed, read-only */}
+              {/* Selectable sector + read-only client type — fixed, read-only */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
-                  <label style={labelStyle}>Sector</label>
-                  <input readOnly style={readOnlyStyle} value={form.sector} />
+                  <label htmlFor="csm-client-sector" style={labelStyle}>Client Sector (Sektor)</label>
+                  <select id="csm-client-sector" style={inputStyle} value={form.sector} onChange={event => set('sector', event.target.value)}>
+                    <option value="">Did not specify / Prefer not to say</option>
+                    {['Person with Disability', 'Senior Citizen', 'Indigenous People', 'Solo Parent', 'Children and Youth', 'Women', 'Others'].map(sector => <option key={sector} value={sector}>{sector}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label style={labelStyle}>Type of Client (Uri ng Kliyente)</label>
