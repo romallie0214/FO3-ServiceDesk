@@ -26,7 +26,7 @@ router.get('/', auth, async (req, res) => {
       GROUP BY sa.id ORDER BY sa.name
     `);
     res.json(areas);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { res.status(500).json({ error: 'Internal server error.' }); }
 });
 
 router.get('/:id/staff', auth, async (req, res) => {
@@ -39,7 +39,7 @@ router.get('/:id/staff', auth, async (req, res) => {
       ORDER BY usr.service_role, u.full_name
     `, [req.params.id]);
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { res.status(500).json({ error: 'Internal server error.' }); }
 });
 
 router.post('/', auth, (req, res, next) => {
@@ -51,7 +51,7 @@ router.post('/', auth, (req, res, next) => {
     if (!code?.trim() || !name?.trim()) return res.status(400).json({ error: 'Code and name are required.' });
     const [result] = await db.query('INSERT INTO service_areas (code, name, division_code, division, unit_code, unit, description, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [code.trim().toUpperCase(), name.trim(), division_code || null, division || null, unit_code || null, unit || null, description, Boolean(is_active)]);
     res.status(201).json({ id: result.insertId, message: 'Service area created.' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { res.status(500).json({ error: 'Internal server error.' }); }
 });
 
 router.put('/:id', auth, (req, res, next) => {
@@ -63,7 +63,7 @@ router.put('/:id', auth, (req, res, next) => {
     if (!code?.trim() || !name?.trim()) return res.status(400).json({ error: 'Code and name are required.' });
     await db.query('UPDATE service_areas SET code=?, name=?, division_code=?, division=?, unit_code=?, unit=?, description=?, is_active=? WHERE id=?', [code.trim().toUpperCase(), name.trim(), division_code || null, division || null, unit_code || null, unit || null, description, Boolean(is_active), req.params.id]);
     res.json({ message: 'Service area updated.' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { res.status(500).json({ error: 'Internal server error.' }); }
 });
 
 router.put('/:id/staff/:userId', auth, async (req, res) => {
@@ -75,7 +75,7 @@ router.put('/:id/staff/:userId', auth, async (req, res) => {
     await db.query(`INSERT INTO user_service_roles (service_area_id, user_id, service_role, is_active) VALUES (?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE service_role=VALUES(service_role), is_active=VALUES(is_active)`, [req.params.id, req.params.userId, service_role, Boolean(is_active)]);
     res.json({ message: 'Service role saved.' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { res.status(500).json({ error: 'Internal server error.' }); }
 });
 
 router.delete('/:id/staff/:userId', auth, async (req, res) => {
@@ -86,7 +86,7 @@ router.delete('/:id/staff/:userId', auth, async (req, res) => {
     await db.query('DELETE FROM user_service_roles WHERE service_area_id=? AND user_id=?', [req.params.id, req.params.userId]);
     res.json({ message: 'Service role removed.' });
   }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch (err) { res.status(500).json({ error: 'Internal server error.' }); }
 });
 
 module.exports = router;

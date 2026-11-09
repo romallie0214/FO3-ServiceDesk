@@ -1,9 +1,11 @@
+const auth = require('../middleware/auth');
+const requireTicket = require('../middleware/ticketAccess');
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
 // GET all comments for a ticket
-router.get('/:ticketId', async (req, res) => {
+router.get('/:ticketId', auth, requireTicket('read', 'params', 'ticketId'), async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT 
@@ -23,13 +25,14 @@ router.get('/:ticketId', async (req, res) => {
     res.json(rows);
   } catch (err) {
     //console.error('Comment GET error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 // POST add a comment to a ticket
-router.post('/', async (req, res) => {
+router.post('/', auth, requireTicket('comment', 'body', 'ticket_id'), async (req, res) => {
   try {
-    const { ticket_id, empno, content } = req.body;
+    const { ticket_id, content } = req.body;
+    const empno = req.user.empno;
 
     if (!empno)         return res.status(400).json({ error: 'empno is required' });
     if (!content?.trim()) return res.status(400).json({ error: 'content is required' });
@@ -41,7 +44,7 @@ router.post('/', async (req, res) => {
     res.status(201).json({ message: 'Comment posted.' });
   } catch (err) {
     console.error('Comment POST error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 

@@ -1,0 +1,62 @@
+.desk-shell{min-height:100vh;background:#f5f7fb;color:#12365d;display:flex}.desk-sidebar{width:188px;flex-shrink:0;background:#fff;border-right:1px solid #e3e9f2;height:100vh;position:sticky;top:0;overflow-y:auto;display:flex;flex-direction:column;padding:12px 7px}.desk-sidebar nav{flex:1}.desk-nav-group{margin-bottom:17px}.desk-nav-group h2{font-size:10px;text-transform:uppercase;letter-spacing:.07em;font-weight:500;padding:0 8px;margin:0 0 7px;color:#4c6687}.desk-nav-link{display:flex;align-items:center;gap:10px;min-height:31px;padding:7px 9px;margin-bottom:2px;border-radius:5px;text-decoration:none;color:#25476d;font-size:12px;line-height:1.4}.desk-nav-link:hover{background:#f1f5fa}.desk-nav-link.is-active{background:#e7eef7;color:#104477;font-weight:600}.desk-nav-icon{width:14px;text-align:center;font-size:15px;line-height:1}.desk-main{padding:20px;min-width:0;flex:1}.desk-account{border-top:1px solid #e3e9f2;padding:12px 8px;font-size:12px;overflow-wrap:anywhere}.desk-account strong,.desk-account small{display:block}.desk-account small{color:#62748a;margin-top:3px}.desk-account button,.desk-mobile-bar button{background:white;border:1px solid #d4deeb;border-radius:4px;color:#12365d;padding:5px 9px;margin-top:8px;cursor:pointer;font:inherit;font-size:12px}.desk-mobile-bar{display:none}.desk-sidebar a:focus-visible,.desk-sidebar button:focus-visible{outline:2px solid #14518d;outline-offset:1px}@media(max-width:700px){.desk-shell{display:block}.desk-mobile-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:white;border-bottom:1px solid #e3e9f2}.desk-mobile-bar button{margin:0}.desk-sidebar{display:none;height:auto;width:100%;position:static;border-bottom:1px solid #e3e9f2}.desk-sidebar.is-open{display:flex}.desk-main{padding:16px}}
+
+.desk-nav-icon{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}.desk-mobile-bar button{display:inline-flex;align-items:center;gap:6px}
+
+/* Keep navigation below the header, including when the header wraps. */
+.desk-shell{min-height:calc(100dvh - var(--desk-header-height, 68px))}
+.desk-sidebar{top:var(--desk-header-height, 68px);height:calc(100dvh - var(--desk-header-height, 68px));align-self:flex-start;overscroll-behavior:contain}
+@media(max-width:700px){.desk-sidebar{position:static;height:auto;max-height:calc(100dvh - var(--desk-header-height, 68px) - 50px)}}
+
+/* Navigation labels stay plain when hovered or focused. */
+.desk-nav-link:hover,.desk-nav-link:focus,.desk-nav-link:active{text-decoration:none}
+
+.desk-sheet-backdrop,.desk-sheet-heading{display:none}
+@media(max-width:700px){
+  .desk-sheet-backdrop{display:block;position:fixed;inset:0;z-index:199;background:#10243e55;backdrop-filter:blur(3px);opacity:0;visibility:hidden;transition:opacity 200ms ease,visibility 200ms}
+  .desk-sheet-backdrop.is-open{opacity:1;visibility:visible}
+  .desk-sidebar{display:flex;position:fixed;inset:0 auto 0 0;top:0;z-index:200;width:min(300px,85vw);height:100dvh;max-height:100dvh;padding:12px 8px;transform:translateX(-100%);visibility:hidden;transition:transform 220ms ease,visibility 220ms;box-shadow:8px 0 30px #10243e20}
+  .desk-sidebar.is-open{transform:translateX(0);visibility:visible}
+  .desk-sheet-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 6px 12px;margin-bottom:12px;border-bottom:1px solid #e3e9f2}
+  .desk-sheet-heading strong{font-size:14px}
+  .desk-sheet-heading button{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border:0;border-radius:5px;background:transparent;color:#12365d;cursor:pointer}
+}
+@media(prefers-reduced-motion:reduce){.desk-sidebar,.desk-sheet-backdrop{transition:none}}
+
+@media(max-width:700px){
+  .desk-sidebar{padding-top:6px}
+  .desk-sheet-heading{padding:0 6px 6px;margin-bottom:6px}
+  .desk-sheet-heading button{width:32px;height:32px}
+}
+
+@media(min-width:701px){
+  .desk-sidebar{overflow:visible;transition:width 220ms ease}
+  .desk-sidebar nav{overflow-y:auto;overflow-x:hidden;min-height:0}
+  .desk-sidebar-toggle{position:absolute;right:-13px;top:22px;z-index:20;display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:1px solid var(--ui-border,#d5dfeb);border-radius:50%;background:var(--ui-surface,#fff);color:var(--ui-text,#25476d);box-shadow:0 2px 6px #122c4615;cursor:pointer}
+  .desk-sidebar-toggle:hover{background:#e8f0f8;color:#164779}
+  .desk-sidebar.is-collapsed{width:44px;padding-left:4px;padding-right:4px}
+  .desk-sidebar.is-collapsed .desk-nav-label{max-width:0;opacity:0;transform:translateX(-5px);visibility:hidden}
+  .desk-sidebar.is-collapsed .desk-nav-group h2{height:1px;padding:0;margin:12px 5px;background:var(--ui-border,#e3e9f2);font-size:0;overflow:hidden}
+  .desk-sidebar.is-collapsed .desk-nav-link{gap:0;padding-left:10px;padding-right:10px}
+  .desk-sidebar.is-collapsed .desk-nav-group{margin-bottom:12px}
+  html[data-theme=dark] .desk-sidebar-toggle:hover{background:#2a415a;color:#d5e4f2}
+}
+@media(max-width:700px){.desk-sidebar-toggle{display:none}}
+@media(prefers-reduced-motion:reduce){.desk-sidebar{transition:none}}
+
+@media(min-width:701px){
+  .desk-nav-link{white-space:nowrap;overflow:hidden;transition:gap 220ms ease,padding 220ms ease,background-color 160ms ease}
+  .desk-nav-label{display:block;min-width:0;max-width:170px;opacity:1;transform:translateX(0);visibility:visible;transition:opacity 160ms ease,transform 220ms ease,max-width 220ms ease,visibility 160ms}
+  .desk-nav-group h2{white-space:nowrap;transition:opacity 160ms ease}
+  .desk-sidebar.is-collapsed .desk-nav-group h2{opacity:1}
+}
+@media(prefers-reduced-motion:reduce){.desk-nav-label,.desk-nav-link,.desk-nav-group h2{transition:none}}
+
+.desk-nav-tooltip{position:fixed;z-index:300;transform:translateY(-50%);padding:8px 11px;border-radius:6px;background:#173b60;color:#fff;font-size:12px;line-height:1.4;white-space:nowrap;pointer-events:none;box-shadow:0 3px 12px #10243e25;animation:desk-tooltip-in 120ms ease-out}
+.desk-nav-tooltip::before{content:'';position:absolute;left:-4px;top:calc(50% - 4px);width:8px;height:8px;background:inherit;transform:rotate(45deg)}
+html[data-theme=dark] .desk-nav-tooltip{background:#dce8f5;color:#192d44}
+@keyframes desk-tooltip-in{from{opacity:0;transform:translate(3px,-50%)}to{opacity:1;transform:translate(0,-50%)}}
+@media(prefers-reduced-motion:reduce){.desk-nav-tooltip{animation:none}}
+
+@media(min-width:701px){
+  .desk-sidebar.is-collapsed .desk-nav-group h2{height:1px;min-height:1px;margin:12px 5px;background:var(--ui-border,#d5dfeb);opacity:1}
+}

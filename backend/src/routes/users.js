@@ -1,3 +1,5 @@
+const { loginLimiter, verifyLimiter, resendLimiter, setupLimiter } = require('../middleware/authRateLimits');
+const mfaEmailTemplate = require('../services/mfaEmailTemplate');
 const express = require('express');
 const router  = express.Router();
 const jwt     = require('jsonwebtoken');
@@ -13,45 +15,28 @@ if (!SECRET) throw new Error('JWT_SECRET must be configured.');
 
 // ─── Helper: Get client IP ───
 function getClientIP(req) {
-  return req.headers['x-forwarded-for']?.split(',')[0].trim() ||
-         req.socket.remoteAddress ||
+  return req.ip || req.socket.remoteAddress ||
          '0.0.0.0';
 }
 
-// Matches the card layout used by ICTMS ticket-notification emails.
-function mfaEmailTemplate(fullName, otp, isResend = false) {
-  return `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-      <div style="background:#0D3B6E;padding:16px 20px;border-radius:6px 6px 0 0;">
-        <h2 style="color:#fff;margin:0;font-size:16px;">🔐 FO3 Service Desk Login Verification</h2>
-      </div>
-      <div style="background:#f9f9f9;padding:20px;border:1px solid #ddd;border-top:none;border-radius:0 0 6px 6px;">
-        <p>Dear <strong>${fullName || 'User'}</strong>,</p>
-        <p>${isResend ? 'A new' : 'Your'} one-time password has been generated for your FO3 Service Desk sign-in.</p>
-        <div style="background:#fff;border:1px solid #ddd;padding:16px;margin:16px 0;text-align:center;border-radius:4px;">
-          <div style="font-size:12px;color:#555;margin-bottom:6px;">ONE-TIME PASSWORD</div>
-          <div style="font-size:30px;font-weight:bold;letter-spacing:7px;color:#0D3B6E;">${otp}</div>
-        </div>
-        <p>This code expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>
-        <p>If you did not attempt to sign in, please contact the ICT Helpdesk immediately.</p>
-        <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
-        <p style="color:red;font-size:11px;margin:0;">*** This is a system generated message. DO NOT REPLY TO THIS EMAIL. ***</p>
-      </div>
-    </div>`;
-}
 
 // ═══════════════════════════════════════════════════════════════
 // POST /login - NEW: Step 1 with reCAPTCHA + lockout
 // ═══════════════════════════════════════════════════════════════
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { password, recaptchaToken } = req.body;
     const username = String(req.body.username || '').trim();
     const clientIP = getClientIP(req);
 
-    if (!username || !password || !recaptchaToken) {
+    // Allow an explicit local-development override; all other environments verify reCAPTCHA.
+    const recaptchaEnabled = !(process.env.NODE_ENV === 'development' && process.env.RECAPTCHA_ENABLED === 'false');
+
+    if (!username || !password || (recaptchaEnabled && !recaptchaToken)) {
       return res.status(400).json({
-        error: 'Employee Number, password, and reCAPTCHA token are required.'
+        error: recaptchaEnabled
+          ? 'Employee Number, password, and reCAPTCHA token are required.'
+          : 'Employee Number and password are required.'
       });
     }
 
@@ -60,22 +45,24 @@ router.post('/login', async (req, res) => {
     // ────────────────────────────────────────
     // STEP 1: Verify reCAPTCHA v3
     // ────────────────────────────────────────
-    console.log('[LOGIN] Verifying reCAPTCHA v3...');
-    const recaptchaResult = await mfaService.verifyRecaptchaV3(
-      recaptchaToken,
-      Number(process.env.RECAPTCHA_MIN_SCORE || 0.5),
-      'login'
-    );
+    if (recaptchaEnabled) {
+      console.log('[LOGIN] Verifying reCAPTCHA v3...');
+      const recaptchaResult = await mfaService.verifyRecaptchaV3(
+        recaptchaToken,
+        Number(process.env.RECAPTCHA_MIN_SCORE || 0.5),
+        'login'
+      );
 
-    if (!recaptchaResult.success) {
-      console.warn('[LOGIN] reCAPTCHA verification failed');
-      await mfaService.writeAuditEvent({ empno: username, eventType: 'recaptcha_rejected', reason: 'Invalid token, action, or score', ipAddress: clientIP, userAgent: req.headers['user-agent'] });
-      return res.status(400).json({
-        error: 'reCAPTCHA verification failed. Please try again.',
-      });
+      if (!recaptchaResult.success) {
+        console.warn('[LOGIN] reCAPTCHA verification failed');
+        await mfaService.writeAuditEvent({ empno: username, eventType: 'recaptcha_rejected', reason: 'Invalid token, action, or score', ipAddress: clientIP, userAgent: req.headers['user-agent'] });
+        return res.status(400).json({
+          error: 'reCAPTCHA verification failed. Please try again.',
+        });
+      }
+
+      console.log(`[LOGIN] reCAPTCHA verified (score: ${recaptchaResult.score})`);
     }
-
-    console.log(`[LOGIN] reCAPTCHA verified (score: ${recaptchaResult.score})`);
 
     // ────────────────────────────────────────
     // STEP 2: Check if account is locked
@@ -346,7 +333,7 @@ router.post('/login', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // POST /verify-mfa - NEW: Step 2
 // ═══════════════════════════════════════════════════════════════
-router.post('/verify-mfa', async (req, res) => {
+router.post('/verify-mfa', verifyLimiter, async (req, res) => {
   try {
     const { sessionToken, mfaCode, mfaType } = req.body;
     const clientIP = getClientIP(req);
@@ -519,7 +506,7 @@ router.post('/verify-mfa', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // POST /setup-mfa - NEW
 // ═══════════════════════════════════════════════════════════════
-router.post('/setup-mfa', auth, async (req, res) => {
+router.post('/setup-mfa', auth.forMfaSetup, setupLimiter, async (req, res) => {
   try {
     const { empno, mfaMethod } = req.body;
 
@@ -562,7 +549,7 @@ router.post('/setup-mfa', auth, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // POST /confirm-mfa - NEW
 // ═══════════════════════════════════════════════════════════════
-router.post('/confirm-mfa', auth, async (req, res) => {
+router.post('/confirm-mfa', auth.forMfaSetup, setupLimiter, async (req, res) => {
   try {
     const { empno, mfaMethod, totpCode } = req.body;
 
@@ -634,7 +621,7 @@ router.post('/confirm-mfa', auth, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // POST /logout - NEW
 // ═══════════════════════════════════════════════════════════════
-router.post('/resend-otp', async (req, res) => {
+router.post('/resend-otp', resendLimiter, async (req, res) => {
   try {
     const { sessionToken } = req.body;
     const [rows] = await db.query(
@@ -749,9 +736,9 @@ router.post('/admin/unlock-account/:empno', auth, async (req, res) => {
   }
 });
 
-router.post('/logout', async (req, res) => {
+router.post('/logout', auth, async (req, res) => {
   try {
-    const { sessionToken } = req.body;
+    const sessionToken = req.user.sid;
 
     if (sessionToken) {
       await mfaService.logoutUser(sessionToken, getClientIP(req), req.headers['user-agent'] || 'unknown');
@@ -1127,7 +1114,7 @@ router.get('/erm/divisions', auth, async (req, res) => {
   }
 });
 
-router.get('/erm/all-office-locations', async (req, res) => {
+router.get('/erm/all-office-locations', auth, async (req, res) => {
   try {
     const locations = await harmonyApi.getOfficeLocations();
     const rows = (Array.isArray(locations) ? locations : []).map(location => ({
@@ -1213,14 +1200,14 @@ router.get('/erm/employees', auth, async (req, res) => {
   }
 });
 
-router.get('/erm/office-locations', async (req, res) => {
+router.get('/erm/office-locations', auth, async (req, res) => {
   try {
     const { division_id, unit_id } = req.query;
     const locations = await harmonyApi.getOfficeLocations(division_id, unit_id);
     res.json(locations);
   } catch (err) {
     console.error('Error fetching office locations:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -1228,9 +1215,10 @@ router.get('/erm/office-locations', async (req, res) => {
 
 // CSM respondent lookup. Uses Harmony's bulk endpoint even for one employee so
 // the same complete HR record is used for name, sex, mobile/email, and birthdate.
-router.get('/erm/:empno', async (req, res) => {
+router.get('/erm/:empno', auth, async (req, res) => {
   try {
     const empno = String(req.params.empno || '').trim();
+    if (req.user.role !== 'super_admin' && empno !== req.user.empno) return res.status(403).json({ error: 'You can look up only your own employee profile.' });
     if (!empno) return res.status(400).json({ error: 'Employee number is required.' });
 
     const bulkResponse = await harmonyApi.getEmployeesBulk([empno]);
@@ -1239,7 +1227,7 @@ router.get('/erm/:empno', async (req, res) => {
       ? payload
       : (payload?.employees || payload?.users || payload?.data || []);
     const record = Array.isArray(candidates)
-      ? candidates.find(item => String((item?.user || item)?.empno || '') === empno) || candidates[0]
+      ? candidates.find(item => String((item?.user || item)?.empno || '') === empno)
       : candidates;
     const employee = record?.user || record;
     const transformed = harmonyApi.transformEmployeeResponse(employee);

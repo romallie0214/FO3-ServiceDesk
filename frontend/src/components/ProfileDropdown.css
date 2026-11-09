@@ -1,0 +1,34 @@
+.header-profile{position:relative;flex-shrink:0;max-width:45%}.header-profile-trigger{display:flex;align-items:center;gap:8px;max-width:100%;padding:3px 9px 3px 3px;border:1px solid #ffffff40;border-radius:24px;background:#ffffff0d;color:#fff;cursor:pointer;font-family:inherit;font-size:clamp(8px,1.5vw,11px);font-weight:600}.header-profile-trigger:hover{background:#ffffff20}.header-profile-avatar{display:flex;align-items:center;justify-content:center;width:clamp(24px,6vw,32px);height:clamp(24px,6vw,32px);flex-shrink:0;border-radius:50%;background:var(--gov-green);color:white;font-size:clamp(9px,2vw,11px);font-weight:600}.header-profile-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.header-profile-trigger svg{flex-shrink:0}.header-profile-panel{position:absolute;top:calc(100% + 10px);right:0;width:280px;max-width:calc(100vw - 24px);border:1px solid #e0e7f0;border-radius:7px;box-shadow:0 8px 24px #12365d26;background:#fff;color:#12365d;overflow:hidden}.header-profile-details{padding:12px 14px}.header-profile-title{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px}.header-profile-title strong{font-size:clamp(8px,1.5vw,11px);font-weight:600;overflow-wrap:anywhere}.header-profile-role{background:#fff3d6;color:#8a5300;padding:2px 7px;border-radius:12px;flex-shrink:0;font-size:clamp(8px,1.5vw,11px);font-weight:500}.header-profile-details p{margin:0;color:#62748a;font-size:clamp(7px,1.2vw,10px);line-height:1.5;overflow-wrap:anywhere}.header-profile-signout{display:flex;align-items:center;gap:8px;width:100%;padding:11px 14px;background:white;border:0;border-top:1px solid #e9eef5;color:#25476d;cursor:pointer;font-family:inherit;font-size:clamp(8px,1.5vw,11px);font-weight:500}.header-profile-signout:hover{background:#f1f5fa}.header-profile button:focus-visible{outline:2px solid #80bfff;outline-offset:2px}
+
+.header-profile-trigger,.header-profile-trigger:hover,.header-profile-trigger:focus,.header-profile-signout:hover,.header-profile-signout:focus{text-decoration:none}
+
+/* Profile summary with avatar, stacked identity, and a separate sign-out row. */
+.header-profile-panel{width:320px;border-radius:12px}
+.header-profile-details{display:flex;align-items:flex-start;gap:12px;padding:16px}
+.header-profile-menu-avatar{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:44px;height:44px;border-radius:50%;background:#e7f0fb;color:#14518d;font-size:clamp(9px,2vw,11px);font-weight:600}
+.header-profile-info{flex:1;min-width:0}
+.header-profile-title{flex-direction:column;align-items:flex-start;gap:4px;margin-bottom:10px}
+.header-profile-role{display:inline-flex;align-items:center;gap:4px}
+.header-profile-details p{color:#25476d}
+.header-profile-details p.header-profile-division{color:#62748a}
+.header-profile-signout{padding:13px 16px;gap:10px}
+
+.header-profile-panel{width:280px}.header-profile-details{gap:10px;padding:14px}.header-profile-signout{padding:12px 14px}
+
+.header-profile-role-row{margin-top:7px}.header-profile-title{margin-bottom:5px}
+
+/* Animate both directions while keeping closed content out of keyboard navigation. */
+.header-profile-chevron{transition:transform 180ms ease}
+.header-profile-trigger[aria-expanded="true"] .header-profile-chevron{transform:rotate(180deg)}
+.header-profile-panel{opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-6px) scale(.98);transform-origin:top right;transition:opacity 180ms ease,transform 180ms ease,visibility 180ms}
+.header-profile-panel[aria-hidden="false"]{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0) scale(1)}
+@media(prefers-reduced-motion:reduce){.header-profile-chevron,.header-profile-panel{transition:none}}
+
+/* Pointer joins the dropdown visually to its profile trigger. */
+.header-profile-panel{overflow:visible}
+.header-profile-panel::before{content:'';position:absolute;top:-6px;right:17px;width:10px;height:10px;background:#fff;border-top:1px solid #e0e7f0;border-left:1px solid #e0e7f0;transform:rotate(45deg);pointer-events:none}
+.header-profile-details{border-radius:12px 12px 0 0}
+.header-profile-signout{border-radius:0 0 12px 12px}
+
+/* Profile trigger has no surrounding border or pill background. */
+.header-profile-trigger,.header-profile-trigger:hover{border-color:transparent;background:transparent;box-shadow:none}

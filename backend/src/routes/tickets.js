@@ -1,3 +1,6 @@
+const requireTicket = require('../middleware/ticketAccess');
+const { ticketScope } = require('../services/ticketAccess');
+const { ticketEmailTemplate: emailWrapper, csmFeedbackHtml, escapeHtml } = require('../services/ticketEmailTemplate');
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
@@ -51,23 +54,6 @@ async function sendTicketEmail(ticketId, { subject: emailSubject, html }) {
   }
 }
 
-function emailWrapper(title, color, bodyHtml) {
-  return `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-      <div style="background:${color};padding:16px 20px;border-radius:6px 6px 0 0;">
-        <h2 style="color:#fff;margin:0;font-size:16px;">${title}</h2>
-      </div>
-      <div style="background:#f9f9f9;padding:20px;border:1px solid #ddd;
-                  border-top:none;border-radius:0 0 6px 6px;">
-        ${bodyHtml}
-        <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
-        <p style="color:red;font-size:11px;margin:0;">
-          *** This is a system generated message. DO NOT REPLY TO THIS EMAIL. ***
-        </p>
-      </div>
-    </div>
-  `;
-}
 
 function ticketInfoHtml(ticket_number, subject, extraRows = []) {
   const rows = [
@@ -80,8 +66,8 @@ function ticketInfoHtml(ticket_number, subject, extraRows = []) {
       ${rows.map(([label, value]) => `
         <tr>
           <td style="padding:6px 10px;background:#eee;font-weight:bold;
-                     width:40%;border:1px solid #ddd;">${label}</td>
-          <td style="padding:6px 10px;border:1px solid #ddd;">${value || '—'}</td>
+                     width:40%;border:1px solid #ddd;">${escapeHtml(label)}</td>
+          <td style="padding:6px 10px;border:1px solid #ddd;">${escapeHtml(value) || '—'}</td>
         </tr>
       `).join('')}
     </table>
@@ -93,200 +79,41 @@ function ticketInfoHtml(ticket_number, subject, extraRows = []) {
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { empno, assigned_to_id, assigned_to_empno, assignedToMe, role, onlyMine, serviceAdmin } = req.query;
-    const serviceAdminAreaIds = serviceAdmin === 'true' ? await adminAreaIds(req.user) : [];
-    if (serviceAdmin === 'true' && !serviceAdminAreaIds.length) {
-      return res.status(403).json({ error: 'Service Admin access is required.' });
+    const scope = ticketScope(req.user);
+    const clauses = [scope.sql], params = [...scope.params];
+    if (req.query.onlyMine === 'true' || (req.user.role === 'dswd_staff' && !req.user.id)) { clauses.push('t.empno = ?'); params.push(req.user.empno); }
+    if (req.query.assignedToMe === 'true') {
+      clauses.push("(t.assigned_to = ? OR EXISTS (SELECT 1 FROM ticket_assignees mine WHERE mine.ticket_id = t.id AND mine.user_id = ? AND mine.role = 'co-assignee'))");
+      params.push(req.user.id, req.user.id);
     }
-
-    // "My submitted tickets" must always be bound to the authenticated user,
-    // not to an employee number supplied in the browser query string.
-    if (onlyMine === 'true') {
-      const requestorEmpno = req.user.empno;
-      const [rows] = await db.query(`
-        SELECT
-          t.id, t.ticket_number, t.subject, t.description,
-          t.status, t.priority, t.created_at,
-          t.cancel_reason,
-          t.empno, t.requestor_name, t.unit, t.division, t.office_location,
-          c.name  AS category,
-          sc.name AS sub_category,
-          si.name AS sub_item,
-          t.requestor_name AS requestor,
-          t.division       AS requestor_division,
-          t.assigned_to    AS assigned_to_id,
-          u2.full_name     AS assigned_to,
-          t.service_area_id,
-          sa.code          AS service_area_code,
-          sa.name          AS service_area_name
-        FROM tickets t
-        LEFT JOIN categories     c  ON t.category_id     = c.id
-        LEFT JOIN sub_categories sc ON t.sub_category_id = sc.id
-        LEFT JOIN sub_items      si ON t.sub_item_id     = si.id
-        LEFT JOIN users          u2 ON t.assigned_to     = u2.id
-        LEFT JOIN service_areas  sa ON t.service_area_id  = sa.id
-        WHERE t.empno = ?
-        ORDER BY t.created_at DESC
-      `, [requestorEmpno]);
-      return res.json(rows);
+    if (req.query.assigned_to_id) {
+      if (!/^[1-9][0-9]*$/.test(String(req.query.assigned_to_id))) return res.status(400).json({ error: 'Invalid assignee ID.' });
+      clauses.push('t.assigned_to = ?'); params.push(req.query.assigned_to_id);
     }
-
-    // ICTMS Staff: smart sorting by office location
-    if (role === 'ictms_staff' && empno) {
-      const [locRows] = await db.query(
-        'SELECT office_location_code FROM user_office_locations WHERE empno = ?',
-        [empno]
-      );
-      const locationCodes = locRows.map(r => r.office_location_code);
-
-      if (locationCodes.length > 0) {
-        const orderClause = `
-          ORDER BY
-            CASE
-              WHEN t.empno = ? THEN 3
-              WHEN t.office_location IN (
-                SELECT uol.office_location_name
-                FROM user_office_locations uol
-                WHERE uol.empno = ?
-              ) THEN 1
-              ELSE 2
-            END ASC,
-            t.id DESC
-        `;
-        const [rows] = await db.query(`
-          SELECT
-            t.id, t.ticket_number, t.subject, t.description,
-            t.status, t.priority, t.created_at,
-            t.cancel_reason,
-            t.empno, t.requestor_name, t.unit, t.division, t.office_location,
-            c.name  AS category,
-            sc.name AS sub_category,
-            si.name AS sub_item,
-            t.requestor_name AS requestor,
-            t.division       AS requestor_division,
-            t.assigned_to    AS assigned_to_id,
-            u2.full_name     AS assigned_to
-          FROM tickets t
-          LEFT JOIN categories     c  ON t.category_id     = c.id
-          LEFT JOIN sub_categories sc ON t.sub_category_id = sc.id
-          LEFT JOIN sub_items      si ON t.sub_item_id     = si.id
-          LEFT JOIN users          u2 ON t.assigned_to     = u2.id
-          ${orderClause}
-        `, [empno, empno]);
-        return res.json(rows);
-      } else {
-        const [rows] = await db.query(`
-          SELECT
-            t.id, t.ticket_number, t.subject, t.description,
-            t.status, t.priority, t.created_at,
-            t.cancel_reason,
-            t.empno, t.requestor_name, t.unit, t.division, t.office_location,
-            c.name  AS category,
-            sc.name AS sub_category,
-            si.name AS sub_item,
-            t.requestor_name AS requestor,
-            t.division       AS requestor_division,
-            t.assigned_to    AS assigned_to_id,
-            u2.full_name     AS assigned_to
-          FROM tickets t
-          LEFT JOIN categories     c  ON t.category_id     = c.id
-          LEFT JOIN sub_categories sc ON t.sub_category_id = sc.id
-          LEFT JOIN sub_items      si ON t.sub_item_id     = si.id
-          LEFT JOIN users          u2 ON t.assigned_to     = u2.id
-          ORDER BY t.id DESC
-        `);
-        return res.json(rows);
-      }
+    if (req.query.assigned_to_empno) {
+      clauses.push("(u2.empno = ? OR EXISTS (SELECT 1 FROM ticket_assignees filtered WHERE filtered.ticket_id = t.id AND filtered.empno = ? AND filtered.role = 'co-assignee'))");
+      params.push(req.query.assigned_to_empno, req.query.assigned_to_empno);
     }
-
-    // Default: dswd_staff (own tickets) or supervisor/admin (all tickets)
-    let whereClause = '';
-    let params = [];
-    if (assignedToMe === 'true') {
-      const ownAssignmentClause = `
-        WHERE (
-          u2.empno = ?
-          OR EXISTS (
-            SELECT 1
-            FROM ticket_assignees ta
-            INNER JOIN users assigned_user ON assigned_user.id = ta.user_id
-            WHERE ta.ticket_id = t.id
-              AND assigned_user.empno = ?
-              AND ta.role = 'co-assignee'
-          )
-        )`;
-      const areaClause = serviceAdminAreaIds.length
-        ? ` AND t.service_area_id IN (${serviceAdminAreaIds.map(() => '?').join(',')})`
-        : '';
-      whereClause = ownAssignmentClause + areaClause;
-      params = [req.user.empno, req.user.empno, ...serviceAdminAreaIds];
-    } else if (serviceAdmin === 'true') {
-      whereClause = `WHERE t.service_area_id IN (${serviceAdminAreaIds.map(() => '?').join(',')})`;
-      params = serviceAdminAreaIds;
-    } else if (empno && role === 'dswd_staff') {
-      whereClause = 'WHERE t.empno = ?';
-      params = [empno];
-    } else if (assigned_to_id) {
-      whereClause = `
-        WHERE (
-          t.assigned_to = ?
-          OR EXISTS (
-            SELECT 1
-            FROM ticket_assignees ta
-            WHERE ta.ticket_id = t.id
-              AND ta.user_id = ?
-              AND ta.role = 'co-assignee'
-          )
-        )
-      `;
-      params = [assigned_to_id, assigned_to_id];
-    } else if (assigned_to_empno) {
-      whereClause = `
-        WHERE (
-          u2.empno = ?
-          OR EXISTS (
-            SELECT 1
-            FROM ticket_assignees ta
-            INNER JOIN users assigned_user ON assigned_user.id = ta.user_id
-            WHERE ta.ticket_id = t.id
-              AND assigned_user.empno = ?
-              AND ta.role = 'co-assignee'
-          )
-        )
-      `;
-      params = [assigned_to_empno, assigned_to_empno];
+    if (req.query.serviceAdmin === 'true' && req.user.role !== 'super_admin') {
+      const ids = await adminAreaIds(req.user);
+      if (!ids.length) return res.status(403).json({ error: 'Service Admin access is required.' });
+      clauses.push(`t.service_area_id IN (${ids.map(() => '?').join(',')})`); params.push(...ids);
     }
-
-    const [rows] = await db.query(`
-      SELECT
-        t.id, t.ticket_number, t.subject, t.description,
-        t.status, t.priority, t.created_at,
-        t.first_response_at, t.assigned_at, t.escalation_started_at, t.resolved_at,
-        t.cancel_reason,
-        t.empno, t.requestor_name, t.unit, t.division, t.office_location,
-        c.name  AS category,
-        sc.name AS sub_category,
-        si.name AS sub_item,
-        t.requestor_name AS requestor,
-        t.division       AS requestor_division,
-        t.assigned_to    AS assigned_to_id,
-        t.service_area_id,
-        u2.full_name     AS assigned_to,
-        sa.code          AS service_area_code,
-        sa.name          AS service_area_name
-      FROM tickets t
-      LEFT JOIN categories     c  ON t.category_id     = c.id
-      LEFT JOIN sub_categories sc ON t.sub_category_id = sc.id
-      LEFT JOIN sub_items      si ON t.sub_item_id     = si.id
-      LEFT JOIN users          u2 ON t.assigned_to     = u2.id
-      LEFT JOIN service_areas  sa ON t.service_area_id  = sa.id
-      ${whereClause}
-      ORDER BY t.created_at DESC
-    `, params);
+    const [rows] = await db.query(`SELECT t.id, t.ticket_number, t.subject, t.description,
+      t.status, t.priority, t.created_at, t.first_response_at, t.assigned_at, t.escalation_started_at, t.resolved_at,
+      t.cancel_reason, t.empno, t.requestor_name, t.unit, t.division, t.office_location,
+      c.name AS category, sc.name AS sub_category, si.name AS sub_item,
+      t.requestor_name AS requestor, t.division AS requestor_division,
+      t.assigned_to AS assigned_to_id, t.service_area_id, u2.full_name AS assigned_to,
+      sa.code AS service_area_code, sa.name AS service_area_name
+      FROM tickets t LEFT JOIN categories c ON c.id = t.category_id
+      LEFT JOIN sub_categories sc ON sc.id = t.sub_category_id
+      LEFT JOIN sub_items si ON si.id = t.sub_item_id
+      LEFT JOIN users u2 ON u2.id = t.assigned_to
+      LEFT JOIN service_areas sa ON sa.id = t.service_area_id
+      WHERE ${clauses.join(' AND ')} ORDER BY t.created_at DESC`, params);
     res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { console.error('Ticket list error:', err.message); res.status(500).json({ error: 'Unable to load tickets.' }); }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -295,14 +122,15 @@ router.get('/', authMiddleware, async (req, res) => {
 router.get('/monitoring/sla', authMiddleware, async (req, res) => {
   try {
     const serviceAdminAreaIds = req.query.serviceAdmin === 'true'
-      ? await adminAreaIds(req.user)
+      ? (await adminAreaIds(req.user) || [])
       : [];
-    if (req.query.serviceAdmin === 'true' && !serviceAdminAreaIds.length) {
+    if (req.query.serviceAdmin === 'true' && req.user.role !== 'super_admin' && !serviceAdminAreaIds.length) {
       return res.status(403).json({ error: 'Service Admin access is required.' });
     }
     const serviceAreaClause = serviceAdminAreaIds.length
       ? ` AND t.service_area_id IN (${serviceAdminAreaIds.map(() => '?').join(',')})`
       : '';
+    const scope = ticketScope(req.user);
     const [rows] = await db.query(`
       SELECT
         t.id, t.ticket_number, t.subject,
@@ -339,21 +167,21 @@ router.get('/monitoring/sla', authMiddleware, async (req, res) => {
       LEFT JOIN sla_rules      c_sla  ON c.sla_rule_id     = c_sla.id
       LEFT JOIN sla_rules      sc_sla ON sc.sla_rule_id    = sc_sla.id
       LEFT JOIN sla_rules      si_sla ON si.sla_rule_id    = si_sla.id
-      WHERE t.status <> 'Cancelled'
+      WHERE t.status <> 'Cancelled' AND ${scope.sql}
       ${serviceAreaClause}
       ORDER BY t.created_at ASC
-    `, serviceAdminAreaIds);
+    `, [...scope.params, ...serviceAdminAreaIds]);
     res.json(rows);
   } catch (err) {
     console.error('Monitoring SLA error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /:id/sla — MUST be before /:id
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/:id/sla', async (req, res) => {
+router.get('/:id/sla', authMiddleware, requireTicket('read'), async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT
@@ -411,16 +239,16 @@ router.get('/:id/sla', async (req, res) => {
       is_on_hold: row.status === 'On-Hold',
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /my-pending-csm — MUST be before /:id
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/my-pending-csm', async (req, res) => {
+router.get('/my-pending-csm', authMiddleware, async (req, res) => {
   try {
-    const { empno } = req.query;
+    const empno = req.user.empno;
     if (!empno) return res.status(400).json({ error: 'empno is required.' });
 
     const [rows] = await db.query(`
@@ -437,7 +265,7 @@ router.get('/my-pending-csm', async (req, res) => {
     res.json({ pending: rows.length > 0, ticket: rows[0] || null });
   } catch (err) {
     console.error('Pending CSM check error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
@@ -454,9 +282,9 @@ router.get('/report', authMiddleware, async (req, res) => {
     }
 
     const serviceAdminAreaIds = serviceAdmin === 'true'
-      ? await adminAreaIds(req.user)
+      ? (await adminAreaIds(req.user) || [])
       : [];
-    if (serviceAdmin === 'true' && !serviceAdminAreaIds.length) {
+    if (serviceAdmin === 'true' && req.user.role !== 'super_admin' && !serviceAdminAreaIds.length) {
       return res.status(403).json({ error: 'Service Admin access is required.' });
     }
 
@@ -489,6 +317,8 @@ router.get('/report', authMiddleware, async (req, res) => {
       : '';
     params.push(...serviceAdminAreaIds);
 
+    const scope = ticketScope(req.user);
+    params.push(...scope.params);
     const [rows] = await db.query(`
       SELECT
         t.id,
@@ -535,17 +365,18 @@ router.get('/report', authMiddleware, async (req, res) => {
         ${statusClause}
         ${selectedServiceAreaClause}
         ${serviceAreaClause}
+        AND ${scope.sql}
       ORDER BY t.created_at DESC
     `, params);
 
     res.json(rows);
   } catch (err) {
     console.error('Report error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, requireTicket('read'), async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT
@@ -563,17 +394,17 @@ router.get('/:id', async (req, res) => {
       WHERE t.id = ?
     `, [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Ticket not found' });
-    res.json(rows[0]);
+    res.json({ ...rows[0], permissions: req.ticketPermissions });
   } catch (err) {
     console.error('GET ticket error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET requestor info for CSM
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/:id/requestor-info', async (req, res) => {
+router.get('/:id/requestor-info', authMiddleware, requireTicket('read'), async (req, res) => {
   try {
     // ── Step 1: Get ticket info from ICTMS DB ──
     const [rows] = await db.query(`
@@ -621,7 +452,7 @@ router.get('/:id/requestor-info', async (req, res) => {
 
     res.json(ticket);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 // ─────────────────────────────────────────────────────────────────────────────
@@ -635,6 +466,11 @@ router.post('/', authMiddleware, ticketUpload.array('attachments', 5), async (re
       empno, requestor_name, unit, division, office_location,
     } = req.body;
     const submitterEmpno = req.user.empno;
+    if (typeof subject !== 'string' || !subject.trim() || subject.length > 255 || typeof description !== 'string' || !description.trim()) return res.status(400).json({ error: 'A subject and description are required.' });
+    if (!['Low','Medium','High','Critical'].includes(priority)) return res.status(400).json({ error: 'Invalid priority.' });
+    const [pending] = await db.query("SELECT t.id FROM tickets t WHERE t.empno = ? AND t.status = 'Resolved' AND NOT EXISTS (SELECT 1 FROM csm_responses c WHERE c.ticket_id = t.id) LIMIT 1", [submitterEmpno]);
+    if (pending.length) return res.status(409).json({ error: 'Complete pending feedback before submitting a new ticket.' });
+
     const submitterName = req.user.full_name;
     if ((req.files || []).length && !isObjectStorageConfigured()) {
       return res.status(503).json({ error: 'Attachments are temporarily unavailable. Configure OBJECT_STORAGE_API_KEY in backend/.env and restart the backend.' });
@@ -648,7 +484,7 @@ router.post('/', authMiddleware, ticketUpload.array('attachments', 5), async (re
       const [categoryRows] = await db.query(
         `SELECT c.service_area_id, sa.code AS service_area_code
          FROM categories c JOIN service_areas sa ON sa.id = c.service_area_id
-         WHERE c.id = ?`,
+         WHERE c.id = ? AND sa.is_active = 1`,
         [category_id]
       );
       if (!categoryRows.length) return res.status(400).json({ error: 'The selected category does not exist.' });
@@ -718,8 +554,8 @@ router.post('/', authMiddleware, ticketUpload.array('attachments', 5), async (re
           to:      requesterEmail,
           subject: `[${ticket_number}] ${subject}`,
           html: emailWrapper(
-            `✅ Ticket Submitted — ${ticket_number}`, '#0D3B6E',
-            `<p>Dear <strong>${requestor_name || 'Requestor'}</strong>,</p>
+            'Open', `✅ Ticket Submitted — ${ticket_number}`, '#0D3B6E',
+            `<p>Dear <strong>${escapeHtml(req.user.full_name || 'Requestor')}</strong>,</p>
              <p>Your IT support ticket has been successfully submitted.
                 Our ICTMS team will review and assign it shortly.</p>
              ${ticketInfoHtml(ticket_number, subject, [
@@ -752,19 +588,19 @@ router.post('/', authMiddleware, ticketUpload.array('attachments', 5), async (re
       attachments,
     });
   } catch (err) {
-    res.status(err.code === 'OBJECT_STORAGE_NOT_CONFIGURED' ? 503 : err.code === 'INVALID_ATTACHMENT_CONTENT' ? 400 : 500).json({ error: err.message });
+    res.status(err.code === 'OBJECT_STORAGE_NOT_CONFIGURED' ? 503 : err.code === 'INVALID_ATTACHMENT_CONTENT' ? 400 : 500).json({ error: ['OBJECT_STORAGE_NOT_CONFIGURED','INVALID_ATTACHMENT_CONTENT'].includes(err.code) ? err.message : 'Unable to submit ticket.' });
   }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PATCH assign  →  EMAIL #2: Assigned  |  EMAIL #3: Reassigned
 // ─────────────────────────────────────────────────────────────────────────────
-router.patch('/:id/assign', authMiddleware, async (req, res) => {
+router.patch('/:id/assign', authMiddleware, requireTicket('manage'), async (req, res) => {
   try {
-    const { assigned_to, empno, assigner_name } = req.body;
+    const { assigned_to } = req.body;
+    const empno = req.user.empno, assigner_name = req.user.full_name;
     const managedAreaIds = await adminAreaIds(req.user);
     const isServiceAdmin = req.user.role !== 'super_admin' && managedAreaIds.length > 0;
-    if (!['super_admin', 'ictms_staff'].includes(req.user.role) && !isServiceAdmin) return res.status(403).json({ error: 'Ticket assignment access is required.' });
 
     if (!assigned_to) return res.status(400).json({ error: 'assigned_to is required.' });
 
@@ -836,7 +672,7 @@ router.patch('/:id/assign', authMiddleware, async (req, res) => {
       if (isReassign) {
         sendTicketEmail(req.params.id, {
           html: emailWrapper(
-            `🔄 Ticket Reassigned — ${ticket.ticket_number}`, '#1A5490',
+            'Assigned', `🔄 Ticket Reassigned — ${ticket.ticket_number}`, '#1A5490',
             `<p>Your ticket has been <strong>reassigned</strong> to a new ICTMS Technical Staff.</p>
              ${ticketInfoHtml(ticket.ticket_number, ticket.subject, [
                ['Previously Assigned To', prevAssignee],
@@ -849,7 +685,7 @@ router.patch('/:id/assign', authMiddleware, async (req, res) => {
       } else {
         sendTicketEmail(req.params.id, {
           html: emailWrapper(
-            `👤 Ticket Assigned — ${ticket.ticket_number}`, '#1A5490',
+            'Assigned', `👤 Ticket Assigned — ${ticket.ticket_number}`, '#1A5490',
             `<p>Your ticket has been <strong>assigned</strong> to an ICTMS Technical Staff.</p>
              ${ticketInfoHtml(ticket.ticket_number, ticket.subject, [
                ['Assigned To', newAssignee.full_name],
@@ -867,14 +703,14 @@ router.patch('/:id/assign', authMiddleware, async (req, res) => {
     res.json({ message: isReassign ? 'Ticket reassigned.' : 'Ticket assigned.' });
   } catch (err) {
     console.error('Assign error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PATCH status  →  EMAIL #4 In Progress | #5 On-Hold | #6 Resolved | #7 Cancelled
 // ─────────────────────────────────────────────────────────────────────────────
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', authMiddleware, requireTicket('work'), async (req, res) => {
   try {
     const { status, cancel_reason, empno, user_name, resolution_details } = req.body;
 
@@ -932,7 +768,7 @@ router.patch('/:id/status', async (req, res) => {
     }
 
     const [tRows] = await db.query(
-      'SELECT ticket_number, subject FROM tickets WHERE id = ?',
+      'SELECT ticket_number, subject, status FROM tickets WHERE id = ?',
       [req.params.id]
     );
     const t = tRows[0];
@@ -942,7 +778,7 @@ router.patch('/:id/status', async (req, res) => {
       try {
         sendTicketEmail(req.params.id, {
           html: emailWrapper(
-            `🔧 Ticket In Progress — ${t.ticket_number}`, '#5B21B6',
+            'In Progress', `🔧 Ticket In Progress — ${t.ticket_number}`, '#5B21B6',
             `<p>Good news! Your ticket is now being actively worked on by our ICTMS team.</p>
              ${ticketInfoHtml(t.ticket_number, t.subject, [
                ['Status',     'In Progress'],
@@ -961,7 +797,7 @@ router.patch('/:id/status', async (req, res) => {
       try {
         sendTicketEmail(req.params.id, {
           html: emailWrapper(
-            `⏸ Ticket On-Hold — ${t.ticket_number}`, '#CC7700',
+            'On-Hold', `⏸ Ticket On-Hold — ${t.ticket_number}`, '#CC7700',
             `<p>Your ticket has been placed <strong>On-Hold</strong> by ICTMS.</p>
              ${ticketInfoHtml(t.ticket_number, t.subject, [
                ['Status',     'On-Hold'],
@@ -992,21 +828,14 @@ router.patch('/:id/status', async (req, res) => {
       try {
         sendTicketEmail(req.params.id, {
           html: emailWrapper(
-            `✅ Ticket Resolved — ${t.ticket_number}`, '#1B6B3A',
+            'Resolved', `✅ Ticket Resolved — ${t.ticket_number}`, '#1B6B3A',
             `<p>Great news! Your ticket has been <strong>resolved</strong>.</p>
              ${ticketInfoHtml(t.ticket_number, t.subject, [
                ['Status',             'Resolved'],
                ['Resolved By',        user_name || 'ICTMS Staff'],
                ['Resolution Details', resolution_details || 'No resolution details provided.'],
              ])}
-             <div style="background:#FEF3DC;border-left:4px solid #CC7700;
-                         padding:12px;margin:16px 0;border-radius:4px;">
-               <strong>⚠ Action Required — CSMF</strong><br>
-               Please fill out the <strong>Client Satisfaction Measurement Form (CSMF)</strong>
-               to formally close this ticket and help us improve our services.<br><br>
-               Log in to the <strong>ICTMS Portal</strong> and go to
-               <strong>Ticket List & Tracking</strong> to access the CSMF button.
-             </div>
+             ${csmFeedbackHtml()}
              <p>Thank you for using the DSWD ICTMS Help Desk.</p>`
           ),
         });
@@ -1020,7 +849,7 @@ router.patch('/:id/status', async (req, res) => {
       try {
         sendTicketEmail(req.params.id, {
           html: emailWrapper(
-            `❌ Ticket Cancelled — ${t.ticket_number}`, '#8B1A1A',
+            'Cancelled', `❌ Ticket Cancelled — ${t.ticket_number}`, '#8B1A1A',
             `<p>Your ticket has been <strong>cancelled</strong> by ICTMS Staff.</p>
              ${ticketInfoHtml(t.ticket_number, t.subject, [
                ['Status',              'Cancelled'],
@@ -1038,14 +867,14 @@ router.patch('/:id/status', async (req, res) => {
 
     res.json({ message: `Ticket marked as ${status}.` });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PATCH cancel by DSWD Staff (requestor)
 // ─────────────────────────────────────────────────────────────────────────────
-router.patch('/:id/cancel', async (req, res) => {
+router.patch('/:id/cancel', authMiddleware, requireTicket('cancel'), async (req, res) => {
   try {
     const [rows] = await db.query('SELECT status FROM tickets WHERE id = ?', [req.params.id]);
     if (rows.length === 0)       return res.status(404).json({ error: 'Ticket not found.' });
@@ -1057,41 +886,21 @@ router.patch('/:id/cancel', async (req, res) => {
     );
     res.json({ message: 'Ticket cancelled.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PATCH generic update — MUST be before reclassify
 // ─────────────────────────────────────────────────────────────────────────────
-router.patch('/:id', async (req, res) => {
-  try {
-    const { status, assigned_to } = req.body;
-    if (assigned_to) {
-      const [staff] = await db.query(
-        "SELECT id FROM users WHERE id = ? AND role IN ('ictms_staff', 'super_admin') AND deleted_at IS NULL",
-        [assigned_to]
-      );
-      if (!staff.length) return res.status(400).json({ error: 'Selected staff is not active or assignable.' });
-    }
-    await db.query(`
-      UPDATE tickets
-      SET status = ?, assigned_to = ?,
-          assigned_at = CASE WHEN ? IS NOT NULL THEN COALESCE(assigned_at, NOW()) ELSE assigned_at END,
-          first_response_at = CASE WHEN ? IS NOT NULL THEN COALESCE(first_response_at, NOW()) ELSE first_response_at END,
-          resolved_at = CASE WHEN ? = 'Resolved' THEN COALESCE(resolved_at, NOW()) ELSE resolved_at END
-      WHERE id = ?
-    `, [status, assigned_to, assigned_to, assigned_to, status, req.params.id]);
-    res.json({ message: 'Ticket updated successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+router.patch('/:id', authMiddleware, requireTicket('manage'), (req, res) => {
+  res.status(410).json({ error: 'Use the dedicated assignment, status, cancellation, or reclassification endpoint.' });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PATCH reclassify  →  EMAIL #8: Reclassified
 // ─────────────────────────────────────────────────────────────────────────────
-router.patch('/:id/reclassify', async (req, res) => {
+router.patch('/:id/reclassify', authMiddleware, requireTicket('work'), async (req, res) => {
   try {
     const {
       category_id, sub_category_id, sub_item_id,
@@ -1099,6 +908,20 @@ router.patch('/:id/reclassify', async (req, res) => {
     } = req.body;
 
     if (!reason?.trim()) return res.status(400).json({ error: 'Reclassification reason is required.' });
+    if (category_id) {
+      const [category] = await db.query('SELECT service_area_id FROM categories WHERE id = ?', [category_id]);
+      if (!category.length || Number(category[0].service_area_id) !== Number(req.ticket.service_area_id)) return res.status(400).json({ error: 'Select a category in the ticket service area.' });
+    }
+    if (sub_category_id) {
+      const [sub] = await db.query('SELECT id FROM sub_categories WHERE id = ? AND category_id = ?', [sub_category_id, category_id]);
+      if (!sub.length) return res.status(400).json({ error: 'Sub-category does not match the selected category.' });
+    }
+    if (sub_item_id) {
+      const [item] = await db.query('SELECT id FROM sub_items WHERE id = ? AND sub_category_id = ?', [sub_item_id, sub_category_id]);
+      if (!item.length) return res.status(400).json({ error: 'Sub-item does not match the selected sub-category.' });
+    }
+    if (priority && !['Low','Medium','High','Critical'].includes(priority)) return res.status(400).json({ error: 'Invalid priority.' });
+
 
     const [old] = await db.query(`
       SELECT
@@ -1160,19 +983,19 @@ router.patch('/:id/reclassify', async (req, res) => {
     // ── EMAIL #8: Reclassified ────────────────────────────
     try {
       const [tRows] = await db.query(
-        'SELECT ticket_number, subject FROM tickets WHERE id = ?',
+        'SELECT ticket_number, subject, status FROM tickets WHERE id = ?',
         [req.params.id]
       );
       const t = tRows[0];
 
       sendTicketEmail(req.params.id, {
         html: emailWrapper(
-          `📋 Ticket Reclassified — ${t.ticket_number}`, '#0D3B6E',
+          t.status, `📋 Ticket Reclassified — ${t.ticket_number}`, '#0D3B6E',
           `<p>Your ticket has been <strong>reclassified</strong> by ICTMS to better route your concern.</p>
            ${ticketInfoHtml(t.ticket_number, t.subject,
              changes.length > 0
                ? [
-                   ['Changes Made',      changes.join('<br>')],
+                   ['Changes Made',      changes.join('\n')],
                    ['Reason',            reason],
                    ['Reclassified By',   user_name || 'ICTMS Staff'],
                  ]
@@ -1191,14 +1014,14 @@ router.patch('/:id/reclassify', async (req, res) => {
     res.json({ message: 'Ticket reclassified successfully.' });
   } catch (err) {
     console.error('Reclassify error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET comments for a ticket
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/:id/comments', async (req, res) => {
+router.get('/:id/comments', authMiddleware, requireTicket('read'), async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT c.id, c.empno, c.content, c.created_at
@@ -1230,14 +1053,14 @@ router.get('/:id/comments', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('GET comments error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST comment (sends threaded email update)
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/:id/comments', async (req, res) => {
+router.post('/:id/comments', authMiddleware, requireTicket('comment'), async (req, res) => {
   try {
     const { content, empno } = req.body;
 
@@ -1267,7 +1090,7 @@ router.post('/:id/comments', async (req, res) => {
       if (threadRows.length > 0) {
         const thread = threadRows[0];
         const [tRows] = await db.query(
-          'SELECT ticket_number, subject FROM tickets WHERE id = ?',
+          'SELECT ticket_number, subject, status FROM tickets WHERE id = ?',
           [req.params.id]
         );
         const ticket = tRows[0];
@@ -1278,12 +1101,12 @@ router.post('/:id/comments', async (req, res) => {
           inReplyTo:  thread.email_message_id,
           references: thread.email_message_id,
           html: emailWrapper(
-            `💬 Ticket Update — ${ticket.ticket_number}`, '#0D3B6E',
+            ticket.status, `💬 Ticket Update — ${ticket.ticket_number}`, '#0D3B6E',
             `<p>A new update has been added to your ticket.</p>
              ${ticketInfoHtml(ticket.ticket_number, ticket.subject)}
              <div style="background:#f0f4f8;border-left:4px solid #0D3B6E;
                          padding:12px;margin:12px 0;border-radius:4px;">
-               <strong>Update:</strong><br>${content}
+               <strong>Update:</strong><br>${escapeHtml(content)}
              </div>`
           ),
         });
@@ -1295,21 +1118,22 @@ router.post('/:id/comments', async (req, res) => {
     res.status(201).json({ message: 'Comment posted.' });
   } catch (err) {
     console.error('POST comment error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 
 
 // ─── ADD co-assignee to a ticket ──────────────────────────
-router.post('/:id/assignees', authMiddleware, async (req, res) => {
+router.post('/:id/assignees', authMiddleware, requireTicket('manage'), async (req, res) => {
   try {
-    const { user_id, empno, full_name, assigned_by_empno, assigner_name } = req.body;
+    const { user_id } = req.body;
+    const [targetUsers] = await db.query("SELECT empno, full_name FROM users WHERE id = ? AND deleted_at IS NULL", [user_id]);
+    if (!targetUsers.length) return res.status(400).json({ error: "Selected staff is not available." });
+    const { empno, full_name } = targetUsers[0];
+    const assigned_by_empno = req.user.empno, assigner_name = req.user.full_name;
     const managedAreaIds = await adminAreaIds(req.user);
     const isServiceAdmin = req.user.role !== 'super_admin' && managedAreaIds.length > 0;
-    if (!['super_admin', 'ictms_staff'].includes(req.user.role) && !isServiceAdmin) {
-      return res.status(403).json({ error: 'Ticket assignment access is required.' });
-    }
 
     if (!user_id || !full_name) {
       return res.status(400).json({ error: 'user_id and full_name are required.' });
@@ -1325,7 +1149,7 @@ router.post('/:id/assignees', authMiddleware, async (req, res) => {
 
     // Get ticket info
     const [ticketRows] = await db.query(
-      'SELECT empno, assigned_to, service_area_id, ticket_number, subject FROM tickets WHERE id = ?',
+      'SELECT empno, assigned_to, service_area_id, ticket_number, subject, status FROM tickets WHERE id = ?',
       [req.params.id]
     );
     const ticket = ticketRows[0];
@@ -1383,7 +1207,7 @@ router.post('/:id/assignees', authMiddleware, async (req, res) => {
     // Background email
     sendTicketEmail(req.params.id, {
       html: emailWrapper(
-        `👥 You've Been Added as Co-Assignee — ${ticket.ticket_number}`, '#1A5490',
+        ticket.status, `👥 You've Been Added as Co-Assignee — ${ticket.ticket_number}`, '#1A5490',
         `<p>You have been added as a <strong>co-assignee</strong> on this ticket.</p>
          ${ticketInfoHtml(ticket.ticket_number, ticket.subject, [
            ['Your Role',  'Co-Assignee'],
@@ -1395,18 +1219,15 @@ router.post('/:id/assignees', authMiddleware, async (req, res) => {
 
   } catch (err) {
     console.error('POST co-assignee error:', err.message);  // ✅ log real error
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // ─── REMOVE co-assignee from a ticket ─────────────────────
-router.delete('/:id/assignees/:userId', authMiddleware, async (req, res) => {
+router.delete('/:id/assignees/:userId', authMiddleware, requireTicket('manage'), async (req, res) => {
   try {
     const managedAreaIds = await adminAreaIds(req.user);
     const isServiceAdmin = req.user.role !== 'super_admin' && managedAreaIds.length > 0;
-    if (!['super_admin', 'ictms_staff'].includes(req.user.role) && !isServiceAdmin) {
-      return res.status(403).json({ error: 'Ticket assignment access is required.' });
-    }
     const [ticketRows] = await db.query('SELECT service_area_id FROM tickets WHERE id = ?', [req.params.id]);
     if (!ticketRows.length) return res.status(404).json({ error: 'Ticket not found.' });
     if (isServiceAdmin && !managedAreaIds.includes(Number(ticketRows[0].service_area_id))) {
@@ -1431,7 +1252,7 @@ router.delete('/:id/assignees/:userId', authMiddleware, async (req, res) => {
     );
 
     const { full_name } = rows[0];
-    const { removed_by, remover_name } = req.body;
+    const removed_by = req.user.empno, remover_name = req.user.full_name;
 
     await db.query(
       'INSERT INTO comments (ticket_id, empno, content) VALUES (?, ?, ?)',
@@ -1444,13 +1265,13 @@ router.delete('/:id/assignees/:userId', authMiddleware, async (req, res) => {
 
     res.json({ message: `${full_name} removed from co-assignees.` });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
 // GET ticket attachments. The browser receives only the temporary URL returned
 // by object storage; the permanent object key remains in the database.
-router.get('/:id/attachments', authMiddleware, async (req, res) => {
+router.get('/:id/attachments', authMiddleware, requireTicket('read'), async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT id, storage_bucket, original_filename, content_type, file_size, object_key, created_at
@@ -1477,7 +1298,7 @@ router.get('/:id/attachments', authMiddleware, async (req, res) => {
 
 // Stream through the application server so storage-host CORS and frame policies
 // do not prevent previews in the ticket modal.
-router.get('/:id/attachments/:attachmentId/content', authMiddleware, async (req, res) => {
+router.get('/:id/attachments/:attachmentId/content', authMiddleware, requireTicket('read'), async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT storage_bucket, object_key, original_filename, content_type
@@ -1497,7 +1318,7 @@ router.get('/:id/attachments/:attachmentId/content', authMiddleware, async (req,
 });
 
 // GET ticket assignees (primary + co-assignees)
-router.get('/:id/assignees', async (req, res) => {
+router.get('/:id/assignees', authMiddleware, requireTicket('read'), async (req, res) => {
   try {
     // ✅ Get primary from tickets table
     const [ticketRows] = await db.query(`
@@ -1544,7 +1365,7 @@ router.get('/:id/assignees', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('GET assignees error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 module.exports = router;

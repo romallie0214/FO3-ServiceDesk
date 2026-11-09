@@ -1,0 +1,63 @@
+.csm-report-tabs{display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid #d0d9e4;margin-bottom:18px}.csm-report-tabs button{flex-shrink:0;padding:13px 16px;border:0;border-bottom:3px solid transparent;border-radius:0!important;background:transparent;color:#61758b;font-size:13px;cursor:pointer}.csm-report-tabs button[aria-selected=true]{color:var(--gov-navy);border-bottom-color:var(--gov-navy);font-weight:600}.csm-report-tabs button:focus-visible{outline:2px solid #70bdf0;outline-offset:-3px}.csm-report-section{padding:20px;background:#fff;border:1px solid #d0d9e4;border-radius:8px;margin-bottom:18px}.csm-report-section h2{font-size:16px;color:var(--gov-navy);margin:0 0 8px}.csm-report-section>p{font-size:12px;color:#61758b;margin:0 0 18px;line-height:1.6}.csm-report-card{min-width:0;border:1px solid #d0d9e4;border-radius:8px;overflow:hidden;margin-top:14px}.csm-report-card h3{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:14px;margin:0;background:#f2f7fc;font-size:13px;color:var(--gov-navy)}.csm-report-card h3 small{font-size:11px;font-weight:400}.csm-report-totals{display:flex;gap:10px;flex-wrap:wrap}.csm-report-totals span{background:#e8f1fa;color:#0d3b6e;border-radius:5px;padding:8px 12px;font-size:12px}.csm-report-totals span+span{background:#e8f5ee;color:#1b6b3a}.csm-breakdown-table tbody th{font-size:12px;font-weight:500;text-align:left;padding:10px 12px;border-bottom:1px solid #edf0f3;color:inherit}.csm-breakdown-table tbody tr:nth-child(even){background:#f7f9fc}.csm-breakdown-table td{text-align:center}.csm-breakdown-table tbody tr:last-child{background:#e8f1fa}.csm-breakdown-table th[scope=col]{white-space:normal;min-width:90px}.csm-breakdown-table th:first-child{min-width:170px}html[data-theme=dark] .csm-report-section,html[data-theme=dark] .csm-report-card{background:#172334;border-color:#34465c}html[data-theme=dark] .csm-report-card h3,html[data-theme=dark] .csm-breakdown-table tbody tr:nth-child(even){background:#1e2e43}html[data-theme=dark] .csm-report-section h2,html[data-theme=dark] .csm-report-card h3,html[data-theme=dark] .csm-report-tabs button[aria-selected=true]{color:#b7d6f5}html[data-theme=dark] .csm-report-section>p{color:#a9bed6}html[data-theme=dark] .csm-breakdown-table tbody tr:last-child{background:#243a53}@media(max-width:800px){.csm-report-section{padding:12px}.csm-report-tabs button{padding:12px;font-size:12px}}
+
+.shared-management-table.csm-breakdown-table tbody th{background:transparent!important;color:inherit!important;white-space:normal;font-size:12px!important;font-weight:500!important;letter-spacing:normal;text-align:left;border-bottom:1px solid #edf0f3}.csm-breakdown-table th[scope=col]{white-space:normal!important}
+
+/* Match the category management pill tabs. */
+.CSMReports-page .csm-report-tabs{flex-wrap:wrap;gap:8px;border-bottom:0;margin-bottom:12px;overflow:visible}
+.CSMReports-page .csm-report-tabs button{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:8px 15px;border:1px solid #d5deea;border-radius:999px!important;background:transparent;color:#6d7f94;font-size:12px;font-weight:400}
+.CSMReports-page .csm-report-tabs button[aria-selected=true]{background:#285585;color:#fff;border-color:#285585}
+.csm-report-tabs button span{font-size:10px;padding:1px 6px;background:#e4ebf4;color:#59728c;border-radius:10px}
+.csm-report-tabs button[aria-selected=true] span{background:#ffffff26;color:#fff}
+html[data-theme=dark] .CSMReports-page .csm-report-tabs button{border-color:#3a4e67;color:#aebfd4;background:transparent}
+html[data-theme=dark] .CSMReports-page .csm-report-tabs button[aria-selected=true]{background:#315d88;color:#edf6ff;border-color:#4b78a5}
+
+
+.csm-demographic-table{margin-top:0}
+.csm-demographic-table .csm-breakdown-table{table-layout:fixed;width:100%;min-width:0}
+.csm-demographic-table .csm-breakdown-table th:first-child{width:12%;min-width:0}
+.csm-demographic-table .csm-breakdown-table th:nth-child(2){width:48%;min-width:0}
+.csm-demographic-table .csm-breakdown-table th:nth-child(n+3){width:20%;min-width:0}
+.csm-demographic-table .csm-breakdown-table tbody tr:last-child{background:transparent}
+.csm-demographic-table .csm-breakdown-table tbody tr:nth-child(even){background:#f7f9fc}
+html[data-theme=dark] .csm-demographic-table .csm-breakdown-table tbody tr:nth-child(even){background:#1e2e43}
+
+.csm-demographic-layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:20px;margin-top:18px;align-items:start}
+.csm-demographic-sidebar{display:flex;flex-direction:column;gap:4px;padding-right:16px;border-right:1px solid #e1e7ef}
+.csm-demographic-nav-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#7d8da0;padding:8px 12px}
+.CSMReports-page .csm-demographic-sidebar button{display:flex;align-items:center;gap:10px;min-height:40px;padding:10px 12px;border:0;border-radius:5px!important;background:transparent;color:#6d7f94;text-align:left;font-size:12px;cursor:pointer}
+.CSMReports-page .csm-demographic-sidebar button:hover{background:#f2f7fc;color:#285585}
+.CSMReports-page .csm-demographic-sidebar button[aria-current=true]{background:#e8f1fa;color:#285585;font-weight:600;box-shadow:inset 3px 0 #285585}
+.csm-demographic-sidebar button:focus-visible{outline:2px solid #70bdf0;outline-offset:2px}
+.csm-demographic-select{display:none}
+html[data-theme=dark] .csm-demographic-sidebar{border-color:#34465c}
+html[data-theme=dark] .CSMReports-page .csm-demographic-sidebar button{color:#aebfd4}
+html[data-theme=dark] .CSMReports-page .csm-demographic-sidebar button:hover,html[data-theme=dark] .CSMReports-page .csm-demographic-sidebar button[aria-current=true]{background:#243a53;color:#d2e7fc}
+@media(max-width:700px){.csm-demographic-layout{grid-template-columns:minmax(0,1fr);gap:12px}.csm-demographic-sidebar{display:none}.csm-demographic-select{display:flex;flex-direction:column;gap:6px;font-size:12px;color:inherit}.csm-demographic-select select{width:100%;min-height:38px}}
+
+.CSMReports-page .csm-demographic-sidebar button{justify-content:flex-start;text-align:left;width:100%}.csm-demographic-sidebar button svg{flex-shrink:0}
+
+.CSMReports-page .csm-demographic-sidebar button[aria-current=true]{border-radius:0!important}
+
+.CSMReports-page .csm-demographic-sidebar button{transition:background-color 220ms ease,color 220ms ease}
+.CSMReports-page .csm-demographic-sidebar button[aria-current=true]{box-shadow:none}
+.csm-demographic-sidebar button .csm-sidebar-arrow{margin-left:auto;opacity:0;transform:translateX(-8px);transition:opacity 200ms ease,transform 320ms cubic-bezier(.22,1,.36,1)}
+.csm-demographic-sidebar button[aria-current=true] .csm-sidebar-arrow{opacity:1;transform:translateX(0)}
+@media(prefers-reduced-motion:reduce){.CSMReports-page .csm-demographic-sidebar button,.csm-demographic-sidebar button .csm-sidebar-arrow{transition:none;transform:none}}
+
+.csm-quality-chart-heading{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.csm-quality-chart-heading h2{margin:0}
+.csm-quality-chart-heading span{padding:4px 8px;border-radius:4px;background:#f0f3f7;color:#6d7f94;font-size:11px}
+.csm-quality-chart-scroll{max-width:1000px;overflow-x:auto}
+.csm-quality-chart-canvas{height:240px;min-width:540px;position:relative}
+html[data-theme=dark] .csm-quality-chart-heading span{background:#243a53;color:#aebfd4}
+
+.csm-summary-chart-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px;align-items:start}
+.csm-summary-chart-grid .csm-quality-chart-scroll{max-width:100%;min-width:0}
+.csm-officer-chart{padding-left:24px;border-left:1px solid #e1e7ef;min-width:0}
+.csm-officer-chart h3{font-size:13px;color:var(--gov-navy);margin:0 0 12px}
+.csm-doughnut-canvas{position:relative;width:160px;height:160px;margin:0 auto 14px}
+.csm-doughnut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;color:inherit}
+.csm-doughnut-center strong{font-size:26px;font-weight:600}.csm-doughnut-center span{font-size:11px;color:#7d8da0}
+.csm-rating-legend{list-style:none;padding:0;margin:0;display:grid;gap:7px}.csm-rating-legend li{display:flex;align-items:center;gap:7px;font-size:11px}.csm-rating-legend i{width:8px;height:8px;border-radius:50%;flex-shrink:0}.csm-rating-legend strong{margin-left:auto;font-weight:600}.csm-rating-legend small{min-width:42px;text-align:right;color:#7d8da0;font-size:10px}.csm-doughnut-empty{font-size:12px;padding:30px 0;color:#7d8da0}
+html[data-theme=dark] .csm-officer-chart{border-color:#34465c}html[data-theme=dark] .csm-officer-chart h3{color:#b7d6f5}
+@media(max-width:1000px){.csm-summary-chart-grid{grid-template-columns:minmax(0,1fr)}.csm-officer-chart{padding:18px 0 0;border-left:0;border-top:1px solid #e1e7ef}.csm-rating-legend{max-width:320px;margin:0 auto}}

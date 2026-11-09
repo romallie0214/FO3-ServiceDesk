@@ -1,4 +1,13 @@
-import { useEffect, useState } from 'react';
+import CSMQualityChart from '../components/CSMQualityChart';
+import CSMReportDetails from '../components/CSMReportDetails';
+import '../styles/csm-report-tabs.css';
+import Pagination from '../components/Pagination';
+import AppTable from '../components/AppTable';
+import SummaryCards from '../components/dashboard/SummaryCards';
+import { Pencil, Trash2, Plus, Save, Download, Eye, FileText, X, Search, SlidersHorizontal, ChevronDown, ClipboardList, Star, BadgeCheck, Smile, UserRound, Users, ShieldCheck } from 'lucide-react';
+import '../styles/management-ui.css';
+
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { exportCSMPDF } from '../utils/exportCSMPDF';
@@ -54,16 +63,9 @@ const DIMENSIONS = [
 ];
 
 function StarRating({ value }: { value: number }) {
-  return (
-    <div style={{ display: 'flex', gap: 2 }}>
-      {[1, 2, 3, 4, 5].map(n => (
-        <span key={n} style={{
-          fontSize: 'var(--text-sm)',
-          color: n <= value ? '#F5A623' : '#D0D9E4',
-        }}>★</span>
-      ))}
-    </div>
-  );
+  return <div className="csm-star-rating" role="img" aria-label={`${value} out of 5 stars`}>
+    {[1, 2, 3, 4, 5].map(number => <Star key={number} size={13} strokeWidth={1.5} aria-hidden="true" className={number <= value ? 'is-filled' : 'is-empty'} />)}
+  </div>;
 }
 function avgExcludingDisabled(responses: CSMResponse[], key: keyof CSMResponse): string {
   if (responses.length === 0) return '0.00';
@@ -137,9 +139,16 @@ export function staffInAttending(attendingOfficer: string, fullName: string): bo
 export default function CSMReports() {
   const { user } = useAuth();                        // ✅ add this
   const isServiceAdmin = user?.role !== 'super_admin' && (user?.area_admin_service_ids?.length ?? 0) > 0;
+  const [reportTab, setReportTab] = useState('summary');
   const [responses, setResponses] = useState<CSMResponse[]>([]);
   const [loading, setLoading]     = useState(true);
   const [selected, setSelected]   = useState<CSMResponse | null>(null);
+  const filtersRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => { if (event.target instanceof Node && filtersRef.current && !filtersRef.current.contains(event.target)) filtersRef.current.open = false; };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, []);
   const [search, setSearch]       = useState('');
   const [divFilter, setDivFilter] = useState('');
   const [serviceAreaFilter, setServiceAreaFilter] = useState('all');
@@ -200,16 +209,11 @@ export default function CSMReports() {
   const overallOfficer = avg(filtered, 'officer_rating');
   const overallService = avgServiceQuality(filtered);
 
-  if (loading) return (
-    <div style={{ color: 'var(--gov-navy)', padding: 40, textAlign: 'center' }}>
-      Loading CSM reports...
-    </div>
-  );
 
   return (
-    <div>
+    <div className="shared-management-page CSMReports-page">
       {/* BREADCRUMB */}
-      
+
       <div style={{
         fontSize: 'clamp(9px, 1.8vw, 11px)',
         color: '#4A4A4A',
@@ -282,289 +286,59 @@ export default function CSMReports() {
               flex: '0 0 auto',
             }}
           >
-            📄 Export PDF
+            <FileText size={16} aria-hidden="true" /> Export PDF
           </button>
         )}
       </div>
 
-      {/* SUMMARY CARDS */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: 'clamp(8px, 2vw, 12px)',
-        marginBottom: 18,
-      }}>
-        {[
-          // ✅ REPLACE THIS FIRST CARD ONLY
-          {
-            label: user?.role === 'ictms_staff'
-              ? 'My CSM Responses'
-              : 'Total CSM Responses',
-            value: filtered.length,
-            sub: user?.role === 'ictms_staff'
-              ? 'From your resolved tickets'
-              : 'Submitted forms',
-            color: 'var(--gov-navy)',
-          },
-
-          // ← LEAVE THESE 3 CARDS EXACTLY AS THEY ARE
-          {
-            label: 'Avg Officer Rating',
-            value: overallOfficer,
-            sub: 'Out of 5.00',
-            color: 'var(--gov-amber)',
-          },
-          {
-            label: 'Avg Service Quality',
-            value: overallService,
-            sub: '7 dimensions average (Cost-effectiveness N/A)',
-            color: 'var(--gov-green)',
-          },
-          {
-            label: 'Highly Satisfied',
-            value: filtered.filter(r => r.officer_rating >= 4).length,
-            sub: 'Rating 4 or 5',
-            color: '#0D3B6E',
-          },
-        ].map(card => (
-          <div key={card.label} style={{
-            background: '#fff',
-            border: '0.5px solid #D0D9E4',
-            borderRadius: 8,
-            padding: 'clamp(10px, 2.5vw, 14px)',
-            borderTop: `3px solid ${card.color}`,
-          }}>
-            <div style={{
-              fontSize: 'clamp(9px, 1.8vw, 11px)',
-              color: '#4A4A4A',
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 6,
-              fontWeight: 500,
-            }}>
-              {card.label}
-            </div>
-            <div style={{
-              fontSize: 'clamp(18px, 6vw, 28px)',
-              fontWeight: 500,
-              color: card.color,
-            }}>
-              {card.value}
-            </div>
-            <div style={{
-              fontSize: 'clamp(8px, 1.5vw, 11px)',
-              color: '#888',
-              marginTop: 4,
-            }}>
-              {card.sub}
-            </div>
-          </div>
+      <div className="csm-report-tabs" role="tablist" aria-label="CSM report sections">
+        {[["summary", "CSM Summary"], ["quality", "A. Service Quality"], ["demographics", "B. Demographic Profile"], ["charter", "C. Citizen's Charter Results"]].map(([id, label]) => (
+          <button key={id} id={`csm-tab-${id}`} role="tab" aria-selected={reportTab === id} aria-controls="csm-report-panel" tabIndex={reportTab === id ? 0 : -1} onClick={() => setReportTab(id)} onKeyDown={event => {
+            const ids = ['summary', 'quality', 'demographics', 'charter'];
+            const next = event.key === 'ArrowRight' ? (ids.indexOf(id) + 1) % 4 : event.key === 'ArrowLeft' ? (ids.indexOf(id) + 3) % 4 : event.key === 'Home' ? 0 : event.key === 'End' ? 3 : -1;
+            if (next >= 0) { event.preventDefault(); setReportTab(ids[next]); document.getElementById(`csm-tab-${ids[next]}`)?.focus(); }
+          }}>{id === 'summary' ? <ClipboardList size={15} aria-hidden="true" /> : id === 'quality' ? <BadgeCheck size={15} aria-hidden="true" /> : id === 'demographics' ? <Users size={15} aria-hidden="true" /> : <ShieldCheck size={15} aria-hidden="true" />}{label}{id === 'summary' && <span>{filtered.length}</span>}</button>
         ))}
       </div>
+      <div id="csm-report-panel" role="tabpanel" aria-labelledby={`csm-tab-${reportTab}`} tabIndex={0}>
+      {reportTab === 'summary' && <>
+      <SummaryCards cards={[
+        { label: user?.role === 'ictms_staff' ? 'My CSM Responses' : 'Total CSM Responses', value: filtered.length, description: user?.role === 'ictms_staff' ? 'From your resolved tickets' : 'Submitted forms', color: '#0D3B6E', background: '#E8F1FA', icon: ClipboardList },
+        { label: 'Avg Officer Rating', value: overallOfficer, description: 'Out of 5.00', color: '#CC7700', background: '#FEF3DC', icon: Star },
+        { label: 'Avg Service Quality', value: overallService, description: '7 dimensions average (Cost-effectiveness N/A)', color: '#1B6B3A', background: '#E8F5EE', icon: BadgeCheck },
+        { label: 'Highly Satisfied', value: filtered.filter(response => response.officer_rating >= 4).length, description: 'Rating 4 or 5', color: '#6D4BB2', background: '#F0EAFC', icon: Smile },
+      ]} />
 
-      {/* DIMENSION AVERAGES BAR */}
-      <div style={{
-        background: '#fff',
-        border: '0.5px solid #D0D9E4',
-        borderRadius: 8,
-        padding: 'clamp(12px, 3vw, 16px)',
-        marginBottom: 14,
-      }}>
-        <div style={{
-          fontSize: 'clamp(9px, 1.8vw, 11px)',
-          fontWeight: 500,
-          color: 'var(--gov-navy)',
-          textTransform: 'uppercase',
-          letterSpacing: 0.5,
-          marginBottom: 14,
-        }}>
-          8 Service Quality Dimensions — Average Scores
-        </div>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: 'clamp(10px, 2vw, 14px)',
-        }}>
-        {DIMENSIONS.map(d => {
-          if (d.disabled) {
-            return (
-              <div key={d.key} style={{ opacity: 0.5 }}>
-                <p style={{
-                  fontSize: 'clamp(8px, 1.5vw, 11px)',
-                  color: '#888',
-                  marginBottom: 4,
-                }}>
-                  {d.label}
-                  <span style={{
-                    marginLeft: 6,
-                    fontSize: 'clamp(7px, 1.2vw, 10px)',
-                    background: '#F0F0F0',
-                    color: '#666',
-                    padding: '2px 6px',
-                    borderRadius: 3,
-                    fontWeight: 500,
-                  }}>
-                    N/A
-                  </span>
-                </p>
-                <div style={{
-                  padding: '6px 8px',
-                  background: '#F5F5F5',
-                  borderRadius: 4,
-                  textAlign: 'center',
-                  fontSize: 'clamp(8px, 1.5vw, 11px)',
-                  color: '#999',
-                }}>
-                  Not applicable
-                </div>
-              </div>
-            );
-          }
+      <CSMQualityChart officerRatings={filtered.map(response => Number(response.officer_rating))} loading={loading} scores={DIMENSIONS.map(dimension => {
+        const values = filtered.map(response => Number(response[dimension.key as keyof CSMResponse])).filter(value => Number.isInteger(value) && value >= 1 && value <= 5);
+        return { label: dimension.label, score: dimension.disabled || !values.length ? null : values.reduce((sum, value) => sum + value, 0) / values.length, count: dimension.disabled ? 0 : values.length };
+      })} />
 
-          const score = Number(avg(filtered, d.key as keyof CSMResponse));
-          const pct = (score / 5) * 100;
-          const color = score >= 4 ? 'var(--gov-green)'
-            : score >= 3 ? 'var(--gov-amber)'
-            : '#CC7700';
-          
-          return (
-            <div key={d.key}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: 4,
-                gap: '8px',
-              }}>
-                <span style={{
-                  fontSize: 'clamp(8px, 1.5vw, 11px)',
-                  color: '#3A3A3A',
-                }}>
-                  {d.label}
-                </span>
-                <span style={{
-                  fontSize: 'clamp(8px, 1.5vw, 11px)',
-                  fontWeight: 500,
-                  color,
-                  whiteSpace: 'nowrap',
-                }}>
-                  {score.toFixed(2)}
-                </span>
-              </div>
-              <div style={{
-                height: 6,
-                borderRadius: 3,
-                background: '#E8ECF0',
-                overflow: 'hidden',
-              }}>
-                <div style={{
-                  height: '100%',
-                  borderRadius: 3,
-                  width: `${pct}%`,
-                  background: color,
-                  transition: 'width 0.4s',
-                }} />
-              </div>
-            </div>
-          );
-        })}
-        </div>
-      </div>
+      </>}
 
-      {/* FILTER BAR */}
-      <div style={{
-        background: '#fff',
-        border: '0.5px solid #D0D9E4',
-        borderRadius: 8,
-        padding: 'clamp(8px, 2vw, 12px)',
-        marginBottom: 10,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'clamp(6px, 1.5vw, 10px)',
-        flexWrap: 'wrap',
-      }}>
-        <input
-          type="text"
-          placeholder="Search ticket #, officer, division..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{
-            flex: '1 1 auto',
-            minWidth: 'clamp(150px, 50vw, 300px)',
-            padding: 'clamp(5px, 1.5vw, 8px) clamp(6px, 1.5vw, 9px)',
-            fontSize: 'clamp(10px, 1.8vw, 12px)',
-            border: '1px solid #C8D0DC',
-            borderRadius: 4,
-          }}
-        />
-        <select
-          value={divFilter}
-          onChange={e => setDivFilter(e.target.value)}
-          style={{
-            padding: 'clamp(5px, 1.5vw, 8px) clamp(6px, 1.5vw, 9px)',
-            fontSize: 'clamp(10px, 1.8vw, 12px)',
-            border: '1px solid #C8D0DC',
-            borderRadius: 4,
-            flex: '0 1 auto',
-            minWidth: '140px',
-          }}
-        >
-          <option value="">All Divisions</option>
-          {divisions.map(d => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-        {user?.role === 'super_admin' && (
-          <select
-            value={serviceAreaFilter}
-            onChange={e => setServiceAreaFilter(e.target.value)}
-            style={{
-              padding: 'clamp(5px, 1.5vw, 8px) clamp(6px, 1.5vw, 9px)',
-              fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC',
-              borderRadius: 4, minWidth: '160px',
-            }}
-          >
-            <option value="all">All Service Areas</option>
-            {serviceAreas.map(area => <option key={area.id} value={area.id}>{area.code} — {area.name}</option>)}
-          </select>
-        )}
-        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
-          From
-          <input type="date" aria-label="CSM submitted from" value={dateFrom} max={dateTo || undefined} onChange={e => setDateFrom(e.target.value)} style={{ padding: 'clamp(5px, 1.5vw, 8px)', fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
-          To
-          <input type="date" aria-label="CSM submitted to" value={dateTo} min={dateFrom || undefined} onChange={e => setDateTo(e.target.value)} style={{ padding: 'clamp(5px, 1.5vw, 8px)', fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC', borderRadius: 4 }} />
-        </label>
-        {(search || divFilter || serviceAreaFilter !== 'all' || dateFrom || dateTo) && (
-          <button onClick={() => { setSearch(''); setDivFilter(''); setServiceAreaFilter('all'); setDateFrom(''); setDateTo(''); }} style={{ padding: 'clamp(5px, 1.5vw, 8px) clamp(8px, 1.5vw, 12px)', fontSize: 'clamp(10px, 1.8vw, 12px)', border: '1px solid #C8D0DC', borderRadius: 4, background: '#F5F8FC', cursor: 'pointer', color: '#4A4A4A' }}>Clear</button>
-        )}
-        <span style={{
-          fontSize: 'clamp(9px, 1.8vw, 11px)',
-          color: '#888',
-          whiteSpace: 'nowrap',
-          flex: '0 1 auto',
-        }}>
-          {filtered.length} record{filtered.length !== 1 ? 's' : ''}
-        </span>
+      <div className="sla-filter-toolbar kb-management-toolbar">
+        <label className="kb-management-search"><Search size={14} /><input aria-label="Search CSM reports" placeholder="Search ticket, officer, division..." value={search} onChange={event => setSearch(event.target.value)} /></label>
+        <details ref={filtersRef} className="sla-filter-dropdown" onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
+          <summary><SlidersHorizontal size={14} />Report Filters{(divFilter || serviceAreaFilter !== 'all' || dateFrom || dateTo) && <span>{Number(!!divFilter) + Number(serviceAreaFilter !== 'all') + Number(!!dateFrom) + Number(!!dateTo)}</span>}<ChevronDown size={14} /></summary>
+          <div className="sla-filter-menu">
+            <label>Division<select value={divFilter} onChange={event => setDivFilter(event.target.value)}><option value="">All divisions</option>{divisions.map(division => <option key={division}>{division}</option>)}</select></label>
+            {user?.role === 'super_admin' && <label>Service area<select value={serviceAreaFilter} onChange={event => setServiceAreaFilter(event.target.value)}><option value="all">All service areas</option>{serviceAreas.map(area => <option key={area.id} value={area.id}>{area.code} ? {area.name}</option>)}</select></label>}
+            <label>Submitted from<input type="date" value={dateFrom} max={dateTo || undefined} onChange={event => setDateFrom(event.target.value)} /></label>
+            <label>Submitted to<input type="date" value={dateTo} min={dateFrom || undefined} onChange={event => setDateTo(event.target.value)} /></label>
+            <div className="sla-filter-actions"><button onClick={() => { setDivFilter(''); setServiceAreaFilter('all'); setDateFrom(''); setDateTo(''); }}>Clear filters</button><button onClick={() => { if (filtersRef.current) filtersRef.current.open = false; }}>Done</button></div>
+          </div>
+        </details>
+        <span className="kb-management-count">{filtered.length} {filtered.length === 1 ? 'record' : 'records'}</span>
       </div>
 
       {/* CSM TABLE */}
-      {responses.length === 0 ? (
-        <div style={{
-          background: '#fff', border: '0.5px solid #D0D9E4',
-          borderRadius: 8, padding: 40,
-          textAlign: 'center', color: '#888', fontSize: 'var(--text-sm)',
-        }}>
-          No CSM responses yet. They appear here once staff submit the
-          CSM form after a ticket is resolved.
-        </div>
-      ) : (
+      {reportTab === 'summary' && (
         <div style={{
           background: '#fff', border: '0.5px solid #D0D9E4',
           borderRadius: 8, overflow: 'hidden',
         }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <AppTable loading={loading} loadingColumns={9} empty={filtered.length === 0} emptyMessage="No CSM responses match this view." className="shared-management-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   {[
@@ -651,10 +425,10 @@ export default function CSMReports() {
                               borderRadius: 3, background: '#E8F5EE', color: '#1B6B3A',
                               display: 'inline-block', marginBottom: 5,
                             }}>
-                              👤 Individual
+                              <UserRound size={12} aria-hidden="true" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }} />Individual
                             </span>
                             <div style={{ fontSize: 'var(--text-xs)', color: '#5A6475' }}>
-                              {(r.attending_officer || '—').replace(/\(Primary\)/g, '').trim()}
+                              {(r.attending_officer || '').replace(/\(Primary\)/g, '').trim() || 'Not recorded'}
                             </div>
                           </div>
                         )}
@@ -683,37 +457,25 @@ export default function CSMReports() {
                             background: 'var(--gov-navy)', color: '#fff',
                             border: 'none', borderRadius: 4, cursor: 'pointer',
                           }}
-                        >
-                          View
-                        </button>
+                        ><Eye size={14} /> View</button>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
-            </table>
+            </AppTable>
           </div>
+{filtered.length > 0 && (
+        <Pagination attached page={currentPage} total={filtered.length} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
+      )}
+
         </div>
       )}
 
+      {reportTab !== 'summary' && <CSMReportDetails tab={reportTab} responses={filtered} loading={loading} />}
+      </div>
       {/* DETAIL MODAL */}
-      {filtered.length > 0 && (
-        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: '0.5px solid #D0D9E4', borderRadius: 8, padding: '9px 12px' }}>
-          <div style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>
-            Showing <strong>{pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)}</strong> of <strong>{filtered.length}</strong> responses
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-            <label style={{ color: '#5A6475', fontSize: 'clamp(9px, 1.8vw, 11px)' }}>Rows
-              <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ marginLeft: 5, padding: '4px 7px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff' }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select>
-            </label>
-            <button onClick={() => setPage(1)} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>First</button>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
-            <span style={{ color: '#334155', fontSize: 'clamp(9px, 1.8vw, 11px)', whiteSpace: 'nowrap' }}>Page {currentPage} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Next</button>
-            <button onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} style={{ padding: '5px 8px', border: '1px solid #C8D0DC', borderRadius: 4, background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}>Last</button>
-          </div>
-        </div>
-      )}
+
       {selected && (
         <div
           onClick={() => setSelected(null)}
@@ -725,7 +487,7 @@ export default function CSMReports() {
           }}
         >
           <div
-            onClick={e => e.stopPropagation()}
+            className="shared-management-dialog" onClick={e => e.stopPropagation()}
             style={{
               background: '#fff', width: 640,
               maxWidth: '95vw', maxHeight: '90vh',

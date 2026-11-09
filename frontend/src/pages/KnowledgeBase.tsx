@@ -1,3 +1,6 @@
+import { Pencil, Trash2, Plus, Save, Download, Eye, FileText, X } from 'lucide-react';
+import '../styles/management-ui.css';
+
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -26,7 +29,19 @@ const categoryColors: Record<string, { bg: string; color: string }> = {
 
 // ─── PDF Viewer Modal ─────────────────────────────────────────────────────────
 function PDFViewerModal({ article, onClose }: { article: Article; onClose: () => void }) {
-  const pdfUrl = `/api/knowledge-base/${article.id}/pdf`;
+  const [pdfUrl, setPdfUrl] = useState('');
+  const [pdfError, setPdfError] = useState(false);
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+    setPdfUrl(''); setPdfError(false);
+    api.get(`/knowledge-base/${article.id}/pdf`, { responseType: 'blob' }).then(response => {
+      if (!active) return;
+      objectUrl = URL.createObjectURL(response.data);
+      setPdfUrl(objectUrl);
+    }).catch(() => { if (active) setPdfError(true); });
+    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [article.id]);
   return (
     <div
       onClick={onClose}
@@ -36,7 +51,7 @@ function PDFViewerModal({ article, onClose }: { article: Article; onClose: () =>
       }}
     >
       <div
-        onClick={e => e.stopPropagation()}
+        className="shared-management-dialog" onClick={e => e.stopPropagation()}
         style={{
           background: '#fff',
           width: 'clamp(90vw, 95vw, 90vw)',
@@ -84,7 +99,7 @@ function PDFViewerModal({ article, onClose }: { article: Article; onClose: () =>
             flexShrink: 0,
           }}>
             <a
-              href={pdfUrl}
+              href={pdfUrl || undefined} aria-disabled={!pdfUrl}
               target="_blank"
               rel="noreferrer"
               style={{
@@ -120,11 +135,11 @@ function PDFViewerModal({ article, onClose }: { article: Article; onClose: () =>
           </div>
         </div>
         {/* PDF iframe */}
-        <iframe
+        {pdfError ? <p role="alert" style={{ padding: 24 }}>Unable to load this PDF. Please close the viewer and try again.</p> : !pdfUrl ? <p role="status" style={{ padding: 24 }}>Loading document...</p> : <iframe
           src={pdfUrl}
           style={{ flex: 1, border: 'none', width: '100%' }}
           title={article.title}
-        />
+        />}
       </div>
     </div>
   );
@@ -199,7 +214,7 @@ export default function KnowledgeBase() {
   });
 
   return (
-    <div>
+    <div className="shared-management-page KnowledgeBase-page">
       {/* BREADCRUMB */}
       <div style={{
         fontSize: 'clamp(9px, 1.8vw, 11px)',
@@ -226,9 +241,9 @@ export default function KnowledgeBase() {
       </div>
 
       {/* FILTER BAR */}
-      <div style={{
-        background: '#fff',
-        border: '0.5px solid #D0D9E4',
+      <div className="kb-article-filter-bar" style={{
+        background: 'var(--ui-surface, #fff)',
+        border: 'none',
         borderRadius: 8,
         padding: 'clamp(8px, 2vw, 12px)',
         marginBottom: 16,
@@ -336,7 +351,7 @@ export default function KnowledgeBase() {
             const catStyle = categoryColors[article.category] ?? { bg: '#F0F0F0', color: '#666' };
             return (
               <div
-                key={article.id}
+                className="shared-resource-card" key={article.id}
                 style={{
                   background: '#fff',
                   border: '0.5px solid #D0D9E4',

@@ -217,7 +217,7 @@ CREATE TABLE IF NOT EXISTS sub_items (
 CREATE TABLE IF NOT EXISTS tickets (
   id INT NOT NULL AUTO_INCREMENT,
   empno VARCHAR(50) NULL,
-  ticket_number VARCHAR(20) NOT NULL,
+  ticket_number VARCHAR(64) NOT NULL,
   subject VARCHAR(255) NOT NULL,
   description TEXT NULL,
   status ENUM('Open','Assigned','In Progress','On-Hold','Resolved','Cancelled','Closed') NOT NULL DEFAULT 'Open',
